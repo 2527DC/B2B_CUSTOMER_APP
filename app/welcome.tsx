@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingBag, Sparkles, ShieldCheck, ArrowRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';

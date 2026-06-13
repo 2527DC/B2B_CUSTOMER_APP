@@ -23,13 +23,14 @@ export type Category = {
 export type Product = {
   id: string;
   name: string;
-  price: number;
-  image_url: string;
-  brand_id: string;
-  category_id: string;
-  description: string;
-  rating: number;
-  reviews_count: number;
+  price?: number;        // selling price (min_sell_price)
+  mrp?: number;          // original MRP (max_sell_price) – shown struck-through
+  image_url?: string;
+  brand_id?: string;
+  category_id?: string;
+  description?: string;
+  rating?: number;
+  reviews_count?: number;
   created_at: string;
   // Optional wholesale pricing tiers for bulk orders
   wholesale_tiers?: { min_qty: number; max_qty: number; price_per_bag: number }[];

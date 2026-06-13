@@ -8,10 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
-import { Mail, Lock, User as UserIcon, Eye, EyeOff, Sparkles } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Mail, Lock, User as UserIcon, Eye, EyeOff, Sparkles, Smartphone } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'expo-router';
@@ -20,6 +20,7 @@ export default function RegisterScreen() {
   const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
@@ -28,12 +29,14 @@ export default function RegisterScreen() {
 
   const [nameFocused, setNameFocused] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
+  const [phoneFocused, setPhoneFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmFocused, setConfirmFocused] = useState(false);
 
   const [errors, setErrors] = useState<{
     name?: string;
     email?: string;
+    phone?: string;
     password?: string;
     confirmPassword?: string;
   }>({});
@@ -48,6 +51,11 @@ export default function RegisterScreen() {
       tempErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       tempErrors.email = 'Invalid email address';
+    }
+    if (!phone) {
+      tempErrors.phone = 'Phone number is required';
+    } else if (!/^\d{10,15}$/.test(phone)) {
+      tempErrors.phone = 'Invalid phone number (should be 10-15 digits)';
     }
     if (!password) {
       tempErrors.password = 'Password is required';
@@ -68,7 +76,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await register(name.trim(), email, password);
+      await register(name.trim(), email, password, phone);
     } catch (err) {
       console.error(err);
       setErrors({ email: 'Registration failed. Please try again.' });
@@ -80,7 +88,7 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -161,6 +169,36 @@ export default function RegisterScreen() {
                 />
               </View>
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+            </View>
+
+            {/* Phone Number */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>Phone Number</Text>
+              <View
+                style={[
+                  styles.inputContainer,
+                  phoneFocused && styles.inputFocused,
+                  errors.phone && styles.inputError,
+                ]}
+              >
+                <Smartphone size={20} color={phoneFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                <TextInput
+                  value={phone}
+                  onChangeText={(text) => {
+                    setPhone(text);
+                    if (errors.phone) setErrors({ ...errors, phone: undefined });
+                  }}
+                  onFocus={() => setPhoneFocused(true)}
+                  onBlur={() => setPhoneFocused(false)}
+                  placeholder="9876543210"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.input}
+                />
+              </View>
+              {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
             </View>
 
             {/* Password */}
@@ -375,11 +413,6 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: '#2563eb',
     backgroundColor: '#ffffff',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 1,
   },
   inputError: {
     borderColor: '#ef4444',

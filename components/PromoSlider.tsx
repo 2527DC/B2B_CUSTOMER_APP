@@ -1,61 +1,44 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView,
+  Dimensions, TouchableOpacity, Image,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
+const SLIDE_WIDTH = width;
 
-interface Slide {
-  id: string;
-  title: string;
-  subtitle: string;
-  gradient: string[];
-  buttonText?: string;
+interface PromoSliderProps {
+  // Pass absolute image URLs from the API.
+  // Falls back to gradient placeholders if empty or not provided.
+  images?: string[];
 }
 
-const slides: Slide[] = [
-  {
-    id: '1',
-    title: 'Summer Sale',
-    subtitle: 'Up to 50% off on selected items',
-    gradient: ['#3b82f6', '#2563eb'],
-    buttonText: 'Shop Now',
-  },
-  {
-    id: '2',
-    title: 'New Arrivals',
-    subtitle: 'Discover the latest trends',
-    gradient: ['#10b981', '#059669'],
-    buttonText: 'Explore',
-  },
-  {
-    id: '3',
-    title: 'Free Shipping',
-    subtitle: 'On orders over $50',
-    gradient: ['#f59e0b', '#d97706'],
-    buttonText: 'Learn More',
-  },
+// Fallback gradient slides shown when no API images are available
+const fallbackSlides = [
+  { id: '1', title: 'Summer Sale',   subtitle: 'Up to 50% off on selected items', gradient: ['#3b82f6', '#2563eb'] as const },
+  { id: '2', title: 'New Arrivals',  subtitle: 'Discover the latest trends',       gradient: ['#10b981', '#059669'] as const },
+  { id: '3', title: 'Free Shipping', subtitle: 'On orders over $50',               gradient: ['#f59e0b', '#d97706'] as const },
 ];
 
-export function PromoSlider() {
+export function PromoSlider({ images }: PromoSliderProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const useApiImages = images && images.length > 0;
+  const slideCount = useApiImages ? images.length : fallbackSlides.length;
 
   useEffect(() => {
+    if (slideCount <= 1) return;
     const timer = setInterval(() => {
-      const nextIndex = (activeIndex + 1) % slides.length;
-      scrollViewRef.current?.scrollTo({
-        x: nextIndex * (width - 40),
-        animated: true,
-      });
+      const nextIndex = (activeIndex + 1) % slideCount;
+      scrollViewRef.current?.scrollTo({ x: nextIndex * SLIDE_WIDTH, animated: true });
       setActiveIndex(nextIndex);
     }, 4000);
-
     return () => clearInterval(timer);
-  }, [activeIndex]);
+  }, [activeIndex, slideCount]);
 
   const handleScroll = (event: any) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffset / (width - 40));
+    const index = Math.round(event.nativeEvent.contentOffset.x / SLIDE_WIDTH);
     setActiveIndex(index);
   };
 
@@ -71,36 +54,41 @@ export function PromoSlider() {
         decelerationRate="fast"
         contentContainerStyle={styles.scrollContent}
       >
-        {slides.map((slide) => (
-          <TouchableOpacity key={slide.id} activeOpacity={0.9} style={styles.slide}>
-            <LinearGradient
-              colors={slide.gradient as any}
-              style={styles.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.slideContent}>
-                <Text style={styles.slideTitle}>{slide.title}</Text>
-                <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>
-                {slide.buttonText && (
-                  <View style={styles.button}>
-                    <Text style={styles.buttonText}>{slide.buttonText}</Text>
+        {useApiImages
+          ? images.map((uri, i) => (
+              <TouchableOpacity key={i} activeOpacity={0.9} style={styles.slide}>
+                <Image
+                  source={{ uri }}
+                  style={styles.slideImage}
+                  resizeMode="cover"
+                  onError={e => console.warn('[PromoSlider] image load error', uri, e.nativeEvent.error)}
+                />
+              </TouchableOpacity>
+            ))
+          : fallbackSlides.map(slide => (
+              <TouchableOpacity key={slide.id} activeOpacity={0.9} style={styles.slide}>
+                <LinearGradient
+                  colors={slide.gradient}
+                  style={styles.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.slideContent}>
+                    <Text style={styles.slideTitle}>{slide.title}</Text>
+                    <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>
                   </View>
-                )}
-              </View>
-              <View style={styles.decorCircle} />
-            </LinearGradient>
-          </TouchableOpacity>
-        ))}
+                  <View style={styles.decorCircle} />
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
       </ScrollView>
+
+      {/* Dot indicators */}
       <View style={styles.indicators}>
-        {slides.map((_, index) => (
+        {Array.from({ length: slideCount }).map((_, i) => (
           <View
-            key={index}
-            style={[
-              styles.indicator,
-              index === activeIndex && styles.indicatorActive,
-            ]}
+            key={i}
+            style={[styles.indicator, i === activeIndex && styles.indicatorActive]}
           />
         ))}
       </View>
@@ -110,22 +98,18 @@ export function PromoSlider() {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 0,
   },
-  scrollContent: {
-    gap: 16,
-  },
+  scrollContent: {},
   slide: {
-    width: width - 40,
+    width: SLIDE_WIDTH,
     height: 200,
-    borderRadius: 20,
+    borderRadius: 0,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+  },
+  slideImage: {
+    width: '100%',
+    height: '100%',
   },
   gradient: {
     width: '100%',
@@ -148,23 +132,8 @@ const styles = StyleSheet.create({
   },
   slideSubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 16,
+    color: 'rgba(255,255,255,0.9)',
     fontWeight: '500',
-  },
-  button: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
   },
   decorCircle: {
     position: 'absolute',
@@ -173,7 +142,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   indicators: {
     flexDirection: 'row',

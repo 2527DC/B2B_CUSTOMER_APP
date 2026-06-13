@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Smartphone, Shirt, Dumbbell, Home, Sparkles, BookOpen, Gamepad2, Utensils, type LucideIcon } from 'lucide-react-native';
 import { Category } from '@/lib/supabase';
 
@@ -54,12 +54,21 @@ export function CategorySidebar({ categories, selectedCategory, onSelectCategory
               <View style={[
                 styles.iconContainer,
                 isSelected && styles.iconContainerSelected,
+                { overflow: 'hidden' }
               ]}>
-                <IconComponent
-                  size={22}
-                  color={isSelected ? '#ffffff' : '#64748b'}
-                  strokeWidth={2.5}
-                />
+                {category.id !== 'all' && (category as any).image_url ? (
+                  <Image
+                    source={{ uri: (category as any).image_url }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <IconComponent
+                    size={22}
+                    color={isSelected ? '#ffffff' : '#64748b'}
+                    strokeWidth={2.5}
+                  />
+                )}
               </View>
               <Text style={[
                 styles.categoryName,

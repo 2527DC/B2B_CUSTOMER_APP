@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { CartProvider } from '@/context/CartContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function RootLayoutNav() {
   const { isOnboarded, isAuthenticated, isLoading } = useAuth();
@@ -46,6 +48,8 @@ function RootLayoutNav() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="checkout" options={{ headerShown: false }} />
+      <Stack.Screen name="search" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
@@ -56,12 +60,16 @@ export default function RootLayout() {
   useFrameworkReady();
 
   return (
-    <AuthProvider>
-      <View style={styles.container}>
-        <RootLayoutNav />
-        <StatusBar style="auto" />
-      </View>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <CartProvider>
+          <View style={styles.container}>
+            <RootLayoutNav />
+            <StatusBar style="auto" />
+          </View>
+        </CartProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

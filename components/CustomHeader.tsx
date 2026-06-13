@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Search, Bell } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Search, Bell, Menu } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 interface CustomHeaderProps {
   onSearchPress?: () => void;
@@ -17,32 +18,45 @@ export function CustomHeader({
   showNotification = true
 }: CustomHeaderProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) }]}>
-      <View style={styles.logoContainer}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>Shop</Text>
+      {/* Top Row: Menu, Logo badge, Title, Notification */}
+      <View style={styles.topRow}>
+        <View style={styles.leftSection}>
+          <TouchableOpacity style={styles.menuButton} activeOpacity={0.7}>
+            <Menu size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <View style={styles.logoWrapper}>
+            <Image
+              source={require('@/assets/images/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.brandTitle}>Dhatri</Text>
         </View>
+
+        {showNotification && (
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={onNotificationPress}
+            activeOpacity={0.7}
+          >
+            <Bell size={24} color="#ffffff" strokeWidth={2} />
+            <View style={styles.notificationBadge}>
+              <View style={styles.badgeDot} />
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
+      {/* Bottom Row: Pill Search Bar */}
       {showSearch && (
-        <TouchableOpacity style={styles.searchBar} onPress={onSearchPress} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.searchBar} onPress={onSearchPress} activeOpacity={0.9}>
           <Search size={18} color="#94a3b8" strokeWidth={2.5} />
-          <Text style={styles.searchPlaceholder}>Search products...</Text>
-        </TouchableOpacity>
-      )}
-
-      {showNotification && (
-        <TouchableOpacity
-          style={styles.notificationButton}
-          onPress={onNotificationPress}
-          activeOpacity={0.7}
-        >
-          <Bell size={22} color="#64748b" strokeWidth={2} />
-          <View style={styles.notificationBadge}>
-            <View style={styles.badgeDot} />
-          </View>
+          <Text style={styles.searchPlaceholder}>Search in Dhatri...</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -51,74 +65,79 @@ export function CustomHeader({
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#2e7d32', // Vibrant brand green
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 14,
+  },
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    height: 44,
+  },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
-    backgroundColor: '#f8fafc',
   },
-  logoContainer: {
-    marginRight: 8,
+  menuButton: {
+    padding: 4,
   },
-  logo: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  logoText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+  logoWrapper: {
+    width: 32,
+    height: 32,
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    gap: 10,
-  },
-  searchPlaceholder: {
-    fontSize: 14,
-    color: '#94a3b8',
-  },
-  notificationButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
+    borderRadius: 6,
+    padding: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  brandTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  notificationButton: {
+    padding: 6,
     position: 'relative',
   },
   notificationBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 6,
+    right: 6,
   },
   badgeDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#ef4444',
+    borderWidth: 1.5,
+    borderColor: '#2e7d32',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 24, // Rounded pill shape
+    paddingHorizontal: 16,
+    height: 46,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+    gap: 10,
+  },
+  searchPlaceholder: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: '500',
   },
 });

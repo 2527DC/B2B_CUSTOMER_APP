@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Star, Plus } from 'lucide-react-native';
+import { Star, Plus, Check } from 'lucide-react-native';
 import { Product } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
+import { useCart } from '@/context/CartContext';
 
 interface ProductCardProps {
   product: Product;
@@ -11,6 +12,10 @@ interface ProductCardProps {
 
 export function ProductCard({ product, viewMode }: ProductCardProps) {
   const router = useRouter();
+  const { cartItems } = useCart();
+
+  // How many of this product are in the cart
+  const cartCount = cartItems.filter(item => item.product_id === parseInt(product.id)).reduce((sum, item) => sum + item.qty, 0);
 
   const handlePress = () => {
     router.push(`/product/${product.id}`);
@@ -20,20 +25,37 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
     return (
       <TouchableOpacity style={styles.horizontalCard} activeOpacity={0.8} onPress={handlePress}>
         <View style={styles.horizontalImageContainer}>
-          <Image source={{ uri: product.image_url }} style={styles.horizontalImage} resizeMode="cover" />
+          {!!product.image_url && product.image_url.trim() !== '' ? (
+            <Image source={{ uri: product.image_url }} style={styles.horizontalImage} resizeMode="contain" />
+          ) : (
+            <View style={[styles.horizontalImage, { backgroundColor: '#e5e7eb' }]} />
+          )}
         </View>
         <View style={styles.horizontalContent}>
           <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
           <View style={styles.ratingContainer}>
             <Star size={14} color="#f59e0b" fill="#f59e0b" strokeWidth={1.5} />
-            <Text style={styles.ratingText}>{product.rating.toFixed(1)}</Text>
-            <Text style={styles.reviewsCount}>({product.reviews_count})</Text>
+            <Text style={styles.ratingText}>{(product.rating ?? 0).toFixed(1)}</Text>
+            <Text style={styles.reviewsCount}>({product.reviews_count ?? 0})</Text>
           </View>
           <Text style={styles.description} numberOfLines={1}>{product.description}</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.price}>${product.price.toFixed(2)}</Text>
-            <TouchableOpacity style={styles.addButton}>
-              <Plus size={22} color="#ffffff" strokeWidth={2.5} />
+            <View>
+              <Text style={styles.price}>₹{Number(product.price ?? 0).toFixed(0)}</Text>
+              {product.mrp != null && Number(product.mrp) > Number(product.price ?? 0) && (
+                <Text style={styles.mrp}>₹{Number(product.mrp).toFixed(0)}</Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[styles.addButton, cartCount > 0 && styles.addButtonInCart]}
+              onPress={handlePress}
+              activeOpacity={0.8}
+            >
+              {cartCount > 0 ? (
+                <Text style={styles.cartCountText}>{cartCount}</Text>
+              ) : (
+                <Plus size={22} color="#ffffff" strokeWidth={2.5} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -44,23 +66,36 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
   return (
     <TouchableOpacity style={styles.verticalCard} activeOpacity={0.8} onPress={handlePress}>
       <View style={styles.verticalImageContainer}>
-        <Image source={{ uri: product.image_url }} style={styles.verticalImage} resizeMode="cover" />
-        <TouchableOpacity style={styles.heartButton}>
-          <Star size={18} color="#f59e0b" fill="#f59e0b" strokeWidth={1.5} />
+        {!!product.image_url && product.image_url.trim() !== '' ? (
+          <Image source={{ uri: product.image_url }} style={styles.verticalImage} resizeMode="contain" />
+        ) : (
+          <View style={[styles.verticalImage, { backgroundColor: '#e5e7eb' }]} />
+        )}
+        <TouchableOpacity
+          style={[styles.verticalAddButtonFloating, cartCount > 0 && styles.addButtonInCart]}
+          activeOpacity={0.8}
+          onPress={handlePress}
+        >
+          {cartCount > 0 ? (
+            <Text style={styles.cartCountText}>{cartCount}</Text>
+          ) : (
+            <Plus size={18} color="#ffffff" strokeWidth={2.5} />
+          )}
         </TouchableOpacity>
       </View>
       <View style={styles.verticalContent}>
         <Text style={styles.verticalProductName} numberOfLines={2}>{product.name}</Text>
-        <View style={styles.verticalRatingContainer}>
-          <Star size={12} color="#f59e0b" fill="#f59e0b" strokeWidth={1.5} />
-          <Text style={styles.verticalRatingText}>{product.rating.toFixed(1)}</Text>
-          <Text style={styles.verticalReviewsCount}>({product.reviews_count})</Text>
-        </View>
         <View style={styles.verticalPriceRow}>
-          <Text style={styles.verticalPrice}>${product.price.toFixed(2)}</Text>
-          <TouchableOpacity style={styles.verticalAddButton}>
-            <Plus size={20} color="#ffffff" strokeWidth={2.5} />
-          </TouchableOpacity>
+          <View>
+            <Text style={styles.verticalPrice}>₹{Number(product.price ?? 0).toFixed(0)}</Text>
+            {product.mrp != null && Number(product.mrp) > Number(product.price ?? 0) && (
+              <Text style={styles.verticalMrp}>₹{Number(product.mrp).toFixed(0)}</Text>
+            )}
+          </View>
+          <View style={styles.verticalRatingRight}>
+            <Star size={11} color="#d97706" fill="#d97706" />
+            <Text style={styles.verticalRatingText}>{(product.rating ?? 0).toFixed(1)}</Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -132,6 +167,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2563eb',
   },
+  mrp: {
+    fontSize: 13,
+    color: '#94a3b8',
+    textDecorationLine: 'line-through',
+    marginTop: 1,
+  },
   addButton: {
     width: 36,
     height: 36,
@@ -144,6 +185,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
+  },
+  addButtonInCart: {
+    backgroundColor: '#10b981',
+    shadowColor: '#10b981',
+  },
+  cartCountText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
   },
 
   // Vertical Card Styles
@@ -161,9 +211,9 @@ const styles = StyleSheet.create({
   },
   verticalImageContainer: {
     width: '100%',
-    height: 140,
+    height: 180,
     position: 'relative',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   verticalImage: {
     width: '100%',
@@ -196,10 +246,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   verticalRatingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginLeft: 3,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#b45309',
   },
   verticalReviewsCount: {
     fontSize: 11,
@@ -210,14 +259,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
   verticalPrice: {
     fontSize: 16,
     fontWeight: '700',
     color: '#2563eb',
   },
-  verticalAddButton: {
+  verticalMrp: {
+    fontSize: 12,
+    color: '#94a3b8',
+    textDecorationLine: 'line-through',
+    marginTop: 1,
+  },
+  verticalAddButtonFloating: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -229,5 +287,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 4,
+  },
+  verticalRatingRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 3,
   },
 });

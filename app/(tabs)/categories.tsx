@@ -1,13 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { CategorySidebar, ProductCard } from '@/components';
-import { supabase, Category, Product } from '@/lib/supabase';
+import { Category, Product } from '@/lib/supabase';
+import apiClient from '@/config/api';
+import { URLs } from '@/config/urls';
+
+// Extend the Category type locally to include rawProducts and image_url
+interface ExtendedCategory extends Category {
+  image_url?: string;
+  rawProducts: any[];
+}
+
+const assetUrl = (path: string): string => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return `${URLs.HOST}/public/${path}`;
+};
+
+const mapProduct = (item: any): Product => {
+  const p = item.product;
+  const sellingPrice = item.min_sell_price ?? item.skus?.[0]?.selling_price ?? 0;
+  const mrpVal = p?.mrp ?? item.skus?.[0]?.mrp ?? item.max_sell_price ?? sellingPrice;
+
+  return {
+    id: (p?.id ?? item.product_id ?? item.id).toString(),
+    name: item.product_name ?? p?.product_name ?? '',
+    price: sellingPrice,
+    mrp: mrpVal > sellingPrice ? mrpVal : undefined,
+    image_url: p?.thumbnail_image_source ? assetUrl(p.thumbnail_image_source) : '',
+    brand_id: '',
+    category_id: '',
+    description: '',
+    rating: 0,
+    reviews_count: 0,
+    created_at: '',
+  };
+};
 
 export default function CategoriesScreen() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<ExtendedCategory[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
@@ -15,14 +50,38 @@ export default function CategoriesScreen() {
   }, []);
 
   useEffect(() => {
+    if (categories.length === 0) return;
     fetchProducts();
-  }, [selectedCategory]);
+  }, [selectedCategory, categories]);
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase.from('categories').select('*');
-      if (error) throw error;
-      if (data) setCategories(data);
+      setLoading(true);
+      console.log(`[CategoriesScreen] Fetching categories from: ${URLs.ALL_CATEGORY}`);
+      const response = await apiClient.get(URLs.ALL_CATEGORY);
+      const categoryList = response.data?.data ?? [];
+
+      const getIconKey = (name: string): string => {
+        const lowerName = name.toLowerCase();
+        if (lowerName.includes('rice')) return 'Utensils';
+        if (lowerName.includes('sugar')) return 'Sparkles';
+        if (lowerName.includes('oil')) return 'Utensils';
+        if (lowerName.includes('flour')) return 'BookOpen';
+        if (lowerName.includes('dal')) return 'Gamepad2';
+        return 'Utensils'; 
+      };
+
+      const mappedCategories: ExtendedCategory[] = categoryList.map((cat: any) => ({
+        id: cat.id.toString(),
+        name: cat.name,
+        icon: getIconKey(cat.name),
+        image_url: cat.category_image?.image ? assetUrl(cat.category_image.image) : '',
+        created_at: cat.created_at || '',
+        rawProducts: cat.AllProducts || [],
+      }));
+
+      setCategories(mappedCategories);
+      setSelectedCategory(null); // default to "All" category
     } catch (error) {
       console.error('Error fetching categories:', error);
     } finally {
@@ -31,16 +90,45 @@ export default function CategoriesScreen() {
   };
 
   const fetchProducts = async () => {
-    try {
-      let query = supabase.from('products').select('*');
-      if (selectedCategory) {
-        query = query.eq('category_id', selectedCategory);
+    if (selectedCategory === null) {
+      // Combine raw products from all categories, avoiding duplicates.
+      const allRawProducts: any[] = [];
+      const seenIds = new Set<string>();
+
+      categories.forEach((cat) => {
+        const rawProds = cat.rawProducts || [];
+        rawProds.forEach((prod: any) => {
+          const prodId = (prod.product_id ?? prod.id).toString();
+          if (!seenIds.has(prodId)) {
+            seenIds.add(prodId);
+            allRawProducts.push(prod);
+          }
+        });
+      });
+
+      const mapped = allRawProducts.map(mapProduct);
+      setProducts(mapped);
+    } else {
+      // Fetch products for selected category dynamically from API
+      try {
+        setProductsLoading(true);
+        const url = `${URLs.ALL_CATEGORY}/${selectedCategory}`;
+        console.log(`[CategoriesScreen] Fetching products for category ${selectedCategory} from: ${url}`);
+        const response = await apiClient.get(url);
+        const data = response.data?.data;
+        const rawProds = data?.AllProducts ?? [];
+        const mapped = rawProds.map(mapProduct);
+        setProducts(mapped);
+      } catch (error) {
+        console.error(`Error fetching products for category ${selectedCategory}:`, error);
+        // Fallback to locally stored products if API request fails
+        const currentCat = categories.find((cat) => cat.id === selectedCategory);
+        const rawProds = currentCat?.rawProducts ?? [];
+        const mapped = rawProds.map(mapProduct);
+        setProducts(mapped);
+      } finally {
+        setProductsLoading(false);
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      if (data) setProducts(data);
-    } catch (error) {
-      console.error('Error fetching products:', error);
     }
   };
 
@@ -95,7 +183,12 @@ export default function CategoriesScreen() {
             </View>
           </View>
 
-          {products.length === 0 ? (
+          {productsLoading ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color="#2563eb" />
+              <Text style={[styles.emptyText, { marginTop: 12 }]}>Loading products...</Text>
+            </View>
+          ) : products.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No products found</Text>
             </View>

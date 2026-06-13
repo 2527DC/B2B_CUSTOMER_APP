@@ -8,64 +8,108 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Smartphone, Lock, Eye, EyeOff, Sparkles, Key } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'expo-router';
 
 export default function LoginScreen() {
-  const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { login, sendOtp, loginWithOtp } = useAuth();
+  
+  const [phone, setPhone] = useState('9728788');
+  const [password, setPassword] = useState('test@123');
+  const [otp, setOtp] = useState('');
+  
   const [showPassword, setShowPassword] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
+  const [phoneFocused, setPhoneFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [otpFocused, setOtpFocused] = useState(false);
+  
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
+  const [otpSent, setOtpSent] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState<number | null>(null);
+  
+  const [errors, setErrors] = useState<{ phone?: string; password?: string; otp?: string }>({});
   const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
-    const tempErrors: { email?: string; password?: string } = {};
-    if (!email) {
-      tempErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      tempErrors.email = 'Invalid email address';
+  const validatePhone = () => {
+    if (!phone) {
+      setErrors({ phone: 'Phone number is required' });
+      return false;
     }
-    if (!password) {
-      tempErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      tempErrors.password = 'Password must be at least 6 characters';
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      setErrors({ phone: 'Please enter a valid 10-digit phone number' });
+      return false;
     }
-    setErrors(tempErrors);
-    return Object.keys(tempErrors).length === 0;
+    setErrors({});
+    return true;
   };
 
-  const handleLogin = async () => {
-    if (!validateForm()) return;
-
+  const handleSendOtp = async () => {
+    if (!validatePhone()) return;
     setLoading(true);
     try {
-      await login(email, password);
-    } catch (err) {
+      const code = Math.floor(100000 + Math.random() * 900000);
+      setGeneratedOtp(code);
+      await sendOtp(phone, code);
+      setOtpSent(true);
+      setErrors({});
+      // Alert the code for easy local testing/verification
+      Alert.alert('Verification Code', `Use OTP code: ${code} to log in.`, [{ text: 'OK' }]);
+    } catch (err: any) {
       console.error(err);
-      setErrors({ email: 'Failed to sign in. Please try again.' });
+      setErrors({ phone: err.message || 'Failed to send OTP. Please try again.' });
     } finally {
       setLoading(false);
     }
   };
 
-  const autofillDemo = () => {
-    setEmail('buyer@premium.com');
-    setPassword('password123');
-    setErrors({});
+  const handleLogin = async () => {
+    if (loginMode === 'otp') {
+      if (!otp) {
+        setErrors({ otp: 'OTP is required' });
+        return;
+      }
+      if (generatedOtp && parseInt(otp) !== generatedOtp) {
+        setErrors({ otp: 'Incorrect OTP code' });
+        return;
+      }
+      setLoading(true);
+      try {
+        await loginWithOtp(phone, generatedOtp || parseInt(otp));
+      } catch (err: any) {
+        console.error(err);
+        setErrors({ otp: err.message || 'OTP verification failed.' });
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      if (!validatePhone()) return;
+      if (!password) {
+        setErrors({ password: 'Password is required' });
+        return;
+      }
+      setLoading(true);
+      try {
+        await login(phone, password);
+      } catch (err: any) {
+        console.error(err);
+        setErrors({ password: err.message || 'Invalid phone or password.' });
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -76,7 +120,7 @@ export default function LoginScreen() {
           {/* Header Branding */}
           <View style={styles.header}>
             <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
+              colors={['#2563eb', '#1d4ed8']}
               style={styles.logoBadge}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -84,122 +128,216 @@ export default function LoginScreen() {
               <Sparkles size={32} color="#ffffff" />
             </LinearGradient>
             <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to your premium shopping account</Text>
+            <Text style={styles.subtitle}>Sign in to your B2B shopping account</Text>
+          </View>
+
+          {/* Mode Switcher */}
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity
+              style={[styles.toggleBtn, loginMode === 'password' && styles.toggleBtnActive]}
+              onPress={() => {
+                setLoginMode('password');
+                setOtpSent(false);
+                setOtp('');
+                setErrors({});
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleText, loginMode === 'password' && styles.toggleTextActive]}>
+                Password Login
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleBtn, loginMode === 'otp' && styles.toggleBtnActive]}
+              onPress={() => {
+                setLoginMode('otp');
+                setOtpSent(false);
+                setOtp('');
+                setErrors({});
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleText, loginMode === 'otp' && styles.toggleTextActive]}>
+                OTP Login
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Form */}
           <View style={styles.formContainer}>
-            {/* Email Field */}
+            {/* Phone Field */}
             <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.label}>Phone Number</Text>
               <View
                 style={[
                   styles.inputContainer,
-                  emailFocused && styles.inputFocused,
-                  errors.email && styles.inputError,
+                  phoneFocused && styles.inputFocused,
+                  errors.phone && styles.inputError,
                 ]}
               >
-                <Mail size={20} color={emailFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                <Smartphone size={20} color={phoneFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
                 <TextInput
-                  value={email}
+                  value={phone}
                   onChangeText={(text) => {
-                    setEmail(text);
-                    if (errors.email) setErrors({ ...errors, email: undefined });
+                    setPhone(text);
+                    if (errors.phone) setErrors({ ...errors, phone: undefined });
                   }}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
-                  placeholder="name@example.com"
+                  onFocus={() => setPhoneFocused(true)}
+                  onBlur={() => setPhoneFocused(false)}
+                  placeholder="Enter 10-digit phone number"
                   placeholderTextColor="#94a3b8"
-                  keyboardType="email-address"
+                  keyboardType="phone-pad"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  editable={!loading && !(loginMode === 'otp' && otpSent)}
                   style={styles.input}
                 />
               </View>
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+              {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
             </View>
 
             {/* Password Field */}
-            <View style={styles.inputWrapper}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Password</Text>
-                <TouchableOpacity activeOpacity={0.7}>
-                  <Text style={styles.forgotText}>Forgot?</Text>
-                </TouchableOpacity>
-              </View>
-              <View
-                style={[
-                  styles.inputContainer,
-                  passwordFocused && styles.inputFocused,
-                  errors.password && styles.inputError,
-                ]}
-              >
-                <Lock size={20} color={passwordFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
-                <TextInput
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    if (errors.password) setErrors({ ...errors, password: undefined });
-                  }}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  placeholder="••••••••"
-                  placeholderTextColor="#94a3b8"
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.input}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  activeOpacity={0.7}
-                  style={styles.eyeIcon}
+            {loginMode === 'password' && (
+              <View style={styles.inputWrapper}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Password</Text>
+                  <TouchableOpacity activeOpacity={0.7}>
+                    <Text style={styles.forgotText}>Forgot?</Text>
+                  </TouchableOpacity>
+                </View>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    passwordFocused && styles.inputFocused,
+                    errors.password && styles.inputError,
+                  ]}
                 >
-                  {showPassword ? (
-                    <EyeOff size={20} color="#64748b" />
-                  ) : (
-                    <Eye size={20} color="#64748b" />
-                  )}
-                </TouchableOpacity>
+                  <Lock size={20} color={passwordFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                  <TextInput
+                    value={password}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      if (errors.password) setErrors({ ...errors, password: undefined });
+                    }}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                    placeholder="••••••••"
+                    placeholderTextColor="#94a3b8"
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.input}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
+                    style={styles.eyeIcon}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color="#64748b" />
+                    ) : (
+                      <Eye size={20} color="#64748b" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
               </View>
-              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-            </View>
+            )}
+
+            {/* OTP Field */}
+            {loginMode === 'otp' && otpSent && (
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Enter 6-Digit OTP</Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    otpFocused && styles.inputFocused,
+                    errors.otp && styles.inputError,
+                  ]}
+                >
+                  <Key size={20} color={otpFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                  <TextInput
+                    value={otp}
+                    onChangeText={(text) => {
+                      setOtp(text);
+                      if (errors.otp) setErrors({ ...errors, otp: undefined });
+                    }}
+                    onFocus={() => setOtpFocused(true)}
+                    onBlur={() => setOtpFocused(false)}
+                    placeholder="Enter code"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    style={styles.input}
+                  />
+                </View>
+                {errors.otp && <Text style={styles.errorText}>{errors.otp}</Text>}
+              </View>
+            )}
 
             {/* Action Buttons */}
-            <TouchableOpacity
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.9}
-              style={styles.signInButton}
-            >
-              <LinearGradient
-                colors={['#2563eb', '#1d4ed8']}
-                style={styles.btnGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+            {loginMode === 'otp' && !otpSent ? (
+              <TouchableOpacity
+                onPress={handleSendOtp}
+                disabled={loading}
+                activeOpacity={0.9}
+                style={styles.signInButton}
               >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <Text style={styles.signInText}>Sign In</Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
+                <LinearGradient
+                  colors={['#2563eb', '#1d4ed8']}
+                  style={styles.btnGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.signInText}>Send OTP Code</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={handleLogin}
+                disabled={loading}
+                activeOpacity={0.9}
+                style={styles.signInButton}
+              >
+                <LinearGradient
+                  colors={['#2563eb', '#1d4ed8']}
+                  style={styles.btnGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.signInText}>
+                      {loginMode === 'otp' ? 'Verify & Sign In' : 'Sign In'}
+                    </Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
 
-            {/* Autofill Demo Quick Helper */}
-            <TouchableOpacity
-              onPress={autofillDemo}
-              activeOpacity={0.8}
-              style={styles.demoBadge}
-            >
-              <Sparkles size={14} color="#2563eb" style={{ marginRight: 6 }} />
-              <Text style={styles.demoText}>Auto-fill static demo credentials</Text>
-            </TouchableOpacity>
+            {loginMode === 'otp' && otpSent && (
+              <TouchableOpacity
+                onPress={() => {
+                  setOtpSent(false);
+                  setOtp('');
+                  setErrors({});
+                }}
+                activeOpacity={0.8}
+                style={styles.changePhoneButton}
+              >
+                <Text style={styles.changePhoneText}>Change phone number</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Footer Navigation */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
+            <Text style={styles.footerText}>{"Don't have an account? "}</Text>
             <Link href="/register" asChild>
               <TouchableOpacity activeOpacity={0.7}>
                 <Text style={styles.signUpLink}>Sign Up</Text>
@@ -228,7 +366,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 36,
+    marginBottom: 24,
   },
   logoBadge: {
     width: 64,
@@ -255,6 +393,35 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 20,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  toggleBtnActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  toggleTextActive: {
+    color: '#1e293b',
   },
   formContainer: {
     backgroundColor: '#ffffff',
@@ -314,11 +481,6 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: '#2563eb',
     backgroundColor: '#ffffff',
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 1,
   },
   inputError: {
     borderColor: '#ef4444',
@@ -350,20 +512,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  demoBadge: {
-    flexDirection: 'row',
+  changePhoneButton: {
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#eff6ff',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#dbeafe',
+    paddingVertical: 4,
   },
-  demoText: {
+  changePhoneText: {
     color: '#2563eb',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
   footer: {
@@ -382,3 +537,4 @@ const styles = StyleSheet.create({
     color: '#2563eb',
   },
 });
+
