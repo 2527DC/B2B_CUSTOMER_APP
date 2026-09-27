@@ -1,6 +1,6 @@
 // ─── Base ───────────────────────────────────────────────────────────────────
-const HOST = process.env.EXPO_PUBLIC_HOST_URL ?? 'https://test.dhatri.store';
-const API  = `${HOST}/api`;
+const HOST = process.env.EXPO_PUBLIC_HOST_URL ?? 'https://dhatri-opal.vercel.app';
+const API  = `${HOST}/api/v1/app`;
 
 // ─── Endpoints (ported from Flutter URLs mixin) ──────────────────────────────
 export const URLs = {
@@ -34,20 +34,20 @@ export const URLs = {
   SINGLE_TAG_PRODUCTS:`${API}/product/tag`,
 
   // Auth
-  LOGIN:              `${API}/login`,
-  REGISTER:           `${API}/register`,
-  LOGOUT:             `${API}/logout`,
-  SOCIAL_LOGIN:       `${API}/social-login`,
-  FORGOT_PASSWORD:    `${API}/forgot-password`,
-  CHANGE_PASSWORD:    `${API}/change-password`,
-  OTP_SEND:           `${API}/general-setting/send-otp`,
-  GET_USER:           `${API}/get-user`,
+  LOGIN:              `${API}/auth/login`,
+  REGISTER:           `${API}/auth/register`,
+  LOGOUT:             `${API}/auth/logout`,
+  SOCIAL_LOGIN:       `${API}/auth/login`,
+  FORGOT_PASSWORD:    `${API}/auth/login`,
+  CHANGE_PASSWORD:    `${API}/auth/login`,
+  OTP_SEND:           `${API}/auth/otp/send`,
+  GET_USER:           `${API}/auth/me`,
 
   // Profile
   UPDATE_USER_PROFILE:`${API}/profile/update-information`,
   UPDATE_PROFILE_PHOTO:`${API}/profile/update-photo`,
   CUSTOMER_GET_DATA:  `${API}/profile/get-customer-data`,
-  USER_DELETE:        `${API}/customer-delete`,
+  USER_DELETE:        `${API}/customers/delete`,
 
   // Address
   ADDRESS_LIST:       `${API}/profile/address-list`,
