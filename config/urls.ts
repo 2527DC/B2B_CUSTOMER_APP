@@ -164,5 +164,10 @@ export const URLs = {
   MERCHANT_LIST:            `${API}/customer/merchants`,
 
   // Asset helper
-  assetUrl: (path: string) => `${HOST}/public/${path}`,
+  assetUrl: (path?: string) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    const clean = path.startsWith('/') ? path.slice(1) : path;
+    return `${HOST}/public/${clean}`;
+  },
 };

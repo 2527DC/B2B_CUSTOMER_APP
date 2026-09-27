@@ -49,12 +49,7 @@ interface HomeResponse {
 }
 
 // ─── Image URL helper ─────────────────────────────────────────────────────────
-// The API returns relative paths — prepend the public asset base.
-const assetUrl = (path: string): string => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path; // already absolute
-  return `${URLs.HOST}/public/${path}`;
-};
+const assetUrl = (path: string): string => URLs.assetUrl(path);
 
 // ─── Mapper helpers ───────────────────────────────────────────────────────────
 const toBrand = (fb: FeaturedBrand): Brand => ({

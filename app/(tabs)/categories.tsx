@@ -11,11 +11,7 @@ interface ExtendedCategory extends Category {
   rawProducts: any[];
 }
 
-const assetUrl = (path: string): string => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  return `${URLs.HOST}/public/${path}`;
-};
+const assetUrl = (path: string): string => URLs.assetUrl(path);
 
 const mapProduct = (item: any): Product => {
   const p = item.product;

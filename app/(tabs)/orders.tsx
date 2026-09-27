@@ -17,12 +17,7 @@ import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 
 // ─── Base URL and Asset Helper ──────────────────────────────────────────────
-const HOST = process.env.EXPO_PUBLIC_HOST_URL ?? 'https://test.dhatri.store';
-const assetUrl = (path?: string): string => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  return `${HOST}/public/${path}`;
-};
+const assetUrl = (path?: string): string => URLs.assetUrl(path);
 
 const formatDate = (dateStr: string) => {
   try {
