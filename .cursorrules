@@ -1,0 +1,13 @@
+# B2B Customer App Development Rules
+
+## Target Platforms
+This application is built with **Expo & React Native** targeting **iOS** and **Android**.
+
+## Package Management Rule
+- **ALWAYS use `npx expo install`**: Whenever adding, upgrading, or installing packages (especially native libraries like camera, reanimated, gesture-handler, screens, safe-area-context, svg, async-storage, etc.), ALWAYS run:
+  ```bash
+  npx expo install <package-name>
+  ```
+  DO NOT use bare `npm install <package-name>` or `yarn add <package-name>` for native libraries.
+- **Why**: `npx expo install` automatically selects the exact compatible peer dependency versions matching the installed Expo SDK and React Native version, preventing iOS and Android native build breaks, runtime crashes, and version mismatches.
+- **Dependency Validation**: Periodically run `npx expo-doctor` and `npx expo install --check` to ensure all packages conform to the target Expo SDK version.
