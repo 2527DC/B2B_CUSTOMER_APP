@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { List, Grid3X3 } from 'lucide-react-native';
 import { Product } from '@/lib/supabase';
 import { ProductCard } from './ProductCard';
+import { Colors } from '@/constants/theme';
 
 interface ProductGridProps {
   products: Product[];
@@ -118,7 +119,7 @@ export function ViewToggle({ viewMode, onViewModeChange }: ViewToggleProps) {
       >
         <List
           size={18}
-          color={viewMode === 'horizontal' ? '#2563eb' : '#64748b'}
+          color={viewMode === 'horizontal' ? Colors.primary : '#64748b'}
           strokeWidth={2.5}
         />
       </TouchableOpacity>
@@ -131,7 +132,7 @@ export function ViewToggle({ viewMode, onViewModeChange }: ViewToggleProps) {
       >
         <Grid3X3
           size={18}
-          color={viewMode === 'vertical' ? '#2563eb' : '#64748b'}
+          color={viewMode === 'vertical' ? Colors.primary : '#64748b'}
           strokeWidth={2.5}
         />
       </TouchableOpacity>

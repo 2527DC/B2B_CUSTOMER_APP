@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
+import { Colors } from '@/constants/theme';
 
 // ─── Base URL and Asset Helper ──────────────────────────────────────────────
 const assetUrl = (path?: string): string => URLs.assetUrl(path);
@@ -199,7 +200,7 @@ export default function OrdersScreen() {
   const getStatusIcon = (status: string | number) => {
     const s = typeof status === 'string' ? parseInt(status, 10) : status;
     if (s <= 1) return <Clock size={15} color="#d97706" strokeWidth={2.5} />;
-    if (s === 2) return <Clock size={15} color="#2563eb" strokeWidth={2.5} />;
+    if (s === 2) return <Clock size={15} color={Colors.primary} strokeWidth={2.5} />;
     if (s === 3) return <Truck size={15} color="#7c3aed" strokeWidth={2.5} />;
     if (s >= 5) return <CheckCircle size={15} color="#059669" strokeWidth={2.5} />;
     return <Package size={15} color="#4b5563" strokeWidth={2.5} />;
@@ -256,7 +257,7 @@ export default function OrdersScreen() {
   if (authLoading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -271,7 +272,7 @@ export default function OrdersScreen() {
         </View>
         <View style={styles.unauthContent}>
           <View style={styles.unauthIconBg}>
-            <UserCheck size={48} color="#2563eb" strokeWidth={1.5} />
+            <UserCheck size={48} color={Colors.primary} strokeWidth={1.5} />
           </View>
           <Text style={styles.unauthTitle}>Sign in to view orders</Text>
           <Text style={styles.unauthSubtitle}>
@@ -306,7 +307,7 @@ export default function OrdersScreen() {
         >
           <Package
             size={18}
-            color={activeTab === 'orders' ? '#2563eb' : '#64748b'}
+            color={activeTab === 'orders' ? Colors.primary : '#64748b'}
             strokeWidth={2}
           />
           <Text style={[styles.tabText, activeTab === 'orders' && styles.tabTextActive]}>
@@ -320,7 +321,7 @@ export default function OrdersScreen() {
         >
           <RotateCcw
             size={18}
-            color={activeTab === 'returns' ? '#2563eb' : '#64748b'}
+            color={activeTab === 'returns' ? Colors.primary : '#64748b'}
             strokeWidth={2}
           />
           <Text style={[styles.tabText, activeTab === 'returns' && styles.tabTextActive]}>
@@ -359,7 +360,7 @@ export default function OrdersScreen() {
       {/* Main Content Area */}
       {loading && !refreshing ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Fetching details...</Text>
         </View>
       ) : error ? (
@@ -374,7 +375,7 @@ export default function OrdersScreen() {
       ) : activeTab === 'orders' && orders.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
         >
           <View style={styles.emptyIconContainer}>
             <Package size={42} color="#94a3b8" strokeWidth={1.5} />
@@ -387,7 +388,7 @@ export default function OrdersScreen() {
       ) : activeTab === 'returns' && refunds.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
         >
           <View style={styles.emptyIconContainer}>
             <RotateCcw size={42} color="#94a3b8" strokeWidth={1.5} />
@@ -405,8 +406,8 @@ export default function OrdersScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#2563eb']}
-              tintColor="#2563eb"
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
             />
           }
         >
@@ -616,7 +617,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tabActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: Colors.primary10,
   },
   tabText: {
     fontSize: 13,
@@ -624,8 +625,8 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   tabTextActive: {
-    color: '#2563eb',
-    fontWeight: '600',
+    color: Colors.primary,
+    fontWeight: '700',
   },
   chipsOuterContainer: {
     marginBottom: 12,
@@ -643,8 +644,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   statusChipActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   statusChipTxt: {
     fontSize: 12,
@@ -669,7 +670,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#eff6ff',
+    backgroundColor: Colors.primary10,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -689,13 +690,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   loginBtn: {
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 12,
-    shadowColor: '#2563eb',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 3,
   },
@@ -810,7 +811,7 @@ const styles = StyleSheet.create({
   grandTotalValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2563eb',
+    color: Colors.primary,
   },
   orderCardBody: {
     paddingHorizontal: 16,
@@ -892,14 +893,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#eff6ff',
+    backgroundColor: Colors.primary10,
     borderWidth: 1,
-    borderColor: '#dbeafe',
+    borderColor: Colors.border,
   },
   actionBtnText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#2563eb',
+    fontWeight: '700',
+    color: Colors.primary,
   },
   refundDetailBlock: {
     marginBottom: 8,

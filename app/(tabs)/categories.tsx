@@ -4,6 +4,7 @@ import { CategorySidebar, ProductCard } from '@/components';
 import { Category, Product } from '@/lib/supabase';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
+import { Colors } from '@/constants/theme';
 
 // Extend the Category type locally to include rawProducts and image_url
 interface ExtendedCategory extends Category {
@@ -135,7 +136,7 @@ export default function CategoriesScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -181,7 +182,7 @@ export default function CategoriesScreen() {
 
           {productsLoading ? (
             <View style={styles.emptyContainer}>
-              <ActivityIndicator size="large" color="#2563eb" />
+              <ActivityIndicator size="large" color={Colors.primary} />
               <Text style={[styles.emptyText, { marginTop: 12 }]}>Loading products...</Text>
             </View>
           ) : products.length === 0 ? (
@@ -222,13 +223,13 @@ export default function CategoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
   header: {
     paddingHorizontal: 20,
@@ -314,7 +315,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   toggleTextActive: {
-    color: '#2563eb',
+    color: Colors.primary,
     fontWeight: '600',
   },
   emptyContainer: {

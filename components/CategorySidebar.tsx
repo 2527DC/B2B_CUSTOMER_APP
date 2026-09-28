@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Smartphone, Shirt, Dumbbell, Home, Sparkles, BookOpen, Gamepad2, Utensils, type LucideIcon } from 'lucide-react-native';
 import { Category } from '@/lib/supabase';
+import { Colors } from '@/constants/theme';
 
 interface CategorySidebarProps {
   categories: Category[];
@@ -65,7 +66,7 @@ export function CategorySidebar({ categories, selectedCategory, onSelectCategory
                 ) : (
                   <IconComponent
                     size={22}
-                    color={isSelected ? '#ffffff' : '#64748b'}
+                    color={isSelected ? '#ffffff' : Colors.textSecondary}
                     strokeWidth={2.5}
                   />
                 )}
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     width: 85,
     backgroundColor: '#ffffff',
     borderRightWidth: 1,
-    borderRightColor: '#e2e8f0',
+    borderRightColor: Colors.border,
     height: '100%',
   },
   scrollContent: {
@@ -104,29 +105,29 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   categoryItemSelected: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: Colors.primary10,
   },
   iconContainer: {
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   iconContainerSelected: {
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
   },
   categoryName: {
     fontSize: 11,
-    color: '#64748b',
+    color: Colors.textSecondary,
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 14,
   },
   categoryNameSelected: {
-    color: '#1e40af',
-    fontWeight: '600',
+    color: Colors.primaryDark,
+    fontWeight: '700',
   },
 });

@@ -18,6 +18,7 @@ import { useCart } from '@/context/CartContext';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Colors } from '@/constants/theme';
 
 interface Address {
   id: number;
@@ -311,7 +312,7 @@ export default function CheckoutScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>Fetching checkout package details...</Text>
       </SafeAreaView>
     );
@@ -332,7 +333,7 @@ export default function CheckoutScreen() {
         {/* Addresses Section */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <MapPin size={18} color="#2563eb" />
+            <MapPin size={18} color={Colors.primary} />
             <Text style={styles.sectionTitle}>Delivery Addresses</Text>
           </View>
 
@@ -399,7 +400,7 @@ export default function CheckoutScreen() {
           return (
             <View key={pkgKey} style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <Store size={18} color="#2563eb" />
+                <Store size={18} color={Colors.primary} />
                 <Text style={styles.sectionTitle}>{sellerName}</Text>
               </View>
 
@@ -450,7 +451,7 @@ export default function CheckoutScreen() {
         {/* Payment Method Section */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <CreditCard size={18} color="#2563eb" />
+            <CreditCard size={18} color={Colors.primary} />
             <Text style={styles.sectionTitle}>Payment Method</Text>
           </View>
           <View style={styles.paymentOption}>
@@ -503,7 +504,7 @@ export default function CheckoutScreen() {
           disabled={isSubmitting}
         >
           <LinearGradient
-            colors={['#2563eb', '#1d4ed8']}
+            colors={[Colors.primary, Colors.primaryDark]}
             style={styles.placeOrderBtnGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -536,7 +537,7 @@ export default function CheckoutScreen() {
                 }}
                 style={styles.addAddressModalBtn}
               >
-                <Plus size={16} color="#2563eb" style={{ marginRight: 4 }} />
+                <Plus size={16} color={Colors.primary} style={{ marginRight: 4 }} />
                 <Text style={styles.addAddressModalTxt}>Add New</Text>
               </TouchableOpacity>
             </View>
@@ -651,7 +652,7 @@ export default function CheckoutScreen() {
                           </Text>
                           <Text style={styles.addressCardContact}>Phone: {addr.phone}</Text>
                         </View>
-                        {isSelected && <Check size={18} color="#2563eb" />}
+                        {isSelected && <Check size={18} color={Colors.primary} />}
                       </TouchableOpacity>
                     );
                   })
@@ -825,8 +826,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   shippingOptionBtnActive: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary10,
   },
   shippingOptionText: {
     fontSize: 12,
@@ -834,7 +835,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   shippingOptionTextActive: {
-    color: '#2563eb',
+    color: Colors.primary,
   },
   paymentOption: {
     flexDirection: 'row',
@@ -852,7 +853,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#2563eb',
+    borderColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -860,7 +861,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
   },
   paymentText: {
     fontSize: 14,
@@ -974,7 +975,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addAddressModalTxt: {
-    color: '#2563eb',
+    color: Colors.primary,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1000,8 +1001,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   addressCardActive: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary10,
   },
   addressCardName: {
     fontSize: 14,
@@ -1075,7 +1076,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
   },
   formSubmitBtnTxt: {
     color: '#fff',

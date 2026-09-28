@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
+import { Colors } from '@/constants/theme';
 
 type Tier = {
   min_qty: number;
@@ -14,20 +15,20 @@ type Props = {
 
 const WholesaleTierRow: React.FC<Props> = ({ tier }) => {
   const rangeText = `${tier.min_qty}-${tier.max_qty} bags`;
-  const priceText = `$${tier.price_per_bag.toLocaleString()} / bag`;
+  const priceText = `₹${tier.price_per_bag.toLocaleString()} / bag`;
 
   return (
     <Pressable
       style={({ pressed }) => [
         styles.row,
-        pressed && { backgroundColor: 'rgba(255,255,255,0.2)' },
+        pressed && { backgroundColor: Colors.primary10 },
       ]}
     >
       <View style={styles.textContainer}>
         <Text style={styles.rangeText}>{rangeText}</Text>
         <Text style={styles.priceText}>{priceText}</Text>
       </View>
-      <ChevronRight size={20} color="#475569" />
+      <ChevronRight size={20} color={Colors.textSecondary} />
     </Pressable>
   );
 };
@@ -39,7 +40,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: Colors.border,
   },
   textContainer: {
     flexDirection: 'row',
@@ -53,8 +54,8 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontSize: 16,
-    color: '#2563eb',
-    fontWeight: '600',
+    color: Colors.primary,
+    fontWeight: '700',
   },
 });
 

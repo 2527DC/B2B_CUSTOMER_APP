@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingBag, Sparkles, ShieldCheck, ArrowRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
+import { Colors } from '@/constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -13,33 +14,33 @@ interface Slide {
   subtitle: string;
   description: string;
   icon: React.ComponentType<any>;
-  colors: string[];
+  colors: [string, string, ...string[]];
 }
 
 const slides: Slide[] = [
   {
     id: '1',
-    title: 'Discover Trends',
-    subtitle: 'Premium & Curated E-Commerce',
-    description: 'Explore our hand-picked collection of premium brands and exclusive trends tailored to your aesthetic.',
+    title: 'B2B Wholesale Deals',
+    subtitle: 'Direct Bulk Supplies',
+    description: 'Procure wholesale groceries, grains, FMCG, and staples at best wholesale tier prices for your retail business.',
     icon: Sparkles,
-    colors: ['#2563eb', '#1d4ed8'],
+    colors: [Colors.primaryDark, Colors.primary],
   },
   {
     id: '2',
-    title: 'Top Brand Partners',
-    subtitle: '100% Authentic Products Only',
-    description: 'We partner directly with international brands to guarantee genuine products and pristine service quality.',
+    title: 'Verified Brand Partners',
+    subtitle: '100% Genuine Quality Products',
+    description: 'We partner directly with authorized distributors and manufacturers to deliver consistent, certified grade products.',
     icon: ShoppingBag,
-    colors: ['#10b981', '#047857'],
+    colors: [Colors.primary, '#629352'],
   },
   {
     id: '3',
-    title: 'Secure & Fast',
-    subtitle: 'Express Delivery Worldwide',
-    description: 'Experience seamless shopping with safe, encrypted transactions and supercharged express delivery.',
+    title: 'Fast & Secure Delivery',
+    subtitle: 'Reliable Fleet Logistics',
+    description: 'Experience seamless ordering with doorstep warehouse dispatch, COD payment support, and live driver tracking.',
     icon: ShieldCheck,
-    colors: ['#f59e0b', '#b45309'],
+    colors: ['#2e5927', Colors.primary],
   },
 ];
 
@@ -77,11 +78,15 @@ export default function WelcomeScreen() {
       <View style={styles.header}>
         <View style={styles.logoRow}>
           <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>S</Text>
+            <Image
+              source={require('@/assets/images/logo.jpeg')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={styles.appName}>Shop<Text style={styles.accentText}>Premium</Text></Text>
+          <Text style={styles.appName}>Dhatri<Text style={styles.accentText}>Mart</Text></Text>
         </View>
-        
+
         {activeIndex < slides.length - 1 && (
           <TouchableOpacity onPress={handleSkip} activeOpacity={0.7} style={styles.skipButton}>
             <Text style={styles.skipText}>Skip</Text>
@@ -106,7 +111,7 @@ export default function WelcomeScreen() {
             <View key={slide.id} style={styles.slideContainer}>
               <View style={styles.imageSection}>
                 <LinearGradient
-                  colors={slide.colors as any}
+                  colors={slide.colors}
                   style={styles.gradientSphere}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -125,33 +130,37 @@ export default function WelcomeScreen() {
         })}
       </ScrollView>
 
-      {/* Bottom Footer Section */}
+      {/* Bottom Floating Control Bar */}
       <View style={styles.footer}>
-        {/* Dot Indicators */}
+        {/* Pagination Indicators */}
         <View style={styles.indicators}>
-          {slides.map((_, index) => (
+          {slides.map((_, i) => (
             <View
-              key={index}
+              key={i}
               style={[
                 styles.indicator,
-                index === activeIndex && styles.indicatorActive,
+                activeIndex === i && styles.indicatorActive,
               ]}
             />
           ))}
         </View>
 
         {/* Action Button */}
-        <TouchableOpacity onPress={handleNext} activeOpacity={0.9} style={styles.actionButton}>
+        <TouchableOpacity
+          onPress={handleNext}
+          activeOpacity={0.8}
+          style={styles.actionButton}
+        >
           <LinearGradient
-            colors={['#2563eb', '#1d4ed8']}
+            colors={[Colors.primaryDark, Colors.primary]}
             style={styles.btnGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.actionBtnText}>
-              {activeIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+              {activeIndex === slides.length - 1 ? 'Get Started' : 'Continue'}
             </Text>
-            <ArrowRight size={18} color="#ffffff" strokeWidth={2.5} />
+            <ArrowRight size={20} color="#ffffff" strokeWidth={2.5} />
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -162,42 +171,44 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? 40 : 16,
-    height: 70,
+    paddingTop: 16,
+    height: 60,
   },
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   logoBadge: {
-    backgroundColor: '#2563eb',
-    width: 30,
-    height: 30,
+    width: 36,
+    height: 36,
     borderRadius: 8,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e4e7e9',
+    overflow: 'hidden',
   },
-  logoText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '800',
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   appName: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#1e293b',
+    color: '#0f172a',
     letterSpacing: -0.5,
   },
   accentText: {
-    color: '#2563eb',
+    color: Colors.primary,
   },
   skipButton: {
     paddingVertical: 6,
@@ -231,9 +242,9 @@ const styles = StyleSheet.create({
     borderRadius: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#2563eb',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 8,
   },
@@ -244,24 +255,24 @@ const styles = StyleSheet.create({
   subtitleText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2563eb',
+    color: Colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginBottom: 8,
   },
   titleText: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#1e293b',
     textAlign: 'center',
-    letterSpacing: -1,
+    letterSpacing: -0.5,
     marginBottom: 16,
   },
   descriptionText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#64748b',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
     paddingHorizontal: 12,
   },
   footer: {
@@ -282,12 +293,12 @@ const styles = StyleSheet.create({
   },
   indicatorActive: {
     width: 24,
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
   },
   actionButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#2563eb',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,

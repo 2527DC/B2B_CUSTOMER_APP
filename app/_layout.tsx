@@ -3,9 +3,12 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { Colors } from '@/constants/theme';
 
 function RootLayoutNav() {
   const { isOnboarded, isAuthenticated, isLoading } = useAuth();
@@ -37,7 +40,7 @@ function RootLayoutNav() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -48,6 +51,8 @@ function RootLayoutNav() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="brands" options={{ headerShown: false }} />
+      <Stack.Screen name="brand/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="checkout" options={{ headerShown: false }} />
       <Stack.Screen name="search" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -61,14 +66,16 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <CartProvider>
-          <View style={styles.container}>
-            <RootLayoutNav />
-            <StatusBar style="auto" />
-          </View>
-        </CartProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <CartProvider>
+            <View style={styles.container}>
+              <RootLayoutNav />
+              <StatusBar style="auto" />
+            </View>
+          </CartProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -76,13 +83,13 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
 });
 

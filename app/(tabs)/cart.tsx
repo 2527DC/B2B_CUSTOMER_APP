@@ -16,6 +16,7 @@ import { useCart, CartItem } from '@/context/CartContext';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { URLs } from '@/config/urls';
+import { Colors } from '@/constants/theme';
 
 export default function CartScreen() {
   const {
@@ -53,7 +54,7 @@ export default function CartScreen() {
   if (isLoading && cartItems.length === 0) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>Loading your cart...</Text>
       </SafeAreaView>
     );
@@ -76,7 +77,7 @@ export default function CartScreen() {
           refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchCart} />}
         >
           <View style={styles.emptyIconCircle}>
-            <ShoppingBag size={48} color="#2563eb" />
+            <ShoppingBag size={48} color={Colors.primary} />
           </View>
           <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
           <Text style={styles.emptySubtitle}>
@@ -221,7 +222,7 @@ export default function CartScreen() {
                 activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={cartSelectedCount === 0 ? ['#94a3b8', '#cbd5e1'] : ['#2563eb', '#1d4ed8']}
+                  colors={cartSelectedCount === 0 ? ['#94a3b8', '#cbd5e1'] : [Colors.primaryDark, Colors.primary]}
                   style={styles.checkoutBtnGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -355,8 +356,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   checkboxActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   productImageWrapper: {
     width: 72,
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0f172a',
+    color: Colors.primary,
     marginTop: 2,
   },
   actionsRow: {
@@ -444,7 +445,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#eff6ff',
+    backgroundColor: Colors.primary10,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -463,7 +464,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   browseBtn: {
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,

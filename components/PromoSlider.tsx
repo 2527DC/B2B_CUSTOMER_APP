@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { Colors } from '@/constants/theme';
+
 const { width } = Dimensions.get('window');
 const SLIDE_WIDTH = width;
 
@@ -16,9 +18,9 @@ interface PromoSliderProps {
 
 // Fallback gradient slides shown when no API images are available
 const fallbackSlides = [
-  { id: '1', title: 'Summer Sale',   subtitle: 'Up to 50% off on selected items', gradient: ['#3b82f6', '#2563eb'] as const },
-  { id: '2', title: 'New Arrivals',  subtitle: 'Discover the latest trends',       gradient: ['#10b981', '#059669'] as const },
-  { id: '3', title: 'Free Shipping', subtitle: 'On orders over $50',               gradient: ['#f59e0b', '#d97706'] as const },
+  { id: '1', title: 'Wholesale Grocery Deals', subtitle: 'Direct bulk pricing on top essentials', gradient: [Colors.primaryDark, Colors.primary] as const },
+  { id: '2', title: 'Fresh Grains & Pulses',    subtitle: '100% verified quality guarantee',     gradient: [Colors.primary, '#629352'] as const },
+  { id: '3', title: 'Instant B2B Delivery',     subtitle: 'Fast dispatch from your local hub',   gradient: ['#2e5927', Colors.primary] as const },
 ];
 
 export function PromoSlider({ images }: PromoSliderProps) {
@@ -158,6 +160,6 @@ const styles = StyleSheet.create({
   },
   indicatorActive: {
     width: 24,
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
   },
 });

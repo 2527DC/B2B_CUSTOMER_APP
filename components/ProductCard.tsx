@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Star, Plus, Check } from 'lucide-react-native';
+import { Star, Plus } from 'lucide-react-native';
 import { Product } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useCart } from '@/context/CartContext';
+import { Colors } from '@/constants/theme';
 
 interface ProductCardProps {
   product: Product;
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2563eb',
+    color: Colors.primary,
   },
   mrp: {
     fontSize: 13,
@@ -177,18 +178,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563eb',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
   },
   addButtonInCart: {
-    backgroundColor: '#10b981',
-    shadowColor: '#10b981',
+    backgroundColor: Colors.success,
+    shadowColor: Colors.success,
   },
   cartCountText: {
     color: '#fff',
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
   verticalPrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2563eb',
+    color: Colors.primary,
   },
   verticalMrp: {
     fontSize: 12,
@@ -279,10 +280,10 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2563eb',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,

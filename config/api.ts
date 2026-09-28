@@ -1,39 +1,66 @@
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { URLs } from './urls';
 
 // ─── Axios client instance ───────────────────────────────────────────────────
 const apiClient = axios.create({
   baseURL: URLs.API_URL,
-  timeout: 30_000, // 30s – matches Flutter AppLimit.REQUEST_TIME_OUT
+  timeout: 30_000,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   },
 });
 
-// ─── Request interceptor ─────────────────────────────────────────────────────
-// Attach the Bearer token whenever it is available in the app.
-// Call `setAuthToken(token)` after a successful login.
 let _authToken: string | null = null;
 
 export function setAuthToken(token: string | null) {
   _authToken = token;
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
 }
 
+// ─── Request interceptor ─────────────────────────────────────────────────────
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (_authToken) {
-      config.headers.Authorization = `Bearer ${_authToken}`;
-      console.log('─── API REQUEST ───');
-      console.log(`Method: ${config.method?.toUpperCase()}`);
-      console.log(`URL: ${config.baseURL ?? ''}${config.url ?? ''}`);
-      console.log(`Bearer Token: ${_authToken}`);
-    } else {
-      console.log('─── API REQUEST (NO AUTH) ───');
-      console.log(`Method: ${config.method?.toUpperCase()}`);
-      console.log(`URL: ${config.baseURL ?? ''}${config.url ?? ''}`);
+  async (config: InternalAxiosRequestConfig) => {
+    try {
+      if (!_authToken) {
+        const storedToken =
+          (await AsyncStorage.getItem('@auth_token')) ||
+          (await AsyncStorage.getItem('authToken'));
+        if (storedToken) {
+          _authToken = storedToken;
+        } else {
+          const userJson =
+            (await AsyncStorage.getItem('@auth_user')) ||
+            (await AsyncStorage.getItem('userData'));
+          if (userJson) {
+            const parsed = JSON.parse(userJson);
+            if (parsed?.token) {
+              _authToken = parsed.token;
+            }
+          }
+        }
+      }
+
+      if (_authToken) {
+        config.headers.Authorization = `Bearer ${_authToken}`;
+      }
+
+      console.log('🚀 [API Request]:', {
+        method: config.method?.toUpperCase(),
+        url: `${config.baseURL ?? ''}${config.url ?? ''}`,
+        hasAuth: !!_authToken,
+      });
+
+      return config;
+    } catch (error) {
+      console.error('❌ Request Interceptor Error:', error);
+      return config;
     }
-    return config;
   },
   (error: AxiosError) => Promise.reject(error),
 );
@@ -41,30 +68,20 @@ apiClient.interceptors.request.use(
 // ─── Response interceptor ────────────────────────────────────────────────────
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log('─── API RESPONSE SUCCESS ───');
-    console.log(`URL: ${response.config.url}`);
-    console.log(`Status: ${response.status}`);
-    console.log(`Data:`, JSON.stringify(response.data));
-    console.log('────────────────────────────');
+    console.log('✅ [API Response Success]:', {
+      url: response.config.url,
+      status: response.status,
+    });
     return response;
   },
   (error: AxiosError) => {
-    if (__DEV__) {
-      if (error.response?.status === 404) {
-        console.log('─── API RESPONSE 404 (Graceful) ───');
-        console.log(`URL: ${error.config?.url}`);
-        console.log(`Status: 404 (Resource not found / Empty state)`);
-        console.log(`Data:`, JSON.stringify(error.response?.data));
-        console.log('────────────────────────────────────');
-      } else {
-        console.error('─── API RESPONSE ERROR ───');
-        console.error(`URL: ${error.config?.url}`);
-        console.error(`Status: ${error.response?.status}`);
-        console.error(`Message: ${error.message}`);
-        console.error(`Data:`, JSON.stringify(error.response?.data));
-        console.error('──────────────────────────');
-      }
-    }
+    const status = error.response?.status;
+    console.error('❌ [API Response Error]:', {
+      url: error.config?.url,
+      status,
+      message: error.message,
+      data: error.response?.data,
+    });
     return Promise.reject(error);
   },
 );

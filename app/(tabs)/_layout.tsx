@@ -1,10 +1,14 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Home, LayoutGrid, ShoppingCart, Package, User } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Colors } from '@/constants/theme';
 
 export default function TabLayout() {
+  const activeColor = Colors.primary; // #4f7942
+  const inactiveColor = Colors.textSecondary; // #64748b
+
   return (
     <Tabs
       screenOptions={{
@@ -24,7 +28,7 @@ export default function TabLayout() {
           <View style={styles.tabBarBackground}>
             <View style={styles.tabBarContainer}>
               <LinearGradient
-                colors={['#ffffff', '#f8fafc']}
+                colors={['#ffffff', Colors.background]}
                 style={styles.gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
@@ -40,16 +44,16 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : styles.icon}>
-              <Home size={24} color={focused ? '#2563eb' : color} strokeWidth={focused ? 2.5 : 2} />
+              <Home size={24} color={focused ? activeColor : color} strokeWidth={focused ? 2.5 : 2} />
             </View>
           ),
           tabBarLabelStyle: {
             fontSize: 11,
-            fontWeight: '500',
+            fontWeight: '600',
             marginTop: 4,
           },
-          tabBarActiveTintColor: '#2563eb',
-          tabBarInactiveTintColor: '#64748b',
+          tabBarActiveTintColor: activeColor,
+          tabBarInactiveTintColor: inactiveColor,
         }}
       />
       <Tabs.Screen
@@ -58,26 +62,26 @@ export default function TabLayout() {
           title: 'Categories',
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : styles.icon}>
-              <LayoutGrid size={24} color={focused ? '#2563eb' : color} strokeWidth={focused ? 2.5 : 2} />
+              <LayoutGrid size={24} color={focused ? activeColor : color} strokeWidth={focused ? 2.5 : 2} />
             </View>
           ),
           tabBarLabelStyle: {
             fontSize: 11,
-            fontWeight: '500',
+            fontWeight: '600',
             marginTop: 4,
           },
-          tabBarActiveTintColor: '#2563eb',
-          tabBarInactiveTintColor: '#64748b',
+          tabBarActiveTintColor: activeColor,
+          tabBarInactiveTintColor: inactiveColor,
         }}
       />
       <Tabs.Screen
         name="cart"
         options={{
           title: '',
-          tabBarIcon: ({ focused }) => (
+          tabBarIcon: () => (
             <View style={styles.cartButton}>
               <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
+                colors={[Colors.primaryLight, Colors.primary]}
                 style={styles.cartGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -94,16 +98,16 @@ export default function TabLayout() {
           title: 'Orders',
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : styles.icon}>
-              <Package size={24} color={focused ? '#2563eb' : color} strokeWidth={focused ? 2.5 : 2} />
+              <Package size={24} color={focused ? activeColor : color} strokeWidth={focused ? 2.5 : 2} />
             </View>
           ),
           tabBarLabelStyle: {
             fontSize: 11,
-            fontWeight: '500',
+            fontWeight: '600',
             marginTop: 4,
           },
-          tabBarActiveTintColor: '#2563eb',
-          tabBarInactiveTintColor: '#64748b',
+          tabBarActiveTintColor: activeColor,
+          tabBarInactiveTintColor: inactiveColor,
         }}
       />
       <Tabs.Screen
@@ -112,16 +116,16 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIcon : styles.icon}>
-              <User size={24} color={focused ? '#2563eb' : color} strokeWidth={focused ? 2.5 : 2} />
+              <User size={24} color={focused ? activeColor : color} strokeWidth={focused ? 2.5 : 2} />
             </View>
           ),
           tabBarLabelStyle: {
             fontSize: 11,
-            fontWeight: '500',
+            fontWeight: '600',
             marginTop: 4,
           },
-          tabBarActiveTintColor: '#2563eb',
-          tabBarInactiveTintColor: '#64748b',
+          tabBarActiveTintColor: activeColor,
+          tabBarInactiveTintColor: inactiveColor,
         }}
       />
     </Tabs>
@@ -144,9 +148,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 10,
+    borderTopWidth: 1,
+    borderColor: '#e4e7e9',
   },
   gradient: {
     flex: 1,
@@ -156,9 +162,9 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     marginBottom: 25,
-    shadowColor: '#2563eb',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 12,
   },

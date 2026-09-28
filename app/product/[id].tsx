@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Image, ScrollView,
-  FlatList, TouchableOpacity, ActivityIndicator, Dimensions, Alert,
+  TouchableOpacity, ActivityIndicator, Dimensions, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { useCart } from '@/context/CartContext';
+import { Colors } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -142,7 +143,7 @@ export default function ProductDetailsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>Loading product details...</Text>
       </View>
     );
@@ -343,7 +344,7 @@ export default function ProductDetailsScreen() {
           <View style={styles.featuresGrid}>
             <View style={styles.featureItem}>
               <View style={styles.featureIcon}>
-                <Truck size={20} color="#2563eb" />
+                <Truck size={20} color={Colors.primary} />
               </View>
               <View>
                 <Text style={styles.featureTitle}>Free Delivery</Text>
@@ -352,7 +353,7 @@ export default function ProductDetailsScreen() {
             </View>
             <View style={styles.featureItem}>
               <View style={styles.featureIcon}>
-                <RotateCcw size={20} color="#2563eb" />
+                <RotateCcw size={20} color={Colors.primary} />
               </View>
               <View>
                 <Text style={styles.featureTitle}>Easy Returns</Text>
@@ -385,7 +386,7 @@ export default function ProductDetailsScreen() {
           activeOpacity={0.9}
         >
           <LinearGradient
-            colors={addedSuccess ? ['#10b981', '#059669'] : ['#2563eb', '#1d4ed8']}
+            colors={addedSuccess ? [Colors.success, '#34a36f'] : [Colors.primaryDark, Colors.primary]}
             style={styles.btnGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -412,13 +413,13 @@ export default function ProductDetailsScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:        { flex: 1, backgroundColor: '#f8fafc' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' },
+  container:        { flex: 1, backgroundColor: Colors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
   loadingText:      { marginTop: 12, fontSize: 16, color: '#64748b' },
-  errorContainer:   { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', padding: 30 },
+  errorContainer:   { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, padding: 30 },
   errorTitle:       { fontSize: 22, fontWeight: '700', color: '#1e293b', marginBottom: 8 },
   errorSubtitle:    { fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
-  backBtn:          { backgroundColor: '#2563eb', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 14 },
+  backBtn:          { backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 14 },
   backBtnText:      { color: '#ffffff', fontSize: 15, fontWeight: '700' },
 
   floatingHeader: {
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
 
   thumbStrip:  { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff' },
   thumb:       { width: 64, height: 64, borderRadius: 10, marginRight: 8, borderWidth: 2, borderColor: 'transparent', backgroundColor: '#f8fafc' },
-  thumbActive: { borderColor: '#2563eb' },
+  thumbActive: { borderColor: Colors.primary },
 
   detailsCard: {
     backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
@@ -473,7 +474,7 @@ const styles = StyleSheet.create({
   salesText:  { fontSize: 12, color: '#94a3b8' },
 
   pricingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 },
-  sellPrice:   { fontSize: 28, fontWeight: '800', color: '#2563eb' },
+  sellPrice:   { fontSize: 28, fontWeight: '800', color: Colors.primary },
   mrpText:     { fontSize: 17, color: '#94a3b8', textDecorationLine: 'line-through', alignSelf: 'flex-end', marginBottom: 3 },
 
   stockBadge: {
@@ -481,8 +482,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5, paddingHorizontal: 10, borderRadius: 20, gap: 5,
   },
   outOfStockBadge: { backgroundColor: '#fef2f2' },
-  stockDot:        { width: 7, height: 7, borderRadius: 4, backgroundColor: '#10b981' },
-  outOfStockDot:   { backgroundColor: '#ef4444' },
+  stockDot:        { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.success },
+  outOfStockDot:   { backgroundColor: Colors.danger },
   stockText:       { fontSize: 12, fontWeight: '600', color: '#065f46' },
   outOfStockText:  { color: '#991b1b' },
 
@@ -500,7 +501,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
   },
   wholesaleQty:   { fontSize: 14, color: '#475569' },
-  wholesalePrice: { fontSize: 14, fontWeight: '700', color: '#2563eb' },
+  wholesalePrice: { fontSize: 14, fontWeight: '700', color: Colors.primary },
 
   sellerCard: {
     backgroundColor: '#f8fafc', borderRadius: 12,
@@ -512,7 +513,7 @@ const styles = StyleSheet.create({
 
   featuresGrid: { flexDirection: 'row', gap: 16, marginBottom: 10 },
   featureItem:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  featureIcon:  { width: 40, height: 40, borderRadius: 10, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
+  featureIcon:  { width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.primary10, alignItems: 'center', justifyContent: 'center' },
   featureTitle: { fontSize: 13, fontWeight: '600', color: '#1e293b' },
   featureSub:   { fontSize: 11, color: '#94a3b8', marginTop: 1 },
 
@@ -532,8 +533,8 @@ const styles = StyleSheet.create({
   qtyVal:  { fontSize: 16, fontWeight: '700', color: '#1e293b', paddingHorizontal: 12 },
   cartButton: {
     flex: 1, borderRadius: 14, overflow: 'hidden',
-    shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
   },
   btnGradient: { height: 52, alignItems: 'center', justifyContent: 'center' },
   btnRow:      { flexDirection: 'row', alignItems: 'center', gap: 8 },

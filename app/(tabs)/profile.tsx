@@ -1,15 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { User, Settings, HelpCircle, LogOut, ChevronRight, ShoppingBag, Heart, Package } from 'lucide-react-native';
+import { User, Settings, HelpCircle, LogOut, ChevronRight, ShoppingBag, Heart, Package, Palette } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { Colors } from '@/constants/theme';
+import { ThemeSelectorModal } from '@/components';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const [themeModalVisible, setThemeModalVisible] = useState(false);
 
   const menuItems = [
     { icon: ShoppingBag, title: 'My Orders', subtitle: 'Track and manage orders' },
     { icon: Heart, title: 'Wishlist', subtitle: 'Your saved items' },
     { icon: Package, title: 'Returns', subtitle: 'Return and exchange items' },
+    {
+      icon: Palette,
+      title: 'Theme & Brand Colors',
+      subtitle: 'Customize store theme & color palette',
+      onPress: () => setThemeModalVisible(true),
+    },
     { icon: Settings, title: 'Settings', subtitle: 'App preferences' },
     { icon: HelpCircle, title: 'Help & Support', subtitle: 'Get help from us' },
   ];
@@ -55,9 +64,14 @@ export default function ProfileScreen() {
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             return (
-              <TouchableOpacity key={index} style={styles.menuItem}>
+              <TouchableOpacity
+                key={index}
+                style={styles.menuItem}
+                onPress={item.onPress}
+                activeOpacity={item.onPress ? 0.7 : 1}
+              >
                 <View style={styles.menuIconContainer}>
-                  <Icon size={22} color="#2563eb" strokeWidth={2} />
+                  <Icon size={22} color={Colors.primary} strokeWidth={2} />
                 </View>
                 <View style={styles.menuContent}>
                   <Text style={styles.menuTitle}>{item.title}</Text>
@@ -80,6 +94,12 @@ export default function ProfileScreen() {
 
         <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
+
+      {/* Theme Color Selection Modal */}
+      <ThemeSelectorModal
+        visible={themeModalVisible}
+        onClose={() => setThemeModalVisible(false)}
+      />
     </View>
   );
 }
@@ -87,7 +107,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     paddingBottom: 100,
@@ -120,7 +140,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#2563eb',
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -142,11 +162,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#eff6ff',
+    backgroundColor: Colors.primary10,
   },
   editButtonText: {
     fontSize: 13,
-    color: '#2563eb',
+    color: Colors.primary,
     fontWeight: '600',
   },
   statsContainer: {
@@ -203,7 +223,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: '#eff6ff',
+    backgroundColor: Colors.primary10,
     alignItems: 'center',
     justifyContent: 'center',
   },

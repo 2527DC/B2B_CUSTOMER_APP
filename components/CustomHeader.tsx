@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Search, Bell, Menu } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/theme';
 
 interface CustomHeaderProps {
   onSearchPress?: () => void;
@@ -15,10 +15,9 @@ export function CustomHeader({
   onSearchPress,
   onNotificationPress,
   showSearch = true,
-  showNotification = true
+  showNotification = true,
 }: CustomHeaderProps) {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) }]}>
@@ -30,12 +29,12 @@ export function CustomHeader({
           </TouchableOpacity>
           <View style={styles.logoWrapper}>
             <Image
-              source={require('@/assets/images/icon.png')}
+              source={require('@/assets/images/logo.jpeg')}
               style={styles.logoImage}
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.brandTitle}>Dhatri</Text>
+          <Text style={styles.brandTitle}>Dhatri Mart</Text>
         </View>
 
         {showNotification && (
@@ -56,7 +55,7 @@ export function CustomHeader({
       {showSearch && (
         <TouchableOpacity style={styles.searchBar} onPress={onSearchPress} activeOpacity={0.9}>
           <Search size={18} color="#94a3b8" strokeWidth={2.5} />
-          <Text style={styles.searchPlaceholder}>Search in Dhatri...</Text>
+          <Text style={styles.searchPlaceholder}>Search products, brands & more...</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -65,7 +64,7 @@ export function CustomHeader({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#2e7d32', // Vibrant brand green
+    backgroundColor: Colors.primary, // #4f7942
     paddingHorizontal: 16,
     paddingBottom: 16,
     gap: 14,
@@ -117,9 +116,9 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ef4444',
+    backgroundColor: Colors.danger,
     borderWidth: 1.5,
-    borderColor: '#2e7d32',
+    borderColor: Colors.primary,
   },
   searchBar: {
     flexDirection: 'row',

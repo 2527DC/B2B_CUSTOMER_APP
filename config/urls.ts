@@ -1,11 +1,19 @@
 // ─── Base ───────────────────────────────────────────────────────────────────
+export const WEBSITE_URL = 'https://dhatri.store/';
+export const PUBLIC_URL = `${WEBSITE_URL}public/`;
+export const DRIVERS_API_URL = `${WEBSITE_URL}api/drivers`;
+
 const HOST = process.env.EXPO_PUBLIC_HOST_URL ?? 'https://dhatri-opal.vercel.app';
-const API  = `${HOST}/api/v1/app`;
+const isNextJsBackend = HOST.includes('dhatri-opal.vercel.app') || HOST.includes('localhost:3000');
+const API  = isNextJsBackend ? `${HOST}/api/v1/app` : `${HOST}/api`;
 
 // ─── Endpoints (ported from Flutter URLs mixin) ──────────────────────────────
 export const URLs = {
   HOST,
   API_URL: API,
+  WEBSITE_URL,
+  PUBLIC_URL,
+  DRIVERS_API_URL,
 
   // Home
   HOME_PAGE:          `${API}/homepage-data`,
@@ -34,14 +42,14 @@ export const URLs = {
   SINGLE_TAG_PRODUCTS:`${API}/product/tag`,
 
   // Auth
-  LOGIN:              `${API}/auth/login`,
-  REGISTER:           `${API}/auth/register`,
-  LOGOUT:             `${API}/auth/logout`,
-  SOCIAL_LOGIN:       `${API}/auth/login`,
-  FORGOT_PASSWORD:    `${API}/auth/login`,
-  CHANGE_PASSWORD:    `${API}/auth/login`,
-  OTP_SEND:           `${API}/auth/otp/send`,
-  GET_USER:           `${API}/auth/me`,
+  LOGIN:              isNextJsBackend ? `${API}/auth/login` : `${API}/login`,
+  REGISTER:           isNextJsBackend ? `${API}/auth/register` : `${API}/register`,
+  LOGOUT:             isNextJsBackend ? `${API}/auth/logout` : `${API}/logout`,
+  SOCIAL_LOGIN:       isNextJsBackend ? `${API}/auth/login` : `${API}/social-login`,
+  FORGOT_PASSWORD:    isNextJsBackend ? `${API}/auth/login` : `${API}/forgot-password`,
+  CHANGE_PASSWORD:    isNextJsBackend ? `${API}/auth/login` : `${API}/change-password`,
+  OTP_SEND:           isNextJsBackend ? `${API}/auth/otp/send` : `${API}/general-setting/send-otp`,
+  GET_USER:           isNextJsBackend ? `${API}/auth/me` : `${API}/get-user`,
 
   // Profile
   UPDATE_USER_PROFILE:`${API}/profile/update-information`,

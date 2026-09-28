@@ -1,19 +1,21 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { Brand } from '@/lib/supabase';
+import { Colors } from '@/constants/theme';
 
 interface BrandSectionProps {
   brands: Brand[];
   selectedBrand: string | null;
   onSelectBrand: (brandId: string | null) => void;
+  onViewAll?: () => void;
 }
 
-export function BrandSection({ brands, selectedBrand, onSelectBrand }: BrandSectionProps) {
+export function BrandSection({ brands, selectedBrand, onSelectBrand, onViewAll }: BrandSectionProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Top Brands</Text>
-        <TouchableOpacity onPress={() => onSelectBrand(null)}>
+        <TouchableOpacity onPress={onViewAll ? onViewAll : () => onSelectBrand(null)} activeOpacity={0.7}>
           <Text style={styles.seeAll}>View All</Text>
         </TouchableOpacity>
       </View>
@@ -83,7 +85,7 @@ const styles = StyleSheet.create({
   },
   seeAll: {
     fontSize: 13,
-    color: '#2563eb',
+    color: Colors.primary,
     fontWeight: '600',
   },
   brandsContainer: {
@@ -114,8 +116,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   logoCardSelected: {
-    borderColor: '#3b82f6',
-    shadowColor: '#3b82f6',
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
     shadowOpacity: 0.25,
   },
   brandLogo: {
@@ -131,7 +133,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   brandNameSelected: {
-    color: '#2563eb',
+    color: Colors.primary,
     fontWeight: '700',
   },
 });

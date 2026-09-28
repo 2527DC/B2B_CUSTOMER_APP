@@ -5,3 +5,6 @@ export { ProductGrid, ViewToggle } from './ProductGrid';
 export { SearchBar } from './SearchBar';
 export { CustomHeader } from './CustomHeader';
 export { PromoSlider } from './PromoSlider';
+export { default as Input } from './Input';
+export { default as Button } from './Button';
+export { ThemeSelectorModal } from './ThemeSelectorModal';

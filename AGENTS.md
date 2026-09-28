@@ -6,7 +6,38 @@
 - **Router**: Expo Router (file-based)
 - **Backend API**: `https://dhatri-opal.vercel.app/api/v1/app`
 
-## Strict Dependency Management Rule
+---
+
+## 🎨 Theme & Color Selection Enforcement Rule
+
+### 1. Mandatory Theme Usage (Zero Hardcoded Hex Codes)
+- **NEVER hardcode arbitrary colors** (e.g. `#2563eb`, `#eff6ff`, `#3b82f6`, `#f8fafc`, etc.) when creating or editing screens, modals, or components.
+- All colors must be imported from the central theme system:
+  - Static styles: `import { Colors } from '@/constants/theme';`
+  - Dynamic styling: `import { useTheme } from '@/context/ThemeContext';`
+
+### 2. Contextual & Relational Screen Analysis Rule
+Before writing or updating UI code, **analyze the semantic purpose of the screen or section** to select the appropriate theme token:
+
+- **Primary Actions & Brand Headers**: `Colors.primary` / `Colors.primaryDark`
+- **Subtle Background Fills & Selected Chips**: `Colors.primary10` (10% tint) or `Colors.primary20` (20% tint)
+- **Screen Canvas / Root Background**: `Colors.background` (`#f4f7f9`)
+- **Cards, Modals & Surfaces**: `Colors.surface` (`#ffffff`)
+- **Borders & Dividers**: `Colors.border` (`#e4e7e9`) / `Colors.borderLight` (`#f1f5f9`)
+- **Typography Hierarchy**:
+  - Headings & Titles: `Colors.text` (`#222222`)
+  - Subtitles & Labels: `Colors.textSecondary` (`#64748b`)
+  - Hints & Meta: `Colors.textMuted` (`#94a3b8`)
+  - Button / Header Text: `Colors.textWhite` (`#ffffff`)
+- **State Badges**: `Colors.success`, `Colors.warning`, `Colors.danger`, `Colors.info`
+
+### 3. Central Updating Policy
+- To change brand colors or update a palette, **modify `constants/theme.ts`** or use `ThemeContext` (`setThemeColor` / `setThemePreset`).
+- Individual screens must not contain bespoke color variations.
+
+---
+
+## 📦 Strict Dependency Management Rule
 When installing or upgrading packages:
 1. **Always use `npx expo install <package>`**:
    Never run `npm install <package>` or `yarn add <package>` for packages that contain native code or React Native bindings (e.g., `react-native-reanimated`, `react-native-screens`, `react-native-safe-area-context`, `@react-native-async-storage/async-storage`, `expo-*`, etc.).

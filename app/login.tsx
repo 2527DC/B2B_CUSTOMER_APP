@@ -3,139 +3,190 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
+  ScrollView,
+  Image,
+  Alert,
+  ActivityIndicator,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Smartphone, Lock, Eye, EyeOff, Sparkles, Key } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter, Link } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
-import { Link } from 'expo-router';
+import Input from '@/components/Input';
+import Button from '@/components/Button';
+import { WEBSITE_URL } from '@/config/urls';
+import { Colors } from '@/constants/theme';
+
+const logo = require('@/assets/images/logo.jpeg');
 
 export default function LoginScreen() {
+  const router = useRouter();
   const { login, sendOtp, loginWithOtp } = useAuth();
-  
-  const [phone, setPhone] = useState('9999900032');
-  const [password, setPassword] = useState('test@123');
+
+  // Test credentials matching dhatri-driver
+  const [phone, setPhone] = useState('9632728795');
+  const [password, setPassword] = useState('admin@123');
   const [otp, setOtp] = useState('');
-  
-  const [showPassword, setShowPassword] = useState(false);
-  const [phoneFocused, setPhoneFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const [otpFocused, setOtpFocused] = useState(false);
-  
+
   const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
   const [otpSent, setOtpSent] = useState(false);
-  const [generatedOtp, setGeneratedOtp] = useState<number | null>(null);
-  
+
   const [errors, setErrors] = useState<{ phone?: string; password?: string; otp?: string }>({});
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validatePhone = () => {
-    if (!phone) {
-      setErrors({ phone: 'Phone number is required' });
-      return false;
+  // Color theme - Extracted from https://dhatri.store/
+  const PRIMARY_COLOR = Colors.primary;       // #4f7942
+  const DARK_GREEN = Colors.primaryDark;      // #3b5c31
+  const SUBTEXT_COLOR = Colors.textSecondary; // #64748b
+  const WHITE_COLOR = '#ffffff';
+
+  const handleLogoPress = async () => {
+    try {
+      const canOpen = await Linking.canOpenURL(WEBSITE_URL);
+      if (canOpen) {
+        await Linking.openURL(WEBSITE_URL);
+      }
+    } catch (error) {
+      console.error('Error opening URL:', error);
     }
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (cleanPhone.length < 10) {
-      setErrors({ phone: 'Please enter a valid 10-digit phone number' });
-      return false;
+  };
+
+  const validateForm = () => {
+    const newErrors: { phone?: string; password?: string; otp?: string } = {};
+    let isValid = true;
+
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (!cleanPhone) {
+      newErrors.phone = 'Phone number is required';
+      isValid = false;
+    } else if (cleanPhone.length !== 10) {
+      newErrors.phone = 'Phone number must be 10 digits';
+      isValid = false;
     }
-    setErrors({});
-    return true;
+
+    if (loginMode === 'password') {
+      if (!password.trim()) {
+        newErrors.password = 'Password is required';
+        isValid = false;
+      } else if (password.length < 6) {
+        newErrors.password = 'Password must be at least 6 characters';
+        isValid = false;
+      }
+    } else {
+      if (!otp.trim()) {
+        newErrors.otp = 'OTP is required';
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSendOtp = async () => {
-    if (!validatePhone()) return;
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setErrors({ phone: 'Please enter a valid 10-digit phone number' });
+      return;
+    }
+
     setLoading(true);
     try {
-      const code = Math.floor(100000 + Math.random() * 900000);
-      setGeneratedOtp(code);
-      await sendOtp(phone, code);
+      const code = 1234;
+      await sendOtp(cleanPhone, code);
       setOtpSent(true);
       setErrors({});
-      // Alert the code for easy local testing/verification
       Alert.alert('Verification Code', `Use OTP code: ${code} to log in.`, [{ text: 'OK' }]);
-    } catch (err: any) {
-      console.error(err);
-      setErrors({ phone: err.message || 'Failed to send OTP. Please try again.' });
+    } catch {
+      // Allow testing with default 1234 even if SMS provider fails
+      setOtpSent(true);
+      Alert.alert('Notice', 'Default test OTP is 1234', [{ text: 'OK' }]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogin = async () => {
-    if (loginMode === 'otp') {
-      if (!otp) {
-        setErrors({ otp: 'OTP is required' });
-        return;
+    if (loading || isSubmitting) {
+      return;
+    }
+
+    setErrors({});
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    setIsSubmitting(true);
+
+    try {
+      if (loginMode === 'otp') {
+        const inputOtp = parseInt(otp.trim(), 10);
+        await loginWithOtp(phone.trim(), inputOtp);
+      } else {
+        await login(phone.trim(), password.trim());
       }
-      const inputOtp = parseInt(otp, 10);
-      if (inputOtp !== 1234 && generatedOtp && inputOtp !== generatedOtp) {
-        setErrors({ otp: 'Incorrect OTP code' });
-        return;
+
+      // Successful login navigates directly to main app tabs
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      console.error('Login error details:', error);
+      const errorMessage = error?.message || 'Login failed. Please check your credentials.';
+
+      Alert.alert('Login Failed', errorMessage, [{ text: 'OK' }]);
+
+      if (errorMessage.toLowerCase().includes('phone')) {
+        setErrors((prev) => ({ ...prev, phone: errorMessage }));
+      } else if (errorMessage.toLowerCase().includes('password')) {
+        setErrors((prev) => ({ ...prev, password: errorMessage }));
+      } else if (errorMessage.toLowerCase().includes('otp')) {
+        setErrors((prev) => ({ ...prev, otp: errorMessage }));
       }
-      setLoading(true);
-      try {
-        await loginWithOtp(phone, inputOtp);
-      } catch (err: any) {
-        console.error(err);
-        setErrors({ otp: err.message || 'OTP verification failed.' });
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      if (!validatePhone()) return;
-      if (!password) {
-        setErrors({ password: 'Password is required' });
-        return;
-      }
-      setLoading(true);
-      try {
-        await login(phone, password);
-      } catch (err: any) {
-        console.error(err);
-        setErrors({ password: err.message || 'Invalid phone or password.' });
-      } finally {
-        setLoading(false);
-      }
+    } finally {
+      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.container, { backgroundColor: WHITE_COLOR }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Branding */}
+          {/* Header & Logo */}
           <View style={styles.header}>
-            <LinearGradient
-              colors={['#2563eb', '#1d4ed8']}
-              style={styles.logoBadge}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <TouchableOpacity
+              onPress={handleLogoPress}
+              activeOpacity={0.7}
+              style={styles.logoButton}
             >
-              <Sparkles size={32} color="#ffffff" />
-            </LinearGradient>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to your B2B shopping account</Text>
+              <Image source={logo} style={styles.logo} resizeMode="contain" />
+            </TouchableOpacity>
+
+            <Text style={[styles.title, { color: DARK_GREEN }]}>Dhatri Mart</Text>
+            <Text style={[styles.subtitle, { color: SUBTEXT_COLOR }]}>
+              Sign in to your wholesale B2B account
+            </Text>
           </View>
 
           {/* Mode Switcher */}
-          <View style={styles.toggleContainer}>
+          <View style={styles.modeToggle}>
             <TouchableOpacity
-              style={[styles.toggleBtn, loginMode === 'password' && styles.toggleBtnActive]}
+              style={[
+                styles.modeButton,
+                loginMode === 'password' && styles.modeButtonActive,
+              ]}
               onPress={() => {
                 setLoginMode('password');
                 setOtpSent(false);
@@ -144,12 +195,21 @@ export default function LoginScreen() {
               }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleText, loginMode === 'password' && styles.toggleTextActive]}>
+              <Text
+                style={[
+                  styles.modeButtonText,
+                  loginMode === 'password' && styles.modeButtonTextActive,
+                ]}
+              >
                 Password Login
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={[styles.toggleBtn, loginMode === 'otp' && styles.toggleBtnActive]}
+              style={[
+                styles.modeButton,
+                loginMode === 'otp' && styles.modeButtonActive,
+              ]}
               onPress={() => {
                 setLoginMode('otp');
                 setOtpSent(false);
@@ -158,192 +218,124 @@ export default function LoginScreen() {
               }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.toggleText, loginMode === 'otp' && styles.toggleTextActive]}>
+              <Text
+                style={[
+                  styles.modeButtonText,
+                  loginMode === 'otp' && styles.modeButtonTextActive,
+                ]}
+              >
                 OTP Login
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Form */}
-          <View style={styles.formContainer}>
-            {/* Phone Field */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Phone Number</Text>
-              <View
-                style={[
-                  styles.inputContainer,
-                  phoneFocused && styles.inputFocused,
-                  errors.phone && styles.inputError,
-                ]}
-              >
-                <Smartphone size={20} color={phoneFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
-                <TextInput
-                  value={phone}
-                  onChangeText={(text) => {
-                    setPhone(text);
-                    if (errors.phone) setErrors({ ...errors, phone: undefined });
-                  }}
-                  onFocus={() => setPhoneFocused(true)}
-                  onBlur={() => setPhoneFocused(false)}
-                  placeholder="Enter 10-digit phone number"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="phone-pad"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!loading && !(loginMode === 'otp' && otpSent)}
-                  style={styles.input}
-                />
+          <View style={styles.form}>
+            <Input
+              label="Phone Number"
+              value={phone}
+              onChangeText={(text) => {
+                setPhone(text);
+                if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
+              }}
+              placeholder="Enter 10 digit phone number"
+              keyboardType="phone-pad"
+              error={errors.phone}
+              editable={!loading}
+              maxLength={10}
+              backgroundColor={WHITE_COLOR}
+            />
+
+            {loginMode === 'password' ? (
+              <Input
+                label="Password"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                }}
+                placeholder="Enter your password"
+                secureTextEntry
+                error={errors.password}
+                editable={!loading}
+                backgroundColor={WHITE_COLOR}
+              />
+            ) : (
+              <View>
+                {!otpSent ? (
+                  <Button
+                    title={loading ? 'Sending OTP...' : 'Send Verification OTP'}
+                    onPress={handleSendOtp}
+                    style={styles.sendOtpButton}
+                    disabled={loading}
+                    primaryColor={PRIMARY_COLOR}
+                  />
+                ) : (
+                  <>
+                    <Input
+                      label="Verification Code (OTP)"
+                      value={otp}
+                      onChangeText={(text) => {
+                        setOtp(text);
+                        if (errors.otp) setErrors((prev) => ({ ...prev, otp: '' }));
+                      }}
+                      placeholder="Enter 4 or 6 digit code (use 1234)"
+                      keyboardType="numeric"
+                      error={errors.otp}
+                      editable={!loading}
+                      maxLength={6}
+                      backgroundColor={WHITE_COLOR}
+                    />
+                    <TouchableOpacity
+                      onPress={handleSendOtp}
+                      disabled={loading}
+                      style={styles.resendContainer}
+                    >
+                      <Text style={[styles.resendText, { color: DARK_GREEN }]}>
+                        Didn't receive code? Resend
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
-              {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+            )}
+
+            {(loginMode === 'password' || otpSent) && (
+              <Button
+                title={loading ? 'Logging in...' : 'Login'}
+                onPress={handleLogin}
+                style={styles.loginButton}
+                disabled={loading}
+                primaryColor={PRIMARY_COLOR}
+              />
+            )}
+
+            {loading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+                <Text style={[styles.loadingText, { color: DARK_GREEN }]}>
+                  Authenticating...
+                </Text>
+              </View>
+            )}
+
+            {/* Quick Login Info Hint */}
+            <View style={styles.hintBox}>
+              <Text style={styles.hintTitle}>Preloaded Demo Credentials:</Text>
+              <Text style={styles.hintBody}>
+                Phone: <Text style={styles.hintBold}>9632728795</Text> | Pass: <Text style={styles.hintBold}>admin@123</Text>
+              </Text>
             </View>
 
-            {/* Password Field */}
-            {loginMode === 'password' && (
-              <View style={styles.inputWrapper}>
-                <View style={styles.labelRow}>
-                  <Text style={styles.label}>Password</Text>
-                  <TouchableOpacity activeOpacity={0.7}>
-                    <Text style={styles.forgotText}>Forgot?</Text>
-                  </TouchableOpacity>
-                </View>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    passwordFocused && styles.inputFocused,
-                    errors.password && styles.inputError,
-                  ]}
-                >
-                  <Lock size={20} color={passwordFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
-                  <TextInput
-                    value={password}
-                    onChangeText={(text) => {
-                      setPassword(text);
-                      if (errors.password) setErrors({ ...errors, password: undefined });
-                    }}
-                    onFocus={() => setPasswordFocused(true)}
-                    onBlur={() => setPasswordFocused(false)}
-                    placeholder="••••••••"
-                    placeholderTextColor="#94a3b8"
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={styles.input}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    activeOpacity={0.7}
-                    style={styles.eyeIcon}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color="#64748b" />
-                    ) : (
-                      <Eye size={20} color="#64748b" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-              </View>
-            )}
-
-            {/* OTP Field */}
-            {loginMode === 'otp' && otpSent && (
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>Enter 6-Digit OTP</Text>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    otpFocused && styles.inputFocused,
-                    errors.otp && styles.inputError,
-                  ]}
-                >
-                  <Key size={20} color={otpFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
-                  <TextInput
-                    value={otp}
-                    onChangeText={(text) => {
-                      setOtp(text);
-                      if (errors.otp) setErrors({ ...errors, otp: undefined });
-                    }}
-                    onFocus={() => setOtpFocused(true)}
-                    onBlur={() => setOtpFocused(false)}
-                    placeholder="Enter code"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    style={styles.input}
-                  />
-                </View>
-                {errors.otp && <Text style={styles.errorText}>{errors.otp}</Text>}
-              </View>
-            )}
-
-            {/* Action Buttons */}
-            {loginMode === 'otp' && !otpSent ? (
-              <TouchableOpacity
-                onPress={handleSendOtp}
-                disabled={loading}
-                activeOpacity={0.9}
-                style={styles.signInButton}
-              >
-                <LinearGradient
-                  colors={['#2563eb', '#1d4ed8']}
-                  style={styles.btnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Text style={styles.signInText}>Send OTP Code</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={handleLogin}
-                disabled={loading}
-                activeOpacity={0.9}
-                style={styles.signInButton}
-              >
-                <LinearGradient
-                  colors={['#2563eb', '#1d4ed8']}
-                  style={styles.btnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Text style={styles.signInText}>
-                      {loginMode === 'otp' ? 'Verify & Sign In' : 'Sign In'}
-                    </Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-
-            {loginMode === 'otp' && otpSent && (
-              <TouchableOpacity
-                onPress={() => {
-                  setOtpSent(false);
-                  setOtp('');
-                  setErrors({});
-                }}
-                activeOpacity={0.8}
-                style={styles.changePhoneButton}
-              >
-                <Text style={styles.changePhoneText}>Change phone number</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Footer Navigation */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>{"Don't have an account? "}</Text>
-            <Link href="/register" asChild>
-              <TouchableOpacity activeOpacity={0.7}>
-                <Text style={styles.signUpLink}>Sign Up</Text>
-              </TouchableOpacity>
-            </Link>
+            {/* Registration link */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Link href="/register" asChild>
+                <TouchableOpacity activeOpacity={0.7}>
+                  <Text style={[styles.registerLink, { color: DARK_GREEN }]}>Register Now</Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -352,190 +344,133 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
+  content: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingBottom: 40,
     justifyContent: 'center',
+    paddingVertical: 32,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 28,
   },
-  logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+  logoButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+  },
+  logo: {
+    width: 130,
+    height: 130,
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#1e293b',
+    marginBottom: 6,
+    textAlign: 'center',
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 8,
+    fontSize: 15,
     textAlign: 'center',
-    paddingHorizontal: 20,
   },
-  toggleContainer: {
+  modeToggle: {
     flexDirection: 'row',
-    backgroundColor: '#e2e8f0',
-    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
     padding: 4,
     marginBottom: 24,
   },
-  toggleBtn: {
+  modeButton: {
     flex: 1,
     paddingVertical: 10,
-    alignItems: 'center',
     borderRadius: 8,
+    alignItems: 'center',
   },
-  toggleBtnActive: {
+  modeButtonActive: {
     backgroundColor: '#ffffff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
   },
-  toggleText: {
+  modeButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#64748b',
   },
-  toggleTextActive: {
-    color: '#1e293b',
-  },
-  formContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    gap: 20,
-  },
-  inputWrapper: {
-    gap: 8,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
-  },
-  forgotText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2563eb',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 54,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    color: '#1e293b',
-    fontSize: 15,
-    fontWeight: '500',
-    height: '100%',
-    padding: 0,
-  },
-  eyeIcon: {
-    padding: 6,
-  },
-  inputFocused: {
-    borderColor: '#2563eb',
-    backgroundColor: '#ffffff',
-  },
-  inputError: {
-    borderColor: '#ef4444',
-    backgroundColor: '#fef2f2',
-  },
-  errorText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#ef4444',
-    marginTop: 2,
-  },
-  signInButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginTop: 10,
-    shadowColor: '#2563eb',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  btnGradient: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 54,
-  },
-  signInText: {
-    color: '#ffffff',
-    fontSize: 16,
+  modeButtonTextActive: {
+    color: Colors.primary,
     fontWeight: '700',
   },
-  changePhoneButton: {
-    alignItems: 'center',
-    paddingVertical: 4,
+  form: {
+    width: '100%',
   },
-  changePhoneText: {
-    color: '#2563eb',
-    fontSize: 14,
+  loginButton: {
+    marginTop: 18,
+  },
+  sendOtpButton: {
+    marginTop: 8,
+  },
+  resendContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 12,
+    marginTop: -8,
+  },
+  resendText: {
+    fontSize: 13,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  hintBox: {
+    marginTop: 24,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+  },
+  hintTitle: {
+    fontSize: 12,
+    color: '#166534',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  hintBody: {
+    fontSize: 13,
+    color: '#15803d',
+  },
+  hintBold: {
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 28,
+    marginTop: 24,
   },
   footerText: {
     fontSize: 14,
     color: '#64748b',
   },
-  signUpLink: {
+  registerLink: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2563eb',
   },
 });
-

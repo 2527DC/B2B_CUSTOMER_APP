@@ -3,7 +3,39 @@
 ## Target Platforms
 This application is built with **Expo & React Native** targeting **iOS** and **Android**.
 
-## Package Management Rule
+## 🎨 Mandatory Theme & Color Selection Rule
+
+### 1. Zero Hardcoded Colors Policy
+- **NEVER use arbitrary hardcoded hex codes** (e.g. `#2563eb`, `#eff6ff`, `#3b82f6`, `#f8fafc`, etc.) in screens, modals, components, or style sheets.
+- All colors MUST be imported and referenced from the centralized theme system:
+  - For static styles: `import { Colors } from '@/constants/theme';`
+  - For dynamic / reactive component styling: `import { useTheme } from '@/context/ThemeContext';`
+
+### 2. Contextual & Relational Screen Analysis Rule
+Before implementing, styling, or refactoring any screen, modal, card, or section, you **MUST analyze the semantic visual role** of each UI element and pick the corresponding theme token:
+
+| Semantic Role / UI Element | Required Theme Token | Usage / Rationale |
+| :--- | :--- | :--- |
+| **Primary Actions & Brand Badges** | `Colors.primary` / `theme.primary` | Header bar background, primary submit buttons, active tab icons, key call-to-actions. |
+| **Dark Accents & Gradient Stops** | `Colors.primaryDark` / `theme.primaryDark` | Bottom gradient stops, pressed button states, prominent borders. |
+| **Light Accents & Highlights** | `Colors.primaryLight` / `theme.primaryLight` | Gradient top highlights, hover / active states. |
+| **Subtle Brand Tint Fills (10% - 20%)** | `Colors.primary10`, `Colors.primary20` | Active category icon backgrounds, selected address/shipping card backgrounds, promo tag badges, edit button pills. |
+| **Screen Canvas / Root Background** | `Colors.background` | `container`, `safeArea`, `loadingContainer`, scrollable screen backgrounds (`#f4f7f9`). |
+| **Surface Containers & Cards** | `Colors.surface` | Product cards, modal popups, address cards, white background surfaces (`#ffffff`). |
+| **Borders & Separators** | `Colors.border`, `Colors.borderLight` | Subtle card dividers, input borders, unselected tab borders (`#e4e7e9`). |
+| **Primary Headings & Titles** | `Colors.text` | Titles, item titles, prices, dark readable text (`#222222`). |
+| **Secondary Text & Labels** | `Colors.textSecondary` | Subtitles, field labels, metadata descriptions (`#64748b`). |
+| **Muted Text & Placeholders** | `Colors.textMuted` | Input placeholders, helper captions, subtle icons (`#94a3b8`). |
+| **Contrast Text** | `Colors.textWhite` | Text inside primary buttons, header text on primary banner. |
+| **System Status Badges** | `Colors.success`, `Colors.warning`, `Colors.danger`, `Colors.info` | Order status chips, validation error messages, delivery tracking states. |
+
+### 3. Centralized Theme Modification
+- If brand colors change or a new theme variant is introduced, **ONLY update `constants/theme.ts`** or use `ThemeContext` (`setThemeColor` / `setThemePreset`).
+- Never scatter ad-hoc color overrides across individual screen files. All screens must automatically adopt the new theme through the central tokens.
+
+---
+
+## 📦 Package Management Rule
 - **ALWAYS use `npx expo install`**: Whenever adding, upgrading, or installing packages (especially native libraries like camera, reanimated, gesture-handler, screens, safe-area-context, svg, async-storage, etc.), ALWAYS run:
   ```bash
   npx expo install <package-name>

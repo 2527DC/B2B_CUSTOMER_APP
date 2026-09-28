@@ -17,6 +17,7 @@ import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Product } from '@/lib/supabase';
 import { ProductCard } from '@/components';
+import { Colors } from '@/constants/theme';
 
 interface SearchTag {
   id: number;
@@ -137,7 +138,7 @@ export default function SearchScreen() {
       <View style={styles.content}>
         {loading ? (
           <View style={styles.centeredContainer}>
-            <ActivityIndicator size="large" color="#2563eb" />
+            <ActivityIndicator size="large" color={Colors.primary} />
             <Text style={styles.infoText}>Searching for "{keyword}"...</Text>
           </View>
         ) : error ? (
@@ -208,7 +209,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',

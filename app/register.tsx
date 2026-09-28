@@ -15,6 +15,7 @@ import { Mail, Lock, User as UserIcon, Eye, EyeOff, Sparkles, Smartphone } from 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
 import { Link } from 'expo-router';
+import { Colors } from '@/constants/theme';
 
 export default function RegisterScreen() {
   const { register } = useAuth();
@@ -99,7 +100,7 @@ export default function RegisterScreen() {
           {/* Header Branding */}
           <View style={styles.header}>
             <LinearGradient
-              colors={['#3b82f6', '#2563eb']}
+              colors={[Colors.primary, Colors.primaryDark]}
               style={styles.logoBadge}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -122,7 +123,7 @@ export default function RegisterScreen() {
                   errors.name && styles.inputError,
                 ]}
               >
-                <UserIcon size={20} color={nameFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                <UserIcon size={20} color={nameFocused ? Colors.primary : '#94a3b8'} style={styles.inputIcon} />
                 <TextInput
                   value={name}
                   onChangeText={(text) => {
@@ -151,7 +152,7 @@ export default function RegisterScreen() {
                   errors.email && styles.inputError,
                 ]}
               >
-                <Mail size={20} color={emailFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                <Mail size={20} color={emailFocused ? Colors.primary : '#94a3b8'} style={styles.inputIcon} />
                 <TextInput
                   value={email}
                   onChangeText={(text) => {
@@ -181,7 +182,7 @@ export default function RegisterScreen() {
                   errors.phone && styles.inputError,
                 ]}
               >
-                <Smartphone size={20} color={phoneFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                <Smartphone size={20} color={phoneFocused ? Colors.primary : '#94a3b8'} style={styles.inputIcon} />
                 <TextInput
                   value={phone}
                   onChangeText={(text) => {
@@ -211,7 +212,7 @@ export default function RegisterScreen() {
                   errors.password && styles.inputError,
                 ]}
               >
-                <Lock size={20} color={passwordFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                <Lock size={20} color={passwordFocused ? Colors.primary : '#94a3b8'} style={styles.inputIcon} />
                 <TextInput
                   value={password}
                   onChangeText={(text) => {
@@ -252,7 +253,7 @@ export default function RegisterScreen() {
                   errors.confirmPassword && styles.inputError,
                 ]}
               >
-                <Lock size={20} color={confirmFocused ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+                <Lock size={20} color={confirmFocused ? Colors.primary : '#94a3b8'} style={styles.inputIcon} />
                 <TextInput
                   value={confirmPassword}
                   onChangeText={(text) => {
@@ -291,7 +292,7 @@ export default function RegisterScreen() {
               style={styles.signUpButton}
             >
               <LinearGradient
-                colors={['#2563eb', '#1d4ed8']}
+                colors={[Colors.primary, Colors.primaryDark]}
                 style={styles.btnGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -323,7 +324,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: Colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
-    shadowColor: '#2563eb',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -411,7 +412,7 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   inputFocused: {
-    borderColor: '#2563eb',
+    borderColor: Colors.primary,
     backgroundColor: '#ffffff',
   },
   inputError: {
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginTop: 10,
-    shadowColor: '#2563eb',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
@@ -457,6 +458,6 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2563eb',
+    color: Colors.primary,
   },
 });
