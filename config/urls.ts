@@ -108,6 +108,10 @@ export const URLs = {
   BANK_PAYMENT_DATA_STORE:  `${API}/payment-gateway/bank/payment-data-store`,
   TABBYURL:                 `${API}/tabby-checkout`,
 
+  // Razorpay (served by dhatri_web_nextjs outside the /app namespace)
+  RAZORPAY_CREATE_ORDER:    `${HOST}/api/v1/payments/razorpay/create-order`,
+  RAZORPAY_VERIFY:          `${HOST}/api/v1/payments/razorpay/verify`,
+
   // Reviews
   WAITING_FOR_REVIEW:       `${API}/order-review/waiting-for-review-list`,
   MY_REVIEWS:               `${API}/order-review/list`,

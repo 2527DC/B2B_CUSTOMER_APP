@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,16 @@ import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/theme';
+import RazorpayCheckout, { RazorpayOptions, RazorpaySuccess } from '@/components/RazorpayCheckout';
+
+type PaymentMethod = 'cod' | 'razorpay';
+
+interface PlacedOrder {
+  id: string;
+  orderNumber: string;
+  customerId: string;
+  grandTotal: number;
+}
 
 interface Address {
   id: number;
@@ -49,6 +59,14 @@ export default function CheckoutScreen() {
   const [addressModalVisible, setAddressModalVisible] = useState(false);
   const [addressModalType, setAddressModalType] = useState<'shipping' | 'billing'>('shipping');
   const [newAddressVisible, setNewAddressVisible] = useState(false);
+
+  // Payment
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
+  const [razorpayOptions, setRazorpayOptions] = useState<RazorpayOptions | null>(null);
+  const [razorpayVisible, setRazorpayVisible] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
+  // Guards against handling more than one outcome (success/failure/dismiss) per Razorpay session
+  const paymentActiveRef = useRef(false);
 
   // New Address Form Fields
   const [formName, setFormName] = useState('');
@@ -273,8 +291,8 @@ export default function CheckoutScreen() {
       orderFormData.append('pickup_location_id', '0');
       orderFormData.append('sub_total', subTotal.toFixed(2));
       orderFormData.append('grand_total', grandTotal.toFixed(2));
-      // COD payment fields (gateway id = 1 for Cash on Delivery)
-      orderFormData.append('payment_method', '1');
+      // payment_method '1' = Cash on Delivery; anything else is stored as an ONLINE order awaiting payment
+      orderFormData.append('payment_method', paymentMethod === 'cod' ? '1' : 'razorpay');
       orderFormData.append('payment_id', 'id');
       orderFormData.append('wallet_amount', '0');
       
@@ -288,7 +306,18 @@ export default function CheckoutScreen() {
         },
       });
 
-      if (response.status === 201 || response.status === 200) {
+      if ((response.status === 201 || response.status === 200) && paymentMethod === 'razorpay') {
+        const order = response.data?.order;
+        const placed: PlacedOrder = {
+          id: String(order.id),
+          orderNumber: String(order.orderNumber),
+          customerId: String(order.customerId),
+          grandTotal: Number(order.grandTotal),
+        };
+        setPlacedOrder(placed);
+        await fetchCart(); // order-store has already removed these items from the cart
+        await startRazorpayPayment(placed);
+      } else if (response.status === 201 || response.status === 200) {
         Alert.alert('Success', 'Order placed successfully!', [
           {
             text: 'OK',
@@ -308,6 +337,89 @@ export default function CheckoutScreen() {
       setIsSubmitting(false);
     }
   };
+
+  const startRazorpayPayment = async (order: PlacedOrder) => {
+    try {
+      setIsSubmitting(true);
+      const res = await apiClient.post(URLs.RAZORPAY_CREATE_ORDER, {
+        orderId: order.id,
+        purpose: 'ORDER',
+        customerId: order.customerId,
+      });
+      const { razorpayOrderId, amount, currency, keyId } = res.data || {};
+      if (!razorpayOrderId || !keyId) throw new Error('Invalid Razorpay order response');
+
+      setRazorpayOptions({
+        keyId,
+        razorpayOrderId,
+        amount,
+        currency,
+        name: 'Dhatri',
+        description: `Order #${order.orderNumber}`,
+        prefill: {
+          name: selectedShippingAddress?.name,
+          email: selectedShippingAddress?.email,
+          contact: selectedShippingAddress?.phone,
+        },
+      });
+      paymentActiveRef.current = true;
+      setRazorpayVisible(true);
+    } catch (e: any) {
+      console.error('Razorpay create-order error:', e?.response?.data || e.message);
+      handlePaymentIncomplete(order, e?.response?.data?.error || 'Unable to start online payment.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePaymentIncomplete = (order: PlacedOrder, reason: string) => {
+    Alert.alert(
+      'Payment Not Completed',
+      `${reason}\n\nOrder #${order.orderNumber} has been placed with payment pending.`,
+      [
+        { text: 'Pay Later', style: 'cancel', onPress: () => router.replace('/(tabs)/orders') },
+        { text: 'Retry Payment', onPress: () => startRazorpayPayment(order) },
+      ],
+    );
+  };
+
+  const handleRazorpaySuccess = async (payment: RazorpaySuccess) => {
+    if (!paymentActiveRef.current || !placedOrder) return;
+    paymentActiveRef.current = false;
+    setRazorpayVisible(false);
+    setIsSubmitting(true);
+    try {
+      await apiClient.post(URLs.RAZORPAY_VERIFY, {
+        ...payment,
+        orderId: placedOrder.id,
+        purpose: 'ORDER',
+        customerId: placedOrder.customerId,
+        amount: placedOrder.grandTotal,
+      });
+      Alert.alert('Payment Successful', `Order #${placedOrder.orderNumber} has been paid and placed successfully!`, [
+        { text: 'OK', onPress: () => router.replace('/(tabs)') },
+      ]);
+    } catch (e: any) {
+      console.error('Razorpay verify error:', e?.response?.data || e.message);
+      Alert.alert(
+        'Verification Pending',
+        `We received your payment (ID: ${payment.razorpay_payment_id}) but could not confirm it yet. ` +
+          `Order #${placedOrder.orderNumber} will be updated shortly.`,
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)/orders') }],
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRazorpayFailure = (message: string) => {
+    if (!paymentActiveRef.current || !placedOrder) return;
+    paymentActiveRef.current = false;
+    setRazorpayVisible(false);
+    handlePaymentIncomplete(placedOrder, message);
+  };
+
+  const handleRazorpayDismiss = () => handleRazorpayFailure('Payment was cancelled.');
 
   if (isLoading) {
     return (
@@ -454,14 +566,27 @@ export default function CheckoutScreen() {
             <CreditCard size={18} color={Colors.primary} />
             <Text style={styles.sectionTitle}>Payment Method</Text>
           </View>
-          <View style={styles.paymentOption}>
-            <View style={styles.paymentOptionLeft}>
-              <View style={styles.paymentRadioActive}>
-                <View style={styles.paymentRadioInner} />
-              </View>
-              <Text style={styles.paymentText}>Cash on Delivery (COD)</Text>
-            </View>
-          </View>
+          {([
+            { key: 'cod', label: 'Cash on Delivery (COD)' },
+            { key: 'razorpay', label: 'Pay Online (UPI / Card / Netbanking)' },
+          ] as { key: PaymentMethod; label: string }[]).map((opt) => {
+            const isSelected = paymentMethod === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                style={styles.paymentOption}
+                onPress={() => setPaymentMethod(opt.key)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.paymentOptionLeft}>
+                  <View style={isSelected ? styles.paymentRadioActive : styles.paymentRadio}>
+                    {isSelected && <View style={styles.paymentRadioInner} />}
+                  </View>
+                  <Text style={styles.paymentText}>{opt.label}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Pricing Summary */}
@@ -512,11 +637,21 @@ export default function CheckoutScreen() {
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.placeOrderBtnText}>Place Order</Text>
+              <Text style={styles.placeOrderBtnText}>
+                {paymentMethod === 'razorpay' ? 'Pay & Place Order' : 'Place Order'}
+              </Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      <RazorpayCheckout
+        visible={razorpayVisible}
+        options={razorpayOptions}
+        onSuccess={handleRazorpaySuccess}
+        onFailure={handleRazorpayFailure}
+        onDismiss={handleRazorpayDismiss}
+      />
 
       {/* Address Selector / Creation Modal */}
       <Modal
@@ -841,7 +976,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 8,
   },
   paymentOptionLeft: {
     flexDirection: 'row',
@@ -856,6 +991,13 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  paymentRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.border,
   },
   paymentRadioInner: {
     width: 10,
