@@ -14,6 +14,13 @@ export interface User {
   role?: string;
 }
 
+// devMode: the backend has no SMS provider active yet and returns the test OTP instead of sending it
+export interface SendOtpResult {
+  devMode: boolean;
+  otp?: number;
+  expiresInMinutes?: number;
+}
+
 interface AuthContextType {
   isOnboarded: boolean;
   isAuthenticated: boolean;
@@ -21,7 +28,7 @@ interface AuthContextType {
   isLoading: boolean;
   completeOnboarding: () => void;
   login: (phone: string, password: string) => Promise<boolean>;
-  sendOtp: (phone: string, otp: number) => Promise<boolean>;
+  sendOtp: (phone: string) => Promise<SendOtpResult>;
   loginWithOtp: (phone: string, otp: number) => Promise<boolean>;
   register: (name: string, email: string, password: string, phone: string) => Promise<boolean>;
   logout: () => void;
@@ -172,14 +179,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const sendOtp = async (phone: string, otp: number): Promise<boolean> => {
+  const sendOtp = async (phone: string): Promise<SendOtpResult> => {
     try {
       const response = await apiClient.post(URLs.OTP_SEND, {
         phone: phone.trim(),
         type: 'login_with_otp_only',
-        code: otp,
       });
-      return response.status === 200;
+      return {
+        devMode: response.data?.devMode === true,
+        otp: response.data?.otp,
+        expiresInMinutes: response.data?.expiresInMinutes,
+      };
     } catch (error: any) {
       console.error('Send OTP error:', error?.response?.data || error.message);
       const msg = error?.response?.data?.error || error?.response?.data?.message || 'Failed to send OTP.';

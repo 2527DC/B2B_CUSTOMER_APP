@@ -96,15 +96,21 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const code = 1234;
-      await sendOtp(cleanPhone, code);
+      const result = await sendOtp(cleanPhone);
       setOtpSent(true);
       setErrors({});
-      Alert.alert('Verification Code', `Use OTP code: ${code} to log in.`, [{ text: 'OK' }]);
-    } catch {
-      // Allow testing with default 1234 even if SMS provider fails
-      setOtpSent(true);
-      Alert.alert('Notice', 'Default test OTP is 1234', [{ text: 'OK' }]);
+      if (result.devMode) {
+        Alert.alert('Test Mode', `SMS is not set up yet. Use OTP ${result.otp ?? 1234} to log in.`, [{ text: 'OK' }]);
+      } else {
+        Alert.alert(
+          'OTP Sent',
+          `We sent a 6-digit code to ${cleanPhone}. It is valid for ${result.expiresInMinutes ?? 5} minutes.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      setErrors({ otp: error?.message || 'Failed to send OTP.' });
+      Alert.alert('Could Not Send OTP', error?.message || 'Please try again in a moment.', [{ text: 'OK' }]);
     } finally {
       setLoading(false);
     }
