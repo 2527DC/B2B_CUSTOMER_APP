@@ -26,8 +26,6 @@ type PaymentMethod = 'cod' | 'razorpay';
 interface PlacedOrder {
   id: string;
   orderNumber: string;
-  customerId: string;
-  grandTotal: number;
 }
 
 interface Address {
@@ -311,8 +309,6 @@ export default function CheckoutScreen() {
         const placed: PlacedOrder = {
           id: String(order.id),
           orderNumber: String(order.orderNumber),
-          customerId: String(order.customerId),
-          grandTotal: Number(order.grandTotal),
         };
         setPlacedOrder(placed);
         await fetchCart(); // order-store has already removed these items from the cart
@@ -341,10 +337,10 @@ export default function CheckoutScreen() {
   const startRazorpayPayment = async (order: PlacedOrder) => {
     try {
       setIsSubmitting(true);
+      // The backend derives the amount from the order and the customer from the auth token
       const res = await apiClient.post(URLs.RAZORPAY_CREATE_ORDER, {
         orderId: order.id,
         purpose: 'ORDER',
-        customerId: order.customerId,
       });
       const { razorpayOrderId, amount, currency, keyId } = res.data || {};
       if (!razorpayOrderId || !keyId) throw new Error('Invalid Razorpay order response');
@@ -389,13 +385,8 @@ export default function CheckoutScreen() {
     setRazorpayVisible(false);
     setIsSubmitting(true);
     try {
-      await apiClient.post(URLs.RAZORPAY_VERIFY, {
-        ...payment,
-        orderId: placedOrder.id,
-        purpose: 'ORDER',
-        customerId: placedOrder.customerId,
-        amount: placedOrder.grandTotal,
-      });
+      // Only Razorpay's signed response is sent; the backend verifies it with the key secret
+      await apiClient.post(URLs.RAZORPAY_VERIFY, payment);
       Alert.alert('Payment Successful', `Order #${placedOrder.orderNumber} has been paid and placed successfully!`, [
         { text: 'OK', onPress: () => router.replace('/(tabs)') },
       ]);
