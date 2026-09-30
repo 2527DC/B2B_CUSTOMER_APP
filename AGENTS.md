@@ -43,3 +43,13 @@ When installing or upgrading packages:
    Never run `npm install <package>` or `yarn add <package>` for packages that contain native code or React Native bindings (e.g., `react-native-reanimated`, `react-native-screens`, `react-native-safe-area-context`, `@react-native-async-storage/async-storage`, `expo-*`, etc.).
 2. **Reason**: `npx expo install` resolves versions strictly against the installed Expo SDK version and React Native core version. Installing uncontrolled versions breaks iOS and Android native builds.
 3. **Validation**: Run `npx expo-doctor` and `npx tsc --noEmit` after changing dependencies.
+
+---
+
+## ⏳ Zero Hanging Loading State Rule (Never Cause Loading Issues)
+**STRICT MANDATE:** Never write code that can leave the UI stuck in an indefinite loading state.
+1. **Always Guarantee Reset**: Ensure `setLoading(false)` always executes via a `finally` block or within both success and error handlers in all async calls and effects.
+2. **Handle Missing Prerequisites**: When an effect requires prerequisite parameters (e.g. `warehouseId`, `customerId`) that are absent or empty upon readiness, immediately reset `loading` to `false` instead of hanging.
+3. **Cancellation & Cleanup**: Use mounted state flags or `AbortController` to handle component unmounting gracefully and avoid state updates after unmount.
+4. **Fallback & Error Feedback**: In case of network errors or server failures, render user-friendly error banners or empty states rather than hanging indefinitely on a spinner or skeleton.
+

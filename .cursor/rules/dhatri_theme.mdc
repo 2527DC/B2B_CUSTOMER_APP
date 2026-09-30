@@ -1,0 +1,26 @@
+---
+description: Strict Dhatri Theme and Color Guidelines (Mobile)
+globs: **/*.{tsx,jsx,ts,js}
+---
+
+# STRICT DHATRI THEME AND COLOR RULE (MOBILE)
+
+You MUST strictly use the centralized Dhatri Theme derived from https://dhatri.store/.
+
+## Single Source of Truth
+- Mobile: `@/constants/theme` (`Colors`, `ThemePresets.dhatri`, `getComponentTheme(Colors)`)
+- Matches Web: `dhatri_web_nextjs/constants/theme.ts`
+
+## Prohibited
+- NEVER hardcode arbitrary green or brand hex codes (e.g. `#39B021`, `#059669`, `#10B981`, `#2E8A1A`).
+- ALWAYS import `Colors` from `@/constants/theme`.
+
+## Enforced Palette
+- Primary Brand Green: `Colors.primary` (`#4F7942`)
+- Primary Dark: `Colors.primaryDark`
+- Primary Light: `Colors.primaryLight`
+- Primary Tints: `Colors.primary10`, `Colors.primary20`, `Colors.primary30`
+- Surface Background: `Colors.background` (`#F4F7F9`)
+- Card Surface: `Colors.surface` (`#FFFFFF`)
+- Borders: `Colors.border` (`#E4E7E9`)
+- Text: `Colors.text` (`#222222`), `Colors.textSecondary`, `Colors.textMuted`

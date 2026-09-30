@@ -5,12 +5,13 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { CustomHeader, PromoSlider, BrandSection, ProductCard } from '@/components';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { X, PackageOpen } from 'lucide-react-native';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Brand, Product } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
+import { fetchCustomerNotifications } from '@/lib/notifications';
 
 // ─── Raw API response types ──────────────────────────────────────────────────
 interface FeaturedBrand {
@@ -96,12 +97,35 @@ export default function HomeScreen() {
   const [featuredBrands, setFeaturedBrands] = useState<Brand[]>([]);
   const [sliderImages, setSliderImages] = useState<string[]>([]);
   const [topPicks, setTopPicks] = useState<Product[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Brand selection & filtered products state
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedBrandName, setSelectedBrandName] = useState<string | null>(null);
   const [brandProducts, setBrandProducts] = useState<Product[]>([]);
   const [brandProductsLoading, setBrandProductsLoading] = useState(false);
+
+  // Fetch unread notification count periodically or on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      const loadUnreadCount = async () => {
+        try {
+          const res = await fetchCustomerNotifications(1);
+          if (isMounted && typeof res.unreadCount === 'number') {
+            setUnreadCount(res.unreadCount);
+          }
+        } catch (err) {
+          // Silent catch if user is logged out or offline
+        }
+      };
+
+      loadUnreadCount();
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
 
   useEffect(() => {
     fetchHomeData(false);
@@ -140,6 +164,11 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(() => {
     fetchHomeData(true);
+    fetchCustomerNotifications(1)
+      .then(res => {
+        if (typeof res.unreadCount === 'number') setUnreadCount(res.unreadCount);
+      })
+      .catch(() => {});
     if (selectedBrand) {
       handleSelectBrand(selectedBrand);
     }
@@ -211,7 +240,11 @@ export default function HomeScreen() {
       }
     >
       {/* Header */}
-      <CustomHeader onSearchPress={() => router.push('/search')} />
+      <CustomHeader
+        onSearchPress={() => router.push('/search')}
+        onNotificationPress={() => router.push('/notifications' as any)}
+        unreadCount={unreadCount}
+      />
 
       {/* Promo Slider — API images */}
       <View style={styles.sliderWrapper}>

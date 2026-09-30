@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import apiClient, { setAuthToken } from '../config/api';
 import { URLs, DRIVERS_API_URL } from '../config/urls';
+import { getStoredPushToken, registerForPushNotificationsAsync, syncPushTokenWithBackend } from '../lib/notifications';
 
 export interface User {
   id: number;
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(token);
     setUser(userData);
     setIsAuthenticated(true);
+    syncPushTokenWithBackend().catch(() => {});
   };
 
   // Load session from AsyncStorage on startup
@@ -102,13 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('🚀 Login attempt for:', phone);
 
     const cleanPhone = phone.trim();
+    const pushToken = (await getStoredPushToken()) || (await registerForPushNotificationsAsync()) || 'RN_B2B_DEVICE';
 
     // 1. Try primary configured endpoint
     try {
       const response = await apiClient.post(URLs.LOGIN, {
         phone: cleanPhone,
         password,
-        device_token: 'RN_B2B_DEVICE',
+        device_token: pushToken,
       });
 
       if (response.data && (response.data.token || response.data.status === true)) {
@@ -200,11 +203,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithOtp = async (phone: string, otp: number): Promise<boolean> => {
     setIsLoading(true);
     const cleanPhone = phone.trim();
+    const pushToken = (await getStoredPushToken()) || (await registerForPushNotificationsAsync()) || 'RN_B2B_DEVICE';
     try {
       const response = await apiClient.post(URLs.LOGIN, {
         phone: cleanPhone,
         code: otp,
-        device_token: 'RN_B2B_DEVICE',
+        device_token: pushToken,
       });
 
       if (response.data && response.data.token) {
@@ -235,13 +239,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string, password: string, phone: string): Promise<boolean> => {
     setIsLoading(true);
+    const pushToken = (await getStoredPushToken()) || (await registerForPushNotificationsAsync()) || 'RN_B2B_DEVICE';
     try {
       const response = await apiClient.post(URLs.REGISTER, {
         name,
         email,
         password,
         phone,
-        device_token: 'RN_B2B_DEVICE',
+        device_token: pushToken,
       });
 
       if (response.data && response.data.token) {

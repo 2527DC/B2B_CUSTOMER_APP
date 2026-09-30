@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';
+import QtyInput from '@/components/QtyInput';
 
 export default function CartScreen() {
   const {
@@ -177,7 +178,11 @@ export default function CartScreen() {
                                 >
                                   <Minus size={14} color={item.qty <= 1 ? '#cbd5e1' : '#475569'} />
                                 </TouchableOpacity>
-                                <Text style={styles.stepperValue}>{item.qty}</Text>
+                                <QtyInput
+                                  value={item.qty}
+                                  onCommit={(qty) => handleQtyChange(item, qty)}
+                                  style={styles.stepperValue}
+                                />
                                 <TouchableOpacity
                                   onPress={() => handleQtyChange(item, item.qty + 1)}
                                   style={styles.stepperBtn}
@@ -427,9 +432,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#334155',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     textAlign: 'center',
-    minWidth: 32,
+    minWidth: 44,
   },
   deleteBtn: {
     padding: 6,

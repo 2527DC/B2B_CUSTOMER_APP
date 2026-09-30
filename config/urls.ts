@@ -89,6 +89,8 @@ export const URLs = {
   CHECK_PRICE_UPDATE:       `${API}/checkout/check-price-update`,
   allOrdersByStatus: (status: number) =>
     `${API}/order-by-delivery-status?status=${status}`,
+  ORDER_DETAILS: (orderId: string | number) =>
+    `${API}/orders/${orderId}`,
 
   // Cart
   CART:                     `${API}/cart`,
@@ -151,6 +153,11 @@ export const URLs = {
   USER_NOTIFICATIONS:       `${API}/user-notifications`,
   NOTIFICATION_SETTINGS:    `${API}/user-notifications-setting`,
   NOTIFICATION_SETTINGS_UPDATE: `${API}/user-notifications-setting/update`,
+  DEVICE_TOKEN_REGISTER:    isNextJsBackend ? `${API}/notifications/device-token` : `${API}/customer/device-token`,
+  NOTIFICATIONS_LIST:       isNextJsBackend ? `${API}/notifications` : `${API}/user-notifications`,
+  NOTIFICATIONS_READ_ALL:   isNextJsBackend ? `${API}/notifications/read-all` : `${API}/user-notifications/read-all`,
+  notificationRead: (id: string | number) =>
+    isNextJsBackend ? `${API}/notifications/${id}/read` : `${API}/user-notifications/${id}/read`,
 
   // Settings & Misc
   GENERAL_SETTINGS:         `${API}/general-settings`,
