@@ -9,11 +9,47 @@ import { CartProvider } from '@/context/CartContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
+import * as Notifications from 'expo-notifications';
+import { registerForPushNotificationsAsync } from '@/lib/notifications';
 
 function RootLayoutNav() {
   const { isOnboarded, isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  useEffect(() => {
+    // 1. Initialize push notifications and get permission/token
+    registerForPushNotificationsAsync().catch((err) => {
+      console.warn('Failed to initialize push notifications:', err);
+    });
+
+    // 2. Listener for foreground notification received
+    const notificationSubscription = Notifications.addNotificationReceivedListener((notification) => {
+      console.log('🔔 Foreground Notification Received:', notification.request.content);
+    });
+
+    // 3. Listener for notification tapped by user
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      console.log('📲 Notification Clicked:', response.notification.request.content);
+      const data = response.notification.request.content.data;
+      if (data?.orderId || data?.order_id) {
+        const id = data.orderId || data.order_id;
+        router.push(`/order/${id}` as any);
+      } else if (data?.productId || data?.product_id) {
+        const id = data.productId || data.product_id;
+        router.push(`/product/${id}` as any);
+      } else if (data?.route) {
+        router.push(data.route as any);
+      } else {
+        router.push('/notifications' as any);
+      }
+    });
+
+    return () => {
+      notificationSubscription.remove();
+      responseSubscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -54,6 +90,8 @@ function RootLayoutNav() {
       <Stack.Screen name="brands" options={{ headerShown: false }} />
       <Stack.Screen name="brand/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="checkout" options={{ headerShown: false }} />
+      <Stack.Screen name="order/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="notifications" options={{ headerShown: false }} />
       <Stack.Screen name="search" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />

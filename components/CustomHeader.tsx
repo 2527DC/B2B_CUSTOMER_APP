@@ -9,6 +9,7 @@ interface CustomHeaderProps {
   onNotificationPress?: () => void;
   showSearch?: boolean;
   showNotification?: boolean;
+  unreadCount?: number;
 }
 
 export function CustomHeader({
@@ -16,6 +17,7 @@ export function CustomHeader({
   onNotificationPress,
   showSearch = true,
   showNotification = true,
+  unreadCount = 0,
 }: CustomHeaderProps) {
   const insets = useSafeAreaInsets();
 
@@ -42,11 +44,16 @@ export function CustomHeader({
             style={styles.notificationButton}
             onPress={onNotificationPress}
             activeOpacity={0.7}
+            accessibilityLabel="Notifications"
           >
             <Bell size={24} color="#ffffff" strokeWidth={2} />
-            <View style={styles.notificationBadge}>
-              <View style={styles.badgeDot} />
-            </View>
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -109,16 +116,24 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-  },
-  badgeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.danger,
+    top: 4,
+    right: 4,
+    backgroundColor: '#dc2626', // Vibrant crimson / red
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1.5,
     borderColor: Colors.primary,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 12,
   },
   searchBar: {
     flexDirection: 'row',
