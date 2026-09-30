@@ -7,4 +7,5 @@ export { CustomHeader } from './CustomHeader';
 export { PromoSlider } from './PromoSlider';
 export { default as Input } from './Input';
 export { default as Button } from './Button';
+export { default as QtyInput } from './QtyInput';
 export { ThemeSelectorModal } from './ThemeSelectorModal';
