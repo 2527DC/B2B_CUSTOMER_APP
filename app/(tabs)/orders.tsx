@@ -73,7 +73,15 @@ interface ApiOrder {
   order_number: string;
   grand_total: number | string;
   created_at: string;
-  packages: OrderPackage[];
+  status?: string;
+  order_status?: number;
+  packages?: OrderPackage[];
+  items?: OrderProductItem[];
+  salesman_name?: string | null;
+  salesman_phone?: string | null;
+  salesman?: { id: number; name: string; phone?: string; salesman_code?: string } | null;
+  can_cancel?: boolean;
+  can_return?: boolean;
 }
 
 // Refund / Return Request Types
@@ -412,84 +420,159 @@ export default function OrdersScreen() {
           }
         >
           {activeTab === 'orders'
-            ? orders.map((order) => (
-                <View key={order.id} style={styles.orderCard}>
-                  {/* Order Card Header */}
-                  <View style={styles.orderCardHeader}>
-                    <View>
-                      <Text style={styles.orderNumber}>#{order.order_number}</Text>
-                      <Text style={styles.orderDate}>{formatDate(order.created_at)}</Text>
+            ? orders.map((order) => {
+                const salesmanName = order.salesman_name || order.salesman?.name;
+                return (
+                  <TouchableOpacity
+                    key={order.id}
+                    style={styles.orderCard}
+                    activeOpacity={0.9}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/order/[id]',
+                        params: { id: String(order.id) },
+                      })
+                    }
+                  >
+                    {/* Order Card Header */}
+                    <View style={styles.orderCardHeader}>
+                      <View>
+                        <Text style={styles.orderNumber}>#{order.order_number}</Text>
+                        <Text style={styles.orderDate}>{formatDate(order.created_at)}</Text>
+                      </View>
+                      <View style={styles.totalBlock}>
+                        <Text style={styles.totalLabel}>Grand Total</Text>
+                        <Text style={styles.grandTotalValue}>
+                          ₹{parseFloat(String(order.grand_total)).toLocaleString('en-IN')}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.totalBlock}>
-                      <Text style={styles.totalLabel}>Grand Total</Text>
-                      <Text style={styles.grandTotalValue}>₹{parseFloat(String(order.grand_total)).toLocaleString('en-IN')}</Text>
-                    </View>
-                  </View>
 
-                  {/* Order Card Body (Packages & Items) */}
-                  <View style={styles.orderCardBody}>
-                    {order.packages &&
-                      order.packages.map((pkg, pIdx) => {
-                        const statusColors = getStatusColor(pkg.delivery_status);
-                        return (
-                          <View key={pkg.id || pIdx} style={styles.packageContainer}>
-                            <View style={styles.packageHeader}>
-                              <Text style={styles.packageCode}>Package: {pkg.package_code || `PKG-${pkg.id}`}</Text>
-                              <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-                                {getStatusIcon(pkg.delivery_status)}
-                                <Text style={[styles.statusText, { color: statusColors.text }]}>
-                                  {getStatusText(pkg.delivery_status)}
+                    {/* Salesman Badge - ONLY SHOWN IF SALESMAN IS ATTACHED */}
+                    {salesmanName ? (
+                      <View style={styles.salesmanCardBadge}>
+                        <UserCheck size={13} color="#0284c7" strokeWidth={2.2} />
+                        <Text style={styles.salesmanCardText}>
+                          Salesman: <Text style={styles.salesmanCardName}>{salesmanName}</Text>
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {/* Order Card Body (Packages & Items) */}
+                    <View style={styles.orderCardBody}>
+                      {order.packages && order.packages.length > 0 ? (
+                        order.packages.map((pkg, pIdx) => {
+                          const statusColors = getStatusColor(pkg.delivery_status);
+                          return (
+                            <View key={pkg.id || pIdx} style={styles.packageContainer}>
+                              <View style={styles.packageHeader}>
+                                <Text style={styles.packageCode}>
+                                  Package: {pkg.package_code || `PKG-${pkg.id}`}
                                 </Text>
+                                <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+                                  {getStatusIcon(pkg.delivery_status)}
+                                  <Text style={[styles.statusText, { color: statusColors.text }]}>
+                                    {getStatusText(pkg.delivery_status)}
+                                  </Text>
+                                </View>
                               </View>
-                            </View>
 
-                            {/* Products inside Package */}
-                            {pkg.products &&
-                              pkg.products.map((item, iIdx) => {
-                                const prod = item.seller_product_sku?.product;
-                                const prodName = prod?.product_name ?? prod?.product?.product_name ?? 'Product Item';
-                                const prodImg = prod?.thum_img ?? prod?.product?.thumbnail_image_source ?? '';
-                                return (
-                                  <View key={item.id || iIdx} style={styles.productRow}>
-                                    <Image
-                                      source={
-                                        prodImg
-                                          ? { uri: assetUrl(prodImg) }
-                                          : require('@/assets/images/icon.png')
-                                      }
-                                      style={styles.productImage}
-                                    />
-                                    <View style={styles.productInfo}>
-                                      <Text style={styles.productName} numberOfLines={2}>
-                                        {prodName}
-                                      </Text>
-                                      <View style={styles.productMeta}>
-                                        <Text style={styles.productQty}>Qty: {item.qty}</Text>
-                                        <Text style={styles.productPrice}>₹{parseFloat(String(item.price)).toLocaleString('en-IN')}</Text>
+                              {/* Products inside Package */}
+                              {pkg.products &&
+                                pkg.products.map((item, iIdx) => {
+                                  const prod = item.seller_product_sku?.product;
+                                  const prodName =
+                                    prod?.product_name ??
+                                    prod?.product?.product_name ??
+                                    (item as any).product_title ??
+                                    'Product Item';
+                                  const prodImg =
+                                    prod?.thum_img ??
+                                    prod?.product?.thumbnail_image_source ??
+                                    (item as any).thumbnail ??
+                                    '';
+                                  return (
+                                    <View key={item.id || iIdx} style={styles.productRow}>
+                                      <Image
+                                        source={
+                                          prodImg
+                                            ? { uri: assetUrl(prodImg) }
+                                            : require('@/assets/images/icon.png')
+                                        }
+                                        style={styles.productImage}
+                                      />
+                                      <View style={styles.productInfo}>
+                                        <Text style={styles.productName} numberOfLines={2}>
+                                          {prodName}
+                                        </Text>
+                                        <View style={styles.productMeta}>
+                                          <Text style={styles.productQty}>Qty: {item.qty}</Text>
+                                          <Text style={styles.productPrice}>
+                                            ₹{parseFloat(String(item.price)).toLocaleString('en-IN')}
+                                          </Text>
+                                        </View>
                                       </View>
                                     </View>
+                                  );
+                                })}
+                            </View>
+                          );
+                        })
+                      ) : order.items && order.items.length > 0 ? (
+                        <View style={styles.packageContainer}>
+                          {order.items.map((item: any, iIdx: number) => {
+                            const prodName =
+                              item.product_title ||
+                              item.seller_product_sku?.product?.product_name ||
+                              'Product Item';
+                            const prodImg =
+                              item.thumbnail || item.seller_product_sku?.product?.thum_img || '';
+                            return (
+                              <View key={item.id || iIdx} style={styles.productRow}>
+                                <Image
+                                  source={
+                                    prodImg
+                                      ? { uri: assetUrl(prodImg) }
+                                      : require('@/assets/images/icon.png')
+                                  }
+                                  style={styles.productImage}
+                                />
+                                <View style={styles.productInfo}>
+                                  <Text style={styles.productName} numberOfLines={2}>
+                                    {prodName}
+                                  </Text>
+                                  <View style={styles.productMeta}>
+                                    <Text style={styles.productQty}>Qty: {item.qty}</Text>
+                                    <Text style={styles.productPrice}>
+                                      ₹{parseFloat(String(item.price || item.unit_price)).toLocaleString('en-IN')}
+                                    </Text>
                                   </View>
-                                );
-                              })}
-                          </View>
-                        );
-                      })}
-                  </View>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ) : null}
+                    </View>
 
-                  {/* Actions */}
-                  <View style={styles.orderActions}>
-                    <TouchableOpacity
-                      style={styles.actionBtn}
-                      onPress={() =>
-                        Alert.alert('Order Details', `Order Number: ${order.order_number}\nDate: ${formatDate(order.created_at)}`)
-                      }
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.actionBtnText}>View Details</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
+                    {/* Actions */}
+                    <View style={styles.orderActions}>
+                      <TouchableOpacity
+                        style={styles.actionBtn}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/order/[id]',
+                            params: { id: String(order.id) },
+                          })
+                        }
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.actionBtnText}>View Details</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
             : refunds.map((refund) => {
                 const refundStateTxt = getRefundStatusText(refund);
                 const statusColors = getRefundStatusColor(refundStateTxt);
@@ -788,6 +871,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f8fafc',
     backgroundColor: '#fafbfd',
+  },
+  salesmanCardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f0f9ff',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0f2fe',
+  },
+  salesmanCardText: {
+    fontSize: 11,
+    color: '#0369a1',
+    fontWeight: '600',
+  },
+  salesmanCardName: {
+    fontWeight: '800',
+    color: '#0284c7',
   },
   orderNumber: {
     fontSize: 14,
