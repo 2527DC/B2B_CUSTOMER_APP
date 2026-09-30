@@ -1,18 +1,38 @@
 {
   "expo": {
-    "name": "B2B-market",
-    "slug": "b2b-market",
+    "name": "Dhatri",
+    "slug": "dhatri-store",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "b2bmarket",
+    "scheme": "dhatristore",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.b2b.market"
+      "bundleIdentifier": "com.dhatri.store",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ],
+        "NSCameraUsageDescription": "We need access to your camera to allow you to set your profile picture and support ticket image.",
+        "NSPhotoLibraryUsageDescription": "We need access to your photo library to allow you to set your profile picture and support ticket image.",
+        "NSMicrophoneUsageDescription": "We need access to your microphone for recording."
+      }
     },
     "android": {
-      "package": "com.b2b.market"
+      "package": "com.dhatri.store",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -24,7 +44,20 @@
       "expo-font",
       "expo-web-browser",
       "expo-splash-screen",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "We need access to your camera to allow you to set your profile picture and support ticket image."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#059669"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

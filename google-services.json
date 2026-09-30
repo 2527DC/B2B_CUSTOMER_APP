@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "342595200795",
+    "project_id": "amazcart-ca978",
+    "storage_bucket": "amazcart-ca978.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:342595200795:android:10acd6641d6f5ae84355be",
+        "android_client_info": {
+          "package_name": "com.amazcart.store"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "342595200795-bh02vufos852ql0se1lv6rbd4p0rgqm2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMoq0qHPRDuSNSgYr-nOaMotpaFQFLi7I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "342595200795-bh02vufos852ql0se1lv6rbd4p0rgqm2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "342595200795-u0ljpolhvr3p612eb5dks1t4s4a0b62h.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.dhatri.store"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:342595200795:android:44be7b566c7db96b4355be",
+        "android_client_info": {
+          "package_name": "com.dhatri.store"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "342595200795-v99j3g69cjjliialap1r6thullg1j71f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dhatri.store",
+            "certificate_hash": "9cafb0ff120e372a6e455efa948df346ea72293e"
+          }
+        },
+        {
+          "client_id": "342595200795-bh02vufos852ql0se1lv6rbd4p0rgqm2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMoq0qHPRDuSNSgYr-nOaMotpaFQFLi7I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "342595200795-bh02vufos852ql0se1lv6rbd4p0rgqm2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "342595200795-u0ljpolhvr3p612eb5dks1t4s4a0b62h.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.dhatri.store"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
