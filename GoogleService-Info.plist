@@ -2,24 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CLIENT_ID</key>
-	<string>342595200795-u0ljpolhvr3p612eb5dks1t4s4a0b62h.apps.googleusercontent.com</string>
-	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.342595200795-u0ljpolhvr3p612eb5dks1t4s4a0b62h</string>
-	<key>ANDROID_CLIENT_ID</key>
-	<string>342595200795-v99j3g69cjjliialap1r6thullg1j71f.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyD-eb4vC9vaaoAUysaJPkaR39WoMQyVPD8</string>
+	<string>AIzaSyDCbdZhjPAtnwoYJxB2RivAdGjI2nCtMV8</string>
 	<key>GCM_SENDER_ID</key>
-	<string>342595200795</string>
+	<string>1005754510126</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.dhatri.store</string>
 	<key>PROJECT_ID</key>
-	<string>amazcart-ca978</string>
+	<string>dhathri-da5d3</string>
 	<key>STORAGE_BUCKET</key>
-	<string>amazcart-ca978.firebasestorage.app</string>
+	<string>dhathri-da5d3.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:342595200795:ios:511381c2514021ef4355be</string>
+	<string>1:1005754510126:ios:c3b75dc5686f5df76028bf</string>
 </dict>
 </plist>

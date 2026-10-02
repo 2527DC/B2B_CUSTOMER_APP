@@ -7,28 +7,28 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		110EAAE7E74C057B79AC3CA1 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 262E7C9A0FD849FBA8987FAD /* ExpoModulesProvider.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		13D2F52191FB43F7A5DA40D2 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 34B4567E1890477FA6C0B0E0 /* GoogleService-Info.plist */; };
-		3CEABA60964CD84857A559B9 /* libPods-Dhatri.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 51170EA1722732DABB2D75E1 /* libPods-Dhatri.a */; };
+		356FDC124B2C48C1BEB64E3A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4E2554478571B5362EFEAC13 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
+		69AEDD4AFDFF61B0CDBBEEDD /* libPods-Dhatri.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6885CA72E6176568D3A236B5 /* libPods-Dhatri.a */; };
+		8B99FA0C8AA94CAA9D87F9E2 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2181BA01372F49BF962FBA2C /* GoogleService-Info.plist */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		C04F382E3CB4EA9675845A2C /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A38BA4A77E02C7EC22994E /* ExpoModulesProvider.swift */; };
-		DC0ABDA26A206DAAA05BA588 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 25B2681A299B3C67DFB2B1C4 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		017EC1B70E79296AE9856ABD /* Pods-Dhatri.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Dhatri.release.xcconfig"; path = "Target Support Files/Pods-Dhatri/Pods-Dhatri.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Dhatri.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dhatri.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Dhatri/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Dhatri/Info.plist; sourceTree = "<group>"; };
-		23A38BA4A77E02C7EC22994E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Dhatri/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		25B2681A299B3C67DFB2B1C4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Dhatri/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		34B4567E1890477FA6C0B0E0 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Dhatri/GoogleService-Info.plist"; sourceTree = "<group>"; };
-		51170EA1722732DABB2D75E1 /* libPods-Dhatri.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Dhatri.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2181BA01372F49BF962FBA2C /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Dhatri/GoogleService-Info.plist"; sourceTree = "<group>"; };
+		262E7C9A0FD849FBA8987FAD /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Dhatri/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		4E2554478571B5362EFEAC13 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Dhatri/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		6885CA72E6176568D3A236B5 /* libPods-Dhatri.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Dhatri.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		72E04864A3AA69F72BD2C141 /* Pods-Dhatri.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Dhatri.debug.xcconfig"; path = "Target Support Files/Pods-Dhatri/Pods-Dhatri.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Dhatri/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C3C5C9050AAAB13F15345383 /* Pods-Dhatri.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Dhatri.debug.xcconfig"; path = "Target Support Files/Pods-Dhatri/Pods-Dhatri.debug.xcconfig"; sourceTree = "<group>"; };
+		E76293ED7CEB64F3CB1BFE76 /* Pods-Dhatri.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Dhatri.release.xcconfig"; path = "Target Support Files/Pods-Dhatri/Pods-Dhatri.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Dhatri/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Dhatri-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Dhatri-Bridging-Header.h"; path = "Dhatri/Dhatri-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -39,23 +39,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3CEABA60964CD84857A559B9 /* libPods-Dhatri.a in Frameworks */,
+				69AEDD4AFDFF61B0CDBBEEDD /* libPods-Dhatri.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0E5D0256183195E244560830 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				C3C5C9050AAAB13F15345383 /* Pods-Dhatri.debug.xcconfig */,
-				017EC1B70E79296AE9856ABD /* Pods-Dhatri.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		13B07FAE1A68108700A75B9A /* Dhatri */ = {
 			isa = PBXGroup;
 			children = (
@@ -65,8 +55,8 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				34B4567E1890477FA6C0B0E0 /* GoogleService-Info.plist */,
-				25B2681A299B3C67DFB2B1C4 /* PrivacyInfo.xcprivacy */,
+				2181BA01372F49BF962FBA2C /* GoogleService-Info.plist */,
+				4E2554478571B5362EFEAC13 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Dhatri;
 			sourceTree = "<group>";
@@ -75,9 +65,27 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				51170EA1722732DABB2D75E1 /* libPods-Dhatri.a */,
+				6885CA72E6176568D3A236B5 /* libPods-Dhatri.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3B105CD032C6E1FF1373CFD4 /* Dhatri */ = {
+			isa = PBXGroup;
+			children = (
+				262E7C9A0FD849FBA8987FAD /* ExpoModulesProvider.swift */,
+			);
+			name = Dhatri;
+			sourceTree = "<group>";
+		};
+		6850D3A8E14AA95E094CBE13 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				72E04864A3AA69F72BD2C141 /* Pods-Dhatri.debug.xcconfig */,
+				E76293ED7CEB64F3CB1BFE76 /* Pods-Dhatri.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -94,8 +102,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				0E5D0256183195E244560830 /* Pods */,
-				F1A2C90C53A027D071648B83 /* ExpoModulesProviders */,
+				6850D3A8E14AA95E094CBE13 /* Pods */,
+				FCB10008FB16055050CCD5FE /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -119,18 +127,10 @@
 			path = Dhatri/Supporting;
 			sourceTree = "<group>";
 		};
-		D3A49C01311B3352152BCCAE /* Dhatri */ = {
+		FCB10008FB16055050CCD5FE /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				23A38BA4A77E02C7EC22994E /* ExpoModulesProvider.swift */,
-			);
-			name = Dhatri;
-			sourceTree = "<group>";
-		};
-		F1A2C90C53A027D071648B83 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				D3A49C01311B3352152BCCAE /* Dhatri */,
+				3B105CD032C6E1FF1373CFD4 /* Dhatri */,
 			);
 			name = ExpoModulesProviders;
 			sourceTree = "<group>";
@@ -143,13 +143,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Dhatri" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				553F8981D0F206605BEF635C /* [Expo] Configure project */,
+				4C3C68A2FDEB2D58EDBE9BBF /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				E0F672F1951331AE3A64FAFC /* [CP] Embed Pods Frameworks */,
+				EB9566ECBC0F787115C818CE /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -199,8 +199,8 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				13D2F52191FB43F7A5DA40D2 /* GoogleService-Info.plist in Resources */,
-				DC0ABDA26A206DAAA05BA588 /* PrivacyInfo.xcprivacy in Resources */,
+				8B99FA0C8AA94CAA9D87F9E2 /* GoogleService-Info.plist in Resources */,
+				356FDC124B2C48C1BEB64E3A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -246,7 +246,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		553F8981D0F206605BEF635C /* [Expo] Configure project */ = {
+		4C3C68A2FDEB2D58EDBE9BBF /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -310,7 +310,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Dhatri/Pods-Dhatri-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		E0F672F1951331AE3A64FAFC /* [CP] Embed Pods Frameworks */ = {
+		EB9566ECBC0F787115C818CE /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -356,7 +356,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				C04F382E3CB4EA9675845A2C /* ExpoModulesProvider.swift in Sources */,
+				110EAAE7E74C057B79AC3CA1 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -365,7 +365,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C3C5C9050AAAB13F15345383 /* Pods-Dhatri.debug.xcconfig */;
+			baseConfigurationReference = 72E04864A3AA69F72BD2C141 /* Pods-Dhatri.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -402,7 +402,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 017EC1B70E79296AE9856ABD /* Pods-Dhatri.release.xcconfig */;
+			baseConfigurationReference = E76293ED7CEB64F3CB1BFE76 /* Pods-Dhatri.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
