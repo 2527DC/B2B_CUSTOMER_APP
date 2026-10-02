@@ -38,11 +38,11 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Color theme - Extracted from https://dhatri.store/
-  const PRIMARY_COLOR = Colors.primary;       // #4f7942
-  const DARK_GREEN = Colors.primaryDark;      // #3b5c31
-  const SUBTEXT_COLOR = Colors.textSecondary; // #64748b
-  const WHITE_COLOR = '#ffffff';
+  // Color theme - imported from central theme
+  const PRIMARY_COLOR = Colors.primary;
+  const DARK_GREEN = Colors.primaryDark;
+  const SUBTEXT_COLOR = Colors.textSecondary;
+  const WHITE_COLOR = Colors.surface;
 
   const handleLogoPress = async () => {
     try {
@@ -96,7 +96,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const result = await sendOtp(cleanPhone);
+      const result = await sendOtp(cleanPhone, 'login');
       setOtpSent(true);
       setErrors({});
       if (result.devMode) {
@@ -109,8 +109,24 @@ export default function LoginScreen() {
         );
       }
     } catch (error: any) {
-      setErrors({ otp: error?.message || 'Failed to send OTP.' });
-      Alert.alert('Could Not Send OTP', error?.message || 'Please try again in a moment.', [{ text: 'OK' }]);
+      const errorMsg = error?.message || 'Failed to send OTP.';
+      setOtpSent(false);
+
+      if (
+        errorMsg.toLowerCase().includes('not register') ||
+        errorMsg.toLowerCase().includes('not found') ||
+        errorMsg.toLowerCase().includes('no account')
+      ) {
+        const notRegisteredMsg = 'You have not registered. Please register to login.';
+        setErrors({ phone: notRegisteredMsg });
+        Alert.alert('Not Registered', notRegisteredMsg, [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Register Now', onPress: () => router.push('/register') },
+        ]);
+      } else {
+        setErrors({ otp: errorMsg });
+        Alert.alert('Could Not Send OTP', errorMsg, [{ text: 'OK' }]);
+      }
     } finally {
       setLoading(false);
     }
@@ -133,7 +149,7 @@ export default function LoginScreen() {
     try {
       if (loginMode === 'otp') {
         const inputOtp = parseInt(otp.trim(), 10);
-        await loginWithOtp(phone.trim(), inputOtp);
+        await loginWithOtp(phone.trim(), inputOtp, 'login');
       } else {
         await login(phone.trim(), password.trim());
       }
@@ -143,6 +159,19 @@ export default function LoginScreen() {
     } catch (error: any) {
       console.error('Login error details:', error);
       const errorMessage = error?.message || 'Login failed. Please check your credentials.';
+
+      if (
+        errorMessage.toLowerCase().includes('not register') ||
+        errorMessage.toLowerCase().includes('not found')
+      ) {
+        const notRegisteredMsg = 'You have not registered. Please register to login.';
+        setErrors((prev) => ({ ...prev, phone: notRegisteredMsg }));
+        Alert.alert('Not Registered', notRegisteredMsg, [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Register Now', onPress: () => router.push('/register') },
+        ]);
+        return;
+      }
 
       Alert.alert('Login Failed', errorMessage, [{ text: 'OK' }]);
 
@@ -180,7 +209,7 @@ export default function LoginScreen() {
               <Image source={logo} style={styles.logo} resizeMode="contain" />
             </TouchableOpacity>
 
-            <Text style={[styles.title, { color: DARK_GREEN }]}>Dhatri Mart</Text>
+            <Text style={[styles.title, { color: DARK_GREEN }]}>Dhatri</Text>
             <Text style={[styles.subtitle, { color: SUBTEXT_COLOR }]}>
               Sign in to your wholesale B2B account
             </Text>
@@ -388,7 +417,7 @@ const styles = StyleSheet.create({
   },
   modeToggle: {
     flexDirection: 'row',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: Colors.borderLight,
     borderRadius: 10,
     padding: 4,
     marginBottom: 24,
@@ -400,7 +429,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modeButtonActive: {
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.surface,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -410,7 +439,7 @@ const styles = StyleSheet.create({
   modeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   modeButtonTextActive: {
     color: Colors.primary,
@@ -445,22 +474,22 @@ const styles = StyleSheet.create({
   },
   hintBox: {
     marginTop: 24,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: Colors.primary10,
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: Colors.primary20,
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
   },
   hintTitle: {
     fontSize: 12,
-    color: '#166534',
+    color: Colors.primaryDark,
     fontWeight: '600',
     marginBottom: 2,
   },
   hintBody: {
     fontSize: 13,
-    color: '#15803d',
+    color: Colors.primary,
   },
   hintBold: {
     fontWeight: '700',
@@ -473,7 +502,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#64748b',
+    color: Colors.textSecondary,
   },
   registerLink: {
     fontSize: 14,
