@@ -185,7 +185,7 @@ export function getComponentTheme(theme: ThemePalette): ComponentTheme {
  */
 export const ThemePresets: Record<string, { name: string; primary: string }> = {
   dhatri: {
-    name: 'Dhatri Mart (Default)',
+    name: 'Dhatri (Default)',
     primary: '#4f7942', // Official Dhatri Store green
   },
   emerald: {

@@ -155,7 +155,7 @@ export function ThemeSelectorModal({ visible, onClose }: ThemeSelectorModalProps
             {/* Reset Button */}
             <TouchableOpacity style={styles.resetBtn} onPress={handleReset} activeOpacity={0.7}>
               <RotateCcw size={16} color="#64748b" style={{ marginRight: 6 }} />
-              <Text style={styles.resetBtnText}>Reset to Official Dhatri Mart (#4f7942)</Text>
+              <Text style={styles.resetBtnText}>Reset to Official Dhatri (#4f7942)</Text>
             </TouchableOpacity>
           </ScrollView>
 
