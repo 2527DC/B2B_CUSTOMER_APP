@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Search, Bell, Menu } from 'lucide-react-native';
+import { Search, Bell } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 
@@ -23,12 +23,9 @@ export function CustomHeader({
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 12) }]}>
-      {/* Top Row: Menu, Logo badge, Title, Notification */}
+      {/* Top Row: Logo badge, Title, Notification */}
       <View style={styles.topRow}>
         <View style={styles.leftSection}>
-          <TouchableOpacity style={styles.menuButton} activeOpacity={0.7}>
-            <Menu size={24} color="#ffffff" />
-          </TouchableOpacity>
           <View style={styles.logoWrapper}>
             <Image
               source={require('@/assets/images/logo.jpeg')}
@@ -36,7 +33,7 @@ export function CustomHeader({
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.brandTitle}>Dhatri Mart</Text>
+          <Text style={styles.brandTitle}>Dhatri</Text>
         </View>
 
         {showNotification && (
@@ -86,9 +83,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  menuButton: {
-    padding: 4,
   },
   logoWrapper: {
     width: 32,

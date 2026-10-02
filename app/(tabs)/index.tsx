@@ -72,6 +72,8 @@ const toProduct = (item: any): Product => {
   const sellingPrice = item.min_sell_price ?? item.skus?.[0]?.selling_price ?? p?.min_sell_price ?? 0;
   const mrpVal = p?.mrp ?? item.skus?.[0]?.mrp ?? item.max_sell_price ?? p?.max_sell_price ?? sellingPrice;
   const brandId = (item.brand_id ?? p?.brand_id ?? item.brandId ?? p?.brandId ?? '').toString();
+  const unitCreated = item.units ?? item.unit ?? item.unit_name ?? p?.units ?? p?.unit ?? p?.unit_name ?? item.unit?.name ?? p?.unit?.name ?? item.skus?.[0]?.unit_name;
+  const unitStr = typeof unitCreated === 'string' ? unitCreated : (unitCreated?.name || undefined);
 
   return {
     id: (p?.id ?? item.id).toString(),
@@ -82,6 +84,11 @@ const toProduct = (item: any): Product => {
     brand_id: brandId,
     category_id: (item.category_id ?? p?.category_id ?? '').toString(),
     description: p?.description ?? item.description ?? '',
+    unit_name: unitStr,
+    unit: unitStr,
+    units: unitStr,
+    unit_value: item.unit_value ?? item.skus?.[0]?.weight ?? (item.skus?.[0]?.sku && item.skus[0].sku.length <= 15 ? item.skus[0].sku : undefined),
+    pack_size: item.unit_value ?? (item.skus?.[0]?.variant_name && item.skus[0].variant_name.length <= 20 ? item.skus[0].variant_name : undefined) ?? item.skus?.[0]?.weight,
     rating: 0,
     reviews_count: 0,
     created_at: '',
