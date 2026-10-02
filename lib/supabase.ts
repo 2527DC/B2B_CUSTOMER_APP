@@ -29,6 +29,11 @@ export type Product = {
   brand_id?: string;
   category_id?: string;
   description?: string;
+  unit_name?: string;
+  unit?: string;
+  units?: string;
+  unit_value?: string;
+  pack_size?: string;
   rating?: number;
   reviews_count?: number;
   created_at: string;
