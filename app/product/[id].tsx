@@ -6,14 +6,15 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ChevronLeft, Star, Heart, ShoppingCart,
-  Plus, Minus, ShieldCheck, Truck, RotateCcw, Tag,
+  ChevronLeft, Heart, ShoppingCart,
+  Plus, Minus, ShieldCheck, Tag, Package,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 import { Colors } from '@/constants/theme';
 import QtyInput from '@/components/QtyInput';
 
@@ -33,6 +34,8 @@ interface ProductInfo {
   id: number;
   mrp?: number;
   product_name: string;
+  unit_name?: string | null;
+  unit_id?: number | null;
   thumbnail_image_source: string;
   description?: string;
   specification?: string;
@@ -52,7 +55,9 @@ interface WholesalePrice {
 interface Sku {
   id: number;
   sku?: string;
-  variant_name?: string;
+  weight?: string | null;
+  unit_name?: string | null;
+  variant_name?: string | null;
   attributes?: { name: string; value: string }[];
   variant_image?: string;
   mrp?: number;
@@ -90,12 +95,12 @@ export default function ProductDetailsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { addToCart, cartItems } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   const [data, setData] = useState<ProductData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
@@ -204,8 +209,20 @@ export default function ProductDetailsScreen() {
     setSelectedSkuId(next.id);
     setActiveImage(0);
   };
-  const rating = data.avg_rating ?? 0;
-  const totalSales = data.total_sale ?? 0;
+  const rawUnitName = (sku?.unit_name || p?.unit_name || (data as any)?.unit_name || (data as any)?.units || (data as any)?.unit || '').trim();
+  const unitName = rawUnitName ? (rawUnitName.charAt(0).toUpperCase() + rawUnitName.slice(1)) : '';
+  let packVal = (sku?.weight || sku?.variant_name || '').trim();
+
+  let packDisplay = '';
+  if (packVal && unitName) {
+    packDisplay = packVal.toLowerCase().includes(unitName.toLowerCase()) ? packVal : `${packVal} ${unitName}`;
+  } else if (packVal) {
+    packDisplay = packVal;
+  } else if (unitName) {
+    packDisplay = `1 ${unitName}`;
+  }
+
+  const effectiveUnit = unitName || 'Bag';
 
   // Gallery: thumbnail first, then gallery images
   const galleryUris = [
@@ -244,10 +261,28 @@ export default function ProductDetailsScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.circleBtn}
-            onPress={() => setIsFavorite(!isFavorite)}
+            onPress={() => {
+              if (data) {
+                toggleWishlist({
+                  id: data.id,
+                  productId: data.id,
+                  name: p?.product_name || 'Product',
+                  price: sellPrice,
+                  mrp: mrpPrice,
+                  image: p?.thumbnail_image_source,
+                  stock: sku?.product_stock,
+                  skuId: sku?.id,
+                });
+              }
+            }}
             activeOpacity={0.7}
           >
-            <Heart size={22} color={isFavorite ? '#ef4444' : '#64748b'} fill={isFavorite ? '#ef4444' : 'none'} strokeWidth={2} />
+            <Heart
+              size={22}
+              color={data && isInWishlist(data.id) ? '#ef4444' : '#64748b'}
+              fill={data && isInWishlist(data.id) ? '#ef4444' : 'none'}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
           <TouchableOpacity style={styles.circleBtn} onPress={openCart} activeOpacity={0.7}>
             <ShoppingCart size={22} color={Colors.text} strokeWidth={2} />
@@ -316,29 +351,38 @@ export default function ProductDetailsScreen() {
           {/* Name */}
           <Text style={styles.productName}>{data.product_name}</Text>
 
-          {/* Rating + Sales */}
-          <View style={styles.metaRow}>
-            {rating > 0 && (
-              <View style={styles.ratingChip}>
-                <Star size={13} color="#f59e0b" fill="#f59e0b" />
-                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-              </View>
-            )}
-            {totalSales > 0 && (
-              <Text style={styles.salesText}>{totalSales} sold</Text>
-            )}
-          </View>
-
           {/* Pricing */}
           <View style={styles.pricingRow}>
             <Text style={styles.sellPrice}>₹{sellPrice.toFixed(0)}</Text>
             {hasDiscount && (
-              <Text style={styles.mrpText}>₹{mrpPrice.toFixed(0)}</Text>
+              <View style={styles.mrpContainer}>
+                <Text style={styles.mrpText}>₹{mrpPrice.toFixed(0)}</Text>
+                {discountPct > 0 && (
+                  <View style={styles.inlineDiscountBadge}>
+                    <Text style={styles.inlineDiscountBadgeText}>{discountPct}% OFF</Text>
+                  </View>
+                )}
+              </View>
             )}
             <View style={[styles.stockBadge, !inStock && styles.outOfStockBadge]}>
               <View style={[styles.stockDot, !inStock && styles.outOfStockDot]} />
               <Text style={[styles.stockText, !inStock && styles.outOfStockText]}>
                 {inStock ? 'In Stock' : 'Out of Stock'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Unit & Value Highlight Banner */}
+          <View style={styles.unitHighlightCard}>
+            <View style={styles.unitIconContainer}>
+              <Package size={18} color="#059669" strokeWidth={2.2} />
+            </View>
+            <View style={styles.unitTextCol}>
+              <Text style={styles.unitHeadline}>
+                {packDisplay ? `${packDisplay} Pack` : `1 ${effectiveUnit}`}
+              </Text>
+              <Text style={styles.unitSubRate}>
+                Unit Rate: <Text style={styles.unitSubRateBold}>₹{sellPrice.toFixed(0)} per {effectiveUnit}</Text>
               </Text>
             </View>
           </View>
@@ -489,28 +533,6 @@ export default function ProductDetailsScreen() {
               )}
             </View>
           )}
-
-          {/* Delivery & Returns */}
-          <View style={styles.featuresGrid}>
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Truck size={20} color={Colors.primary} />
-              </View>
-              <View>
-                <Text style={styles.featureTitle}>Free Delivery</Text>
-                <Text style={styles.featureSub}>On orders over ₹500</Text>
-              </View>
-            </View>
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <RotateCcw size={20} color={Colors.primary} />
-              </View>
-              <View>
-                <Text style={styles.featureTitle}>Easy Returns</Text>
-                <Text style={styles.featureSub}>30-day return window</Text>
-              </View>
-            </View>
-          </View>
         </View>
       </ScrollView>
 
@@ -648,16 +670,53 @@ const styles = StyleSheet.create({
   brandLogo:  { width: 32, height: 32, borderRadius: 6, backgroundColor: '#f1f5f9' },
   brandName:  { fontSize: 13, fontWeight: '600', color: '#64748b' },
 
-  productName: { fontSize: 20, fontWeight: '800', color: '#1e293b', lineHeight: 26, marginBottom: 8 },
+  productName: { fontSize: 20, fontWeight: '800', color: '#1e293b', lineHeight: 26, marginBottom: 12 },
 
-  metaRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  ratingChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
-  ratingText: { fontSize: 13, fontWeight: '700', color: '#92400e' },
-  salesText:  { fontSize: 12, color: '#94a3b8' },
-
-  pricingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 },
+  pricingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 },
   sellPrice:   { fontSize: 28, fontWeight: '800', color: Colors.primary },
-  mrpText:     { fontSize: 17, color: '#94a3b8', textDecorationLine: 'line-through', alignSelf: 'flex-end', marginBottom: 3 },
+  mrpContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-end', marginBottom: 4 },
+  mrpText:     { fontSize: 16, color: '#dc2626', textDecorationLine: 'line-through', fontWeight: '600' },
+  inlineDiscountBadge: { backgroundColor: '#fee2e2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  inlineDiscountBadgeText: { fontSize: 11, fontWeight: '700', color: '#dc2626' },
+
+  unitHighlightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  unitIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#dcfce7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitTextCol: {
+    flex: 1,
+  },
+  unitHeadline: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  unitSubRate: {
+    fontSize: 12,
+    color: '#166534',
+    marginTop: 2,
+  },
+  unitSubRateBold: {
+    fontWeight: '800',
+    color: '#14532d',
+  },
 
   stockBadge: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#ecfdf5',
@@ -718,11 +777,6 @@ const styles = StyleSheet.create({
   sellerName:  { fontSize: 15, fontWeight: '700', color: '#1e293b' },
   sellerPhone: { fontSize: 13, color: '#64748b', marginTop: 2 },
 
-  featuresGrid: { flexDirection: 'row', gap: 16, marginBottom: 10 },
-  featureItem:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  featureIcon:  { width: 40, height: 40, borderRadius: 10, backgroundColor: Colors.primary10, alignItems: 'center', justifyContent: 'center' },
-  featureTitle: { fontSize: 13, fontWeight: '600', color: '#1e293b' },
-  featureSub:   { fontSize: 11, color: '#94a3b8', marginTop: 1 },
 
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
