@@ -10,8 +10,8 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { Package, RotateCcw, Truck, CheckCircle, Clock, UserCheck, ShieldAlert } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Package, RotateCcw, Truck, CheckCircle, Clock, UserCheck, ShieldAlert, XCircle, AlertTriangle, ChevronRight } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
@@ -75,6 +75,10 @@ interface ApiOrder {
   created_at: string;
   status?: string;
   order_status?: number;
+  is_rto?: boolean;
+  rto_reason?: string | null;
+  note?: string | null;
+  cancel_reason?: string | null;
   packages?: OrderPackage[];
   items?: OrderProductItem[];
   salesman_name?: string | null;
@@ -85,6 +89,18 @@ interface ApiOrder {
 }
 
 // Refund / Return Request Types
+interface ApiRefundProductItem {
+  id: number;
+  product_sku_id?: number;
+  product_name: string;
+  product_image?: string;
+  sku?: string;
+  unit?: string;
+  return_qty: number;
+  return_amount: number | string;
+  reason?: string;
+}
+
 interface RefundProduct {
   id: number;
   return_qty: number;
@@ -100,13 +116,30 @@ interface RefundDetail {
 
 interface ApiRefund {
   id: number;
-  total_return_amount: number | string;
-  refund_state: string | number;
-  is_confirmed: number;
-  is_refunded: number;
-  is_completed: number;
+  order_id: number;
+  order_number?: string;
+  order_date?: string;
+  order_status?: string;
+  payment_method?: string;
+  warehouse_name?: string;
+  status?: string;
+  total_amount?: number | string;
+  total_return_amount?: number | string;
   created_at: string;
-  refund_details: RefundDetail[];
+  rejection_note?: string;
+  driver?: {
+    id?: number;
+    name: string;
+    phone: string;
+    vehicle_number?: string;
+  } | null;
+  items?: ApiRefundProductItem[];
+  // Legacy backward compat fields
+  refund_state?: string | number;
+  is_confirmed?: number;
+  is_refunded?: number;
+  is_completed?: number;
+  refund_details?: RefundDetail[];
 }
 
 interface StatusChip {
@@ -115,18 +148,45 @@ interface StatusChip {
 }
 
 const ORDER_STATUS_CHIPS: StatusChip[] = [
+  { id: 0, label: 'All' },
   { id: 1, label: 'Pending' },
-  { id: 2, label: 'Processing' },
-  { id: 3, label: 'Shipped' },
+  { id: 2, label: 'Confirmed' },
+  { id: 3, label: 'Out for Delivery' },
   { id: 5, label: 'Delivered' },
+  { id: 6, label: 'RTO / Returned' },
+  { id: 4, label: 'Cancelled' },
 ];
 
 export default function OrdersScreen() {
   const router = useRouter();
+  const { tab, status: statusParam } = useLocalSearchParams<{ tab?: string; status?: string }>();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<TabType>('orders');
-  const [selectedStatus, setSelectedStatus] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<TabType>(tab === 'returns' ? 'returns' : 'orders');
+
+  useEffect(() => {
+    if (tab === 'returns') {
+      setActiveTab('returns');
+    } else if (tab === 'orders') {
+      setActiveTab('orders');
+    }
+  }, [tab]);
+
+  const [selectedStatus, setSelectedStatus] = useState<number>(() => {
+    if (statusParam !== undefined && statusParam !== null) {
+      const s = parseInt(statusParam, 10);
+      if (!isNaN(s)) return s;
+    }
+    return 0; // Default to 'All'
+  });
+
+  useEffect(() => {
+    if (statusParam !== undefined && statusParam !== null) {
+      const s = parseInt(statusParam, 10);
+      if (!isNaN(s)) setSelectedStatus(s);
+    }
+  }, [statusParam]);
+
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [refunds, setRefunds] = useState<ApiRefund[]>([]);
   
@@ -140,7 +200,9 @@ export default function OrdersScreen() {
     if (!isRefreshed) setLoading(true);
     setError(null);
     try {
-      const url = `${URLs.API_URL}/order-by-delivery-status?status=${selectedStatus}&lang=en`;
+      const url = selectedStatus === 0
+        ? `${URLs.API_URL}/order-by-delivery-status?lang=en`
+        : `${URLs.API_URL}/order-by-delivery-status?status=${selectedStatus}&lang=en`;
       console.log('[Orders] Loading URL:', url);
       const response = await apiClient.get(url);
       if (response.status === 200 && response.data?.orders) {
@@ -205,27 +267,48 @@ export default function OrdersScreen() {
   };
 
   // ─── Status Helpers ────────────────────────────────────────────────────────
-  const getStatusIcon = (status: string | number) => {
+  const getStatusIcon = (status: string | number, order?: ApiOrder) => {
+    if (order?.is_rto || order?.status === 'RTO_INITIATED' || order?.status === 'RTO_COMPLETED') {
+      return <RotateCcw size={15} color="#c2410c" strokeWidth={2.5} />;
+    }
+    if (order?.status === 'CANCELLED') {
+      return <XCircle size={15} color="#dc2626" strokeWidth={2.5} />;
+    }
     const s = typeof status === 'string' ? parseInt(status, 10) : status;
+    if (s === 6) return <RotateCcw size={15} color="#c2410c" strokeWidth={2.5} />;
+    if (s === 4) return <XCircle size={15} color="#dc2626" strokeWidth={2.5} />;
     if (s <= 1) return <Clock size={15} color="#d97706" strokeWidth={2.5} />;
-    if (s === 2) return <Clock size={15} color={Colors.primary} strokeWidth={2.5} />;
+    if (s === 2) return <CheckCircle size={15} color={Colors.primary} strokeWidth={2.5} />;
     if (s === 3) return <Truck size={15} color="#7c3aed" strokeWidth={2.5} />;
     if (s >= 5) return <CheckCircle size={15} color="#059669" strokeWidth={2.5} />;
     return <Package size={15} color="#4b5563" strokeWidth={2.5} />;
   };
 
-  const getStatusText = (status: string | number) => {
+  const getStatusText = (status: string | number, order?: ApiOrder) => {
+    if (order?.is_rto || order?.status === 'RTO_INITIATED' || order?.status === 'RTO_COMPLETED') {
+      return order?.status === 'RTO_COMPLETED' ? 'RTO Completed' : 'RTO Initiated';
+    }
+    if (order?.status === 'CANCELLED') return 'Cancelled';
     const s = typeof status === 'string' ? parseInt(status, 10) : status;
+    if (s === 6) return 'RTO';
+    if (s === 4) return 'Cancelled';
     if (s <= 1) return 'Pending';
-    if (s === 2) return 'Processing';
-    if (s === 3) return 'Shipped';
-    if (s === 4) return 'Received';
+    if (s === 2) return 'Confirmed';
+    if (s === 3) return 'Out for Delivery';
     if (s >= 5) return 'Delivered';
-    return 'Unknown';
+    return 'Pending';
   };
 
-  const getStatusColor = (status: string | number) => {
+  const getStatusColor = (status: string | number, order?: ApiOrder) => {
+    if (order?.is_rto || order?.status === 'RTO_INITIATED' || order?.status === 'RTO_COMPLETED') {
+      return { bg: '#ffedd5', text: '#c2410c' }; // Orange RTO
+    }
+    if (order?.status === 'CANCELLED') {
+      return { bg: '#fee2e2', text: '#991b1b' }; // Red Cancelled
+    }
     const s = typeof status === 'string' ? parseInt(status, 10) : status;
+    if (s === 6) return { bg: '#ffedd5', text: '#c2410c' };
+    if (s === 4) return { bg: '#fee2e2', text: '#991b1b' };
     if (s <= 1) return { bg: '#fef3c7', text: '#b45309' };
     if (s === 2) return { bg: '#dbeafe', text: '#1e40af' };
     if (s === 3) return { bg: '#ede9fe', text: '#5b21b6' };
@@ -234,31 +317,39 @@ export default function OrdersScreen() {
   };
 
   // ─── Return Status Helpers ─────────────────────────────────────────────────
-  const getRefundStatusText = (refund: ApiRefund) => {
-    if (refund.is_completed === 1 || refund.is_refunded === 1) return 'Refunded';
-    if (refund.is_confirmed === 1) return 'Approved';
-    const state = typeof refund.refund_state === 'string' ? parseInt(refund.refund_state, 10) : refund.refund_state;
-    if (state === 0) return 'Pending';
-    if (state === 2) return 'Processing';
-    if (state === 3) return 'Completed';
-    if (state === 4) return 'Rejected';
-    return 'Pending';
-  };
-
-  const getRefundStatusColor = (statusText: string) => {
-    switch (statusText) {
-      case 'Refunded':
-      case 'Completed':
-        return { bg: '#d1fae5', text: '#065f46' };
-      case 'Approved':
-      case 'Processing':
-        return { bg: '#dbeafe', text: '#1e40af' };
-      case 'Rejected':
-        return { bg: '#fef2f2', text: '#991b1b' };
-      case 'Pending':
-      default:
-        return { bg: '#fef3c7', text: '#b45309' };
+  const getRefundStatusInfo = (refund: ApiRefund) => {
+    const raw = (refund.status || '').toUpperCase();
+    if (raw === 'REQUESTED') {
+      return { text: 'Return Requested', bg: '#fef3c7', textCol: '#b45309' };
     }
+    if (raw === 'DRIVER_ASSIGNED') {
+      return { text: 'Driver Assigned', bg: '#dbeafe', textCol: '#1e40af' };
+    }
+    if (raw === 'PICKED_UP') {
+      return { text: 'Picked Up', bg: '#ede9fe', textCol: '#5b21b6' };
+    }
+    if (raw === 'RECEIVED_AT_WAREHOUSE') {
+      return { text: 'Received at WH', bg: '#f3e8ff', textCol: '#6b21a8' };
+    }
+    if (raw === 'REFUND_PENDING') {
+      return { text: 'Refund in Progress', bg: '#ffedd5', textCol: '#c2410c' };
+    }
+    if (raw === 'REFUNDED') {
+      return { text: 'Refund Completed', bg: '#d1fae5', textCol: '#065f46' };
+    }
+    if (raw === 'REJECTED') {
+      return { text: 'Rejected', bg: '#fee2e2', textCol: '#991b1b' };
+    }
+
+    // Legacy fallback
+    if (refund.is_completed === 1 || refund.is_refunded === 1) return { text: 'Refund Completed', bg: '#d1fae5', textCol: '#065f46' };
+    if (refund.is_confirmed === 1) return { text: 'Approved', bg: '#dbeafe', textCol: '#1e40af' };
+    const state = typeof refund.refund_state === 'string' ? parseInt(refund.refund_state, 10) : refund.refund_state;
+    if (state === 0) return { text: 'Pending', bg: '#fef3c7', textCol: '#b45309' };
+    if (state === 2) return { text: 'Processing', bg: '#dbeafe', textCol: '#1e40af' };
+    if (state === 3) return { text: 'Completed', bg: '#d1fae5', textCol: '#065f46' };
+    if (state === 4) return { text: 'Rejected', bg: '#fee2e2', textCol: '#991b1b' };
+    return { text: 'Pending', bg: '#fef3c7', textCol: '#b45309' };
   };
 
   // ─── Loading Screen ────────────────────────────────────────────────────────
@@ -458,11 +549,28 @@ export default function OrdersScreen() {
                       </View>
                     ) : null}
 
+                    {/* RTO Notice Card */}
+                    {(order.is_rto || order.status === 'RTO_INITIATED' || order.status === 'RTO_COMPLETED') ? (
+                      <View style={styles.rtoCardNotice}>
+                        <View style={styles.rtoCardHeaderRow}>
+                          <RotateCcw size={13} color="#c2410c" strokeWidth={2.5} />
+                          <Text style={styles.rtoCardNoticeTitle}>
+                            {order.status === 'RTO_COMPLETED' ? 'Return to Origin (Completed)' : 'Return to Origin (In Transit)'}
+                          </Text>
+                        </View>
+                        {(order.rto_reason || order.cancel_reason || order.note) ? (
+                          <Text style={styles.rtoCardNoticeText}>
+                            Reason: {order.rto_reason || order.cancel_reason || order.note}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ) : null}
+
                     {/* Order Card Body (Packages & Items) */}
                     <View style={styles.orderCardBody}>
                       {order.packages && order.packages.length > 0 ? (
                         order.packages.map((pkg, pIdx) => {
-                          const statusColors = getStatusColor(pkg.delivery_status);
+                          const statusColors = getStatusColor(pkg.delivery_status, order);
                           return (
                             <View key={pkg.id || pIdx} style={styles.packageContainer}>
                               <View style={styles.packageHeader}>
@@ -470,9 +578,9 @@ export default function OrdersScreen() {
                                   Package: {pkg.package_code || `PKG-${pkg.id}`}
                                 </Text>
                                 <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-                                  {getStatusIcon(pkg.delivery_status)}
+                                  {getStatusIcon(pkg.delivery_status, order)}
                                   <Text style={[styles.statusText, { color: statusColors.text }]}>
-                                    {getStatusText(pkg.delivery_status)}
+                                    {getStatusText(pkg.delivery_status, order)}
                                   </Text>
                                 </View>
                               </View>
@@ -574,71 +682,105 @@ export default function OrdersScreen() {
                 );
               })
             : refunds.map((refund) => {
-                const refundStateTxt = getRefundStatusText(refund);
-                const statusColors = getRefundStatusColor(refundStateTxt);
+                const statusInfo = getRefundStatusInfo(refund);
+                const itemsList = (refund.items && refund.items.length > 0)
+                  ? refund.items
+                  : (refund.refund_details && refund.refund_details[0]?.refund_products)
+                    ? refund.refund_details[0].refund_products.map((rp: any) => ({
+                        id: rp.id,
+                        product_name: rp.seller_product_sku?.product?.product_name || 'Returned Product',
+                        product_image: rp.seller_product_sku?.product?.thum_img || '',
+                        return_qty: rp.return_qty,
+                        return_amount: rp.return_amount,
+                      }))
+                    : [];
+
+                const totalClaim = parseFloat(String(refund.total_amount || refund.total_return_amount || 0));
 
                 return (
-                  <View key={refund.id} style={styles.orderCard}>
+                  <TouchableOpacity
+                    key={refund.id}
+                    style={styles.orderCard}
+                    activeOpacity={0.85}
+                    onPress={() => router.push(`/return/${refund.id}`)}
+                  >
                     {/* Refund Card Header */}
                     <View style={styles.orderCardHeader}>
                       <View>
-                        <Text style={styles.orderNumber}>Return Request #{refund.id}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <Text style={styles.orderNumber}>Return #{refund.id}</Text>
+                          {!!refund.order_number && (
+                            <View style={styles.orderTag}>
+                              <Text style={styles.orderTagText}>Order: {refund.order_number}</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={styles.orderDate}>{formatDate(refund.created_at)}</Text>
                       </View>
-                      <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-                        <Text style={[styles.statusText, { color: statusColors.text }]}>
-                          {refundStateTxt}
+                      <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
+                        <Text style={[styles.statusText, { color: statusInfo.textCol }]}>
+                          {statusInfo.text}
                         </Text>
                       </View>
                     </View>
 
+                    {/* Driver info if assigned */}
+                    {!!refund.driver && (
+                      <View style={styles.returnDriverRow}>
+                        <Truck size={13} color="#4338ca" />
+                        <Text style={styles.returnDriverText}>
+                          Pickup Driver: {refund.driver.name} ({refund.driver.phone})
+                        </Text>
+                      </View>
+                    )}
+
                     {/* Refund Items */}
                     <View style={styles.orderCardBody}>
-                      {refund.refund_details &&
-                        refund.refund_details.map((detail, dIdx) => (
-                          <View key={detail.id || dIdx} style={styles.refundDetailBlock}>
-                            {detail.refund_products &&
-                              detail.refund_products.map((rProd, pIdx) => {
-                                const prod = rProd.seller_product_sku?.product;
-                                const prodName = prod?.product_name ?? prod?.product?.product_name ?? 'Returned Item';
-                                const prodImg = prod?.thum_img ?? prod?.product?.thumbnail_image_source ?? '';
-
-                                return (
-                                  <View key={rProd.id || pIdx} style={styles.productRow}>
-                                    <Image
-                                      source={
-                                        prodImg
-                                          ? { uri: assetUrl(prodImg) }
-                                          : require('@/assets/images/icon.png')
-                                      }
-                                      style={styles.productImage}
-                                    />
-                                    <View style={styles.productInfo}>
-                                      <Text style={styles.productName} numberOfLines={2}>
-                                        {prodName}
-                                      </Text>
-                                      <View style={styles.productMeta}>
-                                        <Text style={styles.productQty}>Return Qty: {rProd.return_qty}</Text>
-                                        <Text style={styles.productPrice}>
-                                          Refund: ₹{parseFloat(String(rProd.return_amount)).toLocaleString('en-IN')}
-                                        </Text>
-                                      </View>
-                                    </View>
-                                  </View>
-                                );
-                              })}
+                      {itemsList.map((rProd: any, pIdx: number) => {
+                        const prodImg = rProd.product_image || '';
+                        return (
+                          <View key={rProd.id || pIdx} style={styles.productRow}>
+                            <Image
+                              source={
+                                prodImg
+                                  ? { uri: assetUrl(prodImg) }
+                                  : require('@/assets/images/icon.png')
+                              }
+                              style={styles.productImage}
+                            />
+                            <View style={styles.productInfo}>
+                              <Text style={styles.productName} numberOfLines={2}>
+                                {rProd.product_name}
+                              </Text>
+                              <View style={styles.productMeta}>
+                                <Text style={styles.productQty}>Return Qty: {rProd.return_qty}</Text>
+                                <Text style={styles.productPrice}>
+                                  Refund: ₹{parseFloat(String(rProd.return_amount || 0)).toLocaleString('en-IN')}
+                                </Text>
+                              </View>
+                              {!!rProd.reason && (
+                                <Text style={styles.returnReasonText}>Reason: {rProd.reason}</Text>
+                              )}
+                            </View>
                           </View>
-                        ))}
+                        );
+                      })}
                     </View>
 
                     {/* Refund Footer */}
                     <View style={styles.refundFooter}>
-                      <Text style={styles.totalRefundLabel}>Total Refund Amount:</Text>
-                      <Text style={styles.totalRefundPrice}>
-                        ₹{parseFloat(String(refund.total_return_amount)).toLocaleString('en-IN')}
-                      </Text>
+                      <View>
+                        <Text style={styles.totalRefundLabel}>Total Refund Amount</Text>
+                        <Text style={styles.totalRefundPrice}>
+                          ₹{totalClaim.toLocaleString('en-IN')}
+                        </Text>
+                      </View>
+                      <View style={styles.viewReturnBtn}>
+                        <Text style={styles.viewReturnBtnText}>Tracking & Details</Text>
+                        <ChevronRight size={14} color={Colors.primary} />
+                      </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
         </ScrollView>
@@ -891,6 +1033,29 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0284c7',
   },
+  rtoCardNotice: {
+    backgroundColor: '#fff7ed',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ffedd5',
+  },
+  rtoCardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rtoCardNoticeTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#c2410c',
+  },
+  rtoCardNoticeText: {
+    fontSize: 11,
+    color: '#9a3412',
+    marginTop: 2,
+    fontWeight: '500',
+  },
   orderNumber: {
     fontSize: 14,
     fontWeight: '700',
@@ -1025,5 +1190,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#059669',
+  },
+  orderTag: {
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  orderTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1d4ed8',
+  },
+  returnDriverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#eef2ff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e7ff',
+  },
+  returnDriverText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3730a3',
+  },
+  returnReasonText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  viewReturnBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: Colors.primary10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  viewReturnBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
   },
 });

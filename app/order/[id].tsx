@@ -92,6 +92,8 @@ interface OrderDetails {
   is_completed: boolean;
   is_cancelled: boolean;
   is_rto: boolean;
+  rto_reason?: string | null;
+  note?: string | null;
   payment_method: string;
   payment_status: string;
   grand_total: number;
@@ -271,21 +273,19 @@ export default function OrderDetailsScreen() {
   };
 
   // Helper for delivery status styling
-  const getStatusBadge = (status: string, orderStatusNum: number) => {
+  const getStatusBadge = (status: string, orderStatusNum: number, isRto?: boolean) => {
+    if (isRto || status === 'RTO_INITIATED' || status === 'RTO_COMPLETED' || orderStatusNum === 6) {
+      const label = status === 'RTO_COMPLETED' ? 'RTO Completed' : 'Return to Origin';
+      return { label, bg: '#ffedd5', text: '#c2410c', icon: RotateCcw };
+    }
     if (status === 'CANCELLED' || orderStatusNum === 4) {
       return { label: 'Cancelled', bg: '#fee2e2', text: '#991b1b', icon: XCircle };
     }
     if (status === 'DELIVERED' || orderStatusNum === 5) {
       return { label: 'Delivered', bg: '#dcfce7', text: '#15803d', icon: CheckCircle };
     }
-    if (status === 'RTO_INITIATED' || status === 'RTO_COMPLETED') {
-      return { label: 'Return Initiated', bg: '#ffedd5', text: '#c2410c', icon: RotateCcw };
-    }
-    if (status === 'OUT_FOR_DELIVERY') {
-      return { label: 'Out for Delivery', bg: '#fef3c7', text: '#b45309', icon: Truck };
-    }
-    if (status === 'PROCESSING') {
-      return { label: 'Processing', bg: '#e0e7ff', text: '#4338ca', icon: Package };
+    if (status === 'OUT_FOR_DELIVERY' || status === 'PROCESSING' || orderStatusNum === 3) {
+      return { label: 'Out for Delivery', bg: '#ede9fe', text: '#5b21b6', icon: Truck };
     }
     if (status === 'CONFIRMED' || orderStatusNum === 2) {
       return { label: 'Confirmed', bg: '#dbeafe', text: '#1d4ed8', icon: CheckCircle };
@@ -293,12 +293,12 @@ export default function OrderDetailsScreen() {
     return { label: 'Pending', bg: '#fef3c7', text: '#b45309', icon: Clock };
   };
 
-interface TimelineStep {
-  label: string;
-  completed: boolean;
-  isAlert?: boolean;
-  date?: string | null;
-}
+  interface TimelineStep {
+    label: string;
+    completed: boolean;
+    isAlert?: boolean;
+    date?: string | null;
+  }
 
   // Timeline step calculation
   const timelineSteps: TimelineStep[] = useMemo(() => {
@@ -310,12 +310,24 @@ interface TimelineStep {
         { label: 'Cancelled', completed: true, isAlert: true, date: order.updated_at },
       ];
     }
+    const isRto = order.is_rto || order.status === 'RTO_INITIATED' || order.status === 'RTO_COMPLETED' || order.order_status === 6;
+    if (isRto) {
+      return [
+        { label: 'Order Placed', completed: true, date: order.placed_at },
+        { label: 'Out for Delivery', completed: true },
+        {
+          label: order.status === 'RTO_COMPLETED' ? 'RTO Completed (Returned)' : 'RTO Initiated (Returning)',
+          completed: true,
+          isAlert: true,
+          date: order.updated_at,
+        },
+      ];
+    }
     const currentCode = order.order_status || 1;
     return [
       { label: 'Order Placed', completed: true, date: order.placed_at },
       { label: 'Confirmed', completed: currentCode >= 2 },
-      { label: 'Processing', completed: currentCode >= 3 },
-      { label: 'Out for Delivery', completed: currentCode >= 3 && order.status === 'OUT_FOR_DELIVERY' },
+      { label: 'Out for Delivery', completed: currentCode >= 3 },
       { label: 'Delivered', completed: currentCode >= 5, date: order.delivered_at },
     ];
   }, [order]);
@@ -360,7 +372,7 @@ interface TimelineStep {
     );
   }
 
-  const statusBadge = getStatusBadge(order.status, order.order_status);
+  const statusBadge = getStatusBadge(order.status, order.order_status, order.is_rto);
   const StatusIcon = statusBadge.icon;
   const salesmanData: SalesmanInfo | null =
     order.salesman ||
@@ -423,6 +435,26 @@ interface TimelineStep {
             <View style={styles.cancelReasonNotice}>
               <AlertTriangle size={14} color="#991b1b" />
               <Text style={styles.cancelReasonNoticeTxt}>Reason: {order.cancel_reason}</Text>
+            </View>
+          ) : null}
+          {(order.is_rto || order.status === 'RTO_INITIATED' || order.status === 'RTO_COMPLETED' || order.order_status === 6) ? (
+            <View style={styles.rtoReasonNotice}>
+              <View style={styles.rtoNoticeTitleRow}>
+                <RotateCcw size={14} color="#c2410c" strokeWidth={2.5} />
+                <Text style={styles.rtoReasonNoticeHeading}>
+                  {order.status === 'RTO_COMPLETED' ? 'Return to Origin Completed' : 'Return to Origin (RTO) Initiated'}
+                </Text>
+              </View>
+              {(order.rto_reason || order.note || order.cancel_reason) ? (
+                <Text style={styles.rtoReasonNoticeTxt}>
+                  Reason: {order.rto_reason || order.note || order.cancel_reason}
+                </Text>
+              ) : null}
+              {order.warehouse ? (
+                <Text style={styles.rtoWarehouseTxt}>
+                  Returning to: {order.warehouse.name} ({order.warehouse.code})
+                </Text>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -632,7 +664,7 @@ interface TimelineStep {
               <Text style={styles.cancelActionBtnText}>Cancel Order</Text>
             </TouchableOpacity>
           </View>
-        ) : !order.is_cancelled && (order.order_status <= 2) ? (
+        ) : !order.is_cancelled && !order.is_rto && order.status !== 'RTO_INITIATED' && order.status !== 'RTO_COMPLETED' && (order.order_status <= 2) ? (
           <View style={styles.infoCardNotice}>
             <ShieldCheck size={16} color="#64748b" />
             <Text style={styles.infoCardNoticeText}>
@@ -920,6 +952,36 @@ const styles = StyleSheet.create({
   cancelReasonNoticeTxt: {
     fontSize: 12,
     color: '#991b1b',
+    fontWeight: '500',
+  },
+  rtoReasonNotice: {
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#ffedd5',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  rtoNoticeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  rtoReasonNoticeHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#c2410c',
+  },
+  rtoReasonNoticeTxt: {
+    fontSize: 12,
+    color: '#9a3412',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  rtoWarehouseTxt: {
+    fontSize: 11,
+    color: '#b45309',
     fontWeight: '500',
   },
   card: {
