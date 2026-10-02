@@ -51,6 +51,12 @@ export const URLs = {
   OTP_SEND:           isNextJsBackend ? `${API}/auth/otp/send` : `${API}/general-setting/send-otp`,
   GET_USER:           isNextJsBackend ? `${API}/auth/me` : `${API}/get-user`,
 
+  // Registration wizard: phone+OTP verify (LOGIN above) -> warehouse -> details -> [documents]
+  ONBOARDING_STEP:    `${API}/auth/onboarding`,
+  WAREHOUSES_SEARCH:  `${API}/customer/warehouses`,
+  UPLOAD_DOCUMENT:    `${API}/customer/upload-document`,
+  APP_CONFIG:         `${API}/config`,
+
   // Profile
   UPDATE_USER_PROFILE:`${API}/profile/update-information`,
   UPDATE_PROFILE_PHOTO:`${API}/profile/update-photo`,
@@ -148,6 +154,13 @@ export const URLs = {
   // Refunds
   REFUND_REASONS_LIST:      `${API}/refund/reason-list`,
   REFUND_STORE:             `${API}/order-refund/store`,
+  ORDER_REFUND_DETAILS: (id: string | number) =>
+    `${API}/order-refund/${id}`,
+
+  // Wallet
+  WALLET:                   `${API}/wallet`,
+  WALLET_HISTORY:           `${API}/wallet/history`,
+  WALLET_TRANSACTIONS:      `${API}/wallet/transactions`,
 
   // Notifications
   USER_NOTIFICATIONS:       `${API}/user-notifications`,
