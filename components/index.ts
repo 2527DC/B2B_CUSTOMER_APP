@@ -8,4 +8,5 @@ export { PromoSlider } from './PromoSlider';
 export { default as Input } from './Input';
 export { default as Button } from './Button';
 export { default as QtyInput } from './QtyInput';
+export { AppUpdateModal } from './AppUpdateModal';
 export { ThemeSelectorModal } from './ThemeSelectorModal';
