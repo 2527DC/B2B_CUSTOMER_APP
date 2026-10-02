@@ -1,63 +1,198 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { User, Settings, HelpCircle, LogOut, ChevronRight, ShoppingBag, Heart, Package, Palette } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { User, HelpCircle, LogOut, ChevronRight, ShoppingBag, Heart, Package, Store, Wallet } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { useAuth } from '@/context/AuthContext';
+import { useWishlist } from '@/context/WishlistContext';
 import { Colors } from '@/constants/theme';
-import { ThemeSelectorModal } from '@/components';
+import apiClient from '@/config/api';
+import { URLs } from '@/config/urls';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
-  const [themeModalVisible, setThemeModalVisible] = useState(false);
+  const router = useRouter();
+  const { user, logout, isAuthenticated } = useAuth();
+  const { wishlistCount } = useWishlist();
+
+  const [orderCount, setOrderCount] = useState(0);
+  const [returnCount, setReturnCount] = useState(0);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const appVersion = Constants.expoConfig?.version ?? '1.0.8';
+
+  const loadCounts = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      // 1. Fetch orders count
+      const ordersRes = await apiClient.get(`${URLs.API_URL}/order-by-delivery-status?lang=en`);
+      if (ordersRes.data?.orders && Array.isArray(ordersRes.data.orders)) {
+        setOrderCount(ordersRes.data.orders.length);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      // 2. Fetch returns count
+      const refundsRes = await apiClient.get(URLs.ALL_ORDER_REFUND_LIST);
+      if (refundsRes.data?.refundOrders && Array.isArray(refundsRes.data.refundOrders)) {
+        setReturnCount(refundsRes.data.refundOrders.length);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      // 3. Fetch wallet balance
+      const walletRes = await apiClient.get(URLs.WALLET);
+      if (walletRes.data?.wallet?.balance !== undefined) {
+        setWalletBalance(Number(walletRes.data.wallet.balance));
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    loadCounts();
+  }, [loadCounts]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadCounts();
+    setRefreshing(false);
+  };
 
   const menuItems = [
-    { icon: ShoppingBag, title: 'My Orders', subtitle: 'Track and manage orders' },
-    { icon: Heart, title: 'Wishlist', subtitle: 'Your saved items' },
-    { icon: Package, title: 'Returns', subtitle: 'Return and exchange items' },
     {
-      icon: Palette,
-      title: 'Theme & Brand Colors',
-      subtitle: 'Customize store theme & color palette',
-      onPress: () => setThemeModalVisible(true),
+      icon: ShoppingBag,
+      title: 'My Orders',
+      subtitle: 'Track and manage orders',
+      onPress: () => router.push('/(tabs)/orders'),
     },
-    { icon: Settings, title: 'Settings', subtitle: 'App preferences' },
-    { icon: HelpCircle, title: 'Help & Support', subtitle: 'Get help from us' },
+    {
+      icon: Heart,
+      title: 'Wishlist',
+      subtitle: 'Your saved items',
+      onPress: () => router.push('/wishlist'),
+    },
+    {
+      icon: Package,
+      title: 'Returns',
+      subtitle: 'Return and exchange items',
+      onPress: () => router.push({ pathname: '/(tabs)/orders', params: { tab: 'returns' } } as any),
+    },
+    {
+      icon: HelpCircle,
+      title: 'Help & Support',
+      subtitle: 'Get help from us',
+      onPress: () => router.push('/(tabs)'),
+    },
   ];
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Profile</Text>
         </View>
 
-        <View style={styles.profileCard}>
+        <TouchableOpacity
+          style={styles.profileCard}
+          onPress={() => router.push('/edit-profile')}
+          activeOpacity={0.8}
+        >
           <View style={styles.avatarContainer}>
-            <User size={40} color="#ffffff" strokeWidth={2} />
+            {user?.store_name ? (
+              <Store size={32} color="#ffffff" strokeWidth={2} />
+            ) : (
+              <User size={36} color="#ffffff" strokeWidth={2} />
+            )}
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name || 'John Doe'}</Text>
-            <Text style={styles.profileEmail}>{user?.email || 'john.doe@email.com'}</Text>
+            {user?.store_name ? (
+              <>
+                <Text style={styles.profileStoreTitle} numberOfLines={2}>
+                  {user.store_name}
+                </Text>
+                <Text style={styles.profileUserNameSmall} numberOfLines={1}>
+                  {user?.name || 'Customer'}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.profileStoreTitle} numberOfLines={2}>
+                {user?.name || 'Customer'}
+              </Text>
+            )}
+            <Text style={styles.profileEmail} numberOfLines={1}>
+              {user?.email || (user?.phone ? `+91 ${user.phone}` : '')}
+            </Text>
           </View>
-          <TouchableOpacity style={styles.editButton}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => router.push('/edit-profile')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
+
+        {/* Prominent Wallet Card */}
+        <TouchableOpacity
+          style={styles.walletCard}
+          onPress={() => router.push('/wallet')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.walletCardLeft}>
+            <View style={styles.walletIconCircle}>
+              <Wallet size={20} color="#ffffff" strokeWidth={2.2} />
+            </View>
+            <View>
+              <Text style={styles.walletCardTitle}>Dhatri Wallet</Text>
+              <Text style={styles.walletCardSubtitle}>Refunds & balance</Text>
+            </View>
+          </View>
+          <View style={styles.walletCardRight}>
+            <Text style={styles.walletBalanceAmount}>₹{walletBalance.toFixed(2)}</Text>
+            <View style={styles.walletActionRow}>
+              <Text style={styles.walletActionText}>History</Text>
+              <ChevronRight size={13} color="#059669" strokeWidth={2.5} />
+            </View>
+          </View>
+        </TouchableOpacity>
 
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>12</Text>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() => router.push('/(tabs)/orders')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.statNumber}>{orderCount}</Text>
             <Text style={styles.statLabel}>Orders</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>8</Text>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() => router.push('/wishlist')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.statNumber}>{wishlistCount}</Text>
             <Text style={styles.statLabel}>Wishlist</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>2</Text>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() => router.push({ pathname: '/(tabs)/orders', params: { tab: 'returns' } } as any)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.statNumber}>{returnCount}</Text>
             <Text style={styles.statLabel}>Returns</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.menuContainer}>
@@ -68,7 +203,7 @@ export default function ProfileScreen() {
                 key={index}
                 style={styles.menuItem}
                 onPress={item.onPress}
-                activeOpacity={item.onPress ? 0.7 : 1}
+                activeOpacity={0.7}
               >
                 <View style={styles.menuIconContainer}>
                   <Icon size={22} color={Colors.primary} strokeWidth={2} />
@@ -92,14 +227,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.version}>Version 1.0.0</Text>
+        <Text style={styles.version}>Version {appVersion}</Text>
       </ScrollView>
-
-      {/* Theme Color Selection Modal */}
-      <ThemeSelectorModal
-        visible={themeModalVisible}
-        onClose={() => setThemeModalVisible(false)}
-      />
     </View>
   );
 }
@@ -148,15 +277,23 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 14,
   },
-  profileName: {
+  profileStoreTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.3,
+  },
+  profileUserNameSmall: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginTop: 2,
   },
   profileEmail: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#64748b',
     marginTop: 2,
+    fontWeight: '500',
   },
   editButton: {
     paddingHorizontal: 14,
@@ -173,7 +310,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#ffffff',
     marginHorizontal: 20,
-    marginTop: 16,
+    marginTop: 12,
     paddingVertical: 20,
     borderRadius: 16,
     shadowColor: '#000',
@@ -263,6 +400,75 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ef4444',
     marginLeft: 14,
+  },
+  walletCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  walletCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  walletIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  walletCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  walletCardSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  walletCardRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  walletBalanceAmount: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  walletActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginTop: 2,
+  },
+  walletActionText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
   },
   version: {
     textAlign: 'center',
