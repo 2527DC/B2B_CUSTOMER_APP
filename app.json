@@ -2,15 +2,26 @@
   "expo": {
     "name": "Dhatri",
     "slug": "dhatri-store",
-    "version": "1.0.0",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "dhatristore",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.dhatri.store",
+      "buildNumber": "5",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "splash": {
+        "image": "./assets/images/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      },
       "infoPlist": {
         "UIBackgroundModes": [
           "fetch",
@@ -23,7 +34,17 @@
     },
     "android": {
       "package": "com.dhatri.store",
+      "versionCode": 5,
       "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "splash": {
+        "image": "./assets/images/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      },
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.CAMERA",
@@ -31,7 +52,8 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE",
-        "android.permission.RECEIVE_BOOT_COMPLETED"
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -57,7 +79,14 @@
           "icon": "./assets/images/icon.png",
           "color": "#059669"
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "We need access to your photo library to allow you to set your profile picture and support ticket image."
+        }
+      ],
+      "./plugins/withSceneLifecycle"
     ],
     "experiments": {
       "typedRoutes": true
@@ -65,8 +94,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "99c9c843-340f-49e6-bf09-04d451bf7107"
+        "projectId": "c16d620f-5ec9-4021-bc3c-95ddf4d77bcc"
       }
-    }
+    },
+    "owner": "chethan2527"
   }
 }
