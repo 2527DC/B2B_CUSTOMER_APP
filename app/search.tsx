@@ -71,19 +71,29 @@ export default function SearchScreen() {
         setTags(data.tags ?? []);
 
         // Map API response products to Product type
-        const mappedProducts: Product[] = (data.products ?? []).map((p: any) => ({
-          id: p.id.toString(),
-          name: p.product_name,
-          price: p.selling_price,
-          mrp: p.mrp > p.selling_price ? p.mrp : undefined,
-          image_url: p.thumb_img,
-          brand_id: '',
-          category_id: '',
-          description: '',
-          rating: 0,
-          reviews_count: 0,
-          created_at: '',
-        }));
+        const mappedProducts: Product[] = (data.products ?? []).map((p: any) => {
+          const unitCreated = p.units ?? p.unit ?? p.unit_name;
+          const unitStr = typeof unitCreated === 'string' ? unitCreated : (unitCreated?.name || undefined);
+
+          return {
+            id: p.id.toString(),
+            name: p.product_name,
+            price: p.selling_price,
+            mrp: p.mrp > p.selling_price ? p.mrp : undefined,
+            image_url: p.thumb_img,
+            brand_id: '',
+            category_id: '',
+            description: '',
+            unit_name: unitStr,
+            unit: unitStr,
+            units: unitStr,
+            unit_value: p.unit_value ?? p.weight,
+            pack_size: p.pack_size ?? p.unit_value ?? p.weight,
+            rating: 0,
+            reviews_count: 0,
+            created_at: '',
+          };
+        });
 
         setProducts(mappedProducts);
       } catch (err: any) {
