@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ShoppingBag, Sparkles, ShieldCheck, ArrowRight } from 'lucide-react-native';
+import { Sprout, ShoppingBag, Sparkles, ShieldCheck, ArrowRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
@@ -15,9 +15,19 @@ interface Slide {
   description: string;
   icon: React.ComponentType<any>;
   colors: [string, string, ...string[]];
+  image: ImageSourcePropType | string;
 }
 
 const slides: Slide[] = [
+  {
+    id: '0',
+    title: 'Welcome to Dhatri Store',
+    subtitle: 'India’s B2B Wholesale Platform',
+    description: 'Dhatri connects retail stores directly with trusted wholesalers and warehouses — honest pricing and reliable delivery, all in one app.',
+    icon: Sprout,
+    colors: ['#2e5927', Colors.primary],
+    image: require('@/assets/images/welcome/slide_1.jpg'),
+  },
   {
     id: '1',
     title: 'B2B Wholesale Deals',
@@ -25,6 +35,7 @@ const slides: Slide[] = [
     description: 'Procure wholesale groceries, grains, FMCG, and staples at best wholesale tier prices for your retail business.',
     icon: Sparkles,
     colors: [Colors.primaryDark, Colors.primary],
+    image: require('@/assets/images/welcome/slide_2.jpg'),
   },
   {
     id: '2',
@@ -33,6 +44,7 @@ const slides: Slide[] = [
     description: 'We partner directly with authorized distributors and manufacturers to deliver consistent, certified grade products.',
     icon: ShoppingBag,
     colors: [Colors.primary, '#629352'],
+    image: require('@/assets/images/welcome/slide_3.jpg'),
   },
   {
     id: '3',
@@ -41,12 +53,14 @@ const slides: Slide[] = [
     description: 'Experience seamless ordering with doorstep warehouse dispatch, COD payment support, and live driver tracking.',
     icon: ShieldCheck,
     colors: ['#2e5927', Colors.primary],
+    image: require('@/assets/images/welcome/slide_4.jpg'),
   },
 ];
 
 export default function WelcomeScreen() {
   const { completeOnboarding } = useAuth();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const scrollViewRef = useRef<ScrollView>(null);
 
   const handleScroll = (event: any) => {
@@ -84,7 +98,7 @@ export default function WelcomeScreen() {
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.appName}>Dhatri<Text style={styles.accentText}>Mart</Text></Text>
+          <Text style={styles.appName}>Dhatri</Text>
         </View>
 
         {activeIndex < slides.length - 1 && (
@@ -107,6 +121,7 @@ export default function WelcomeScreen() {
       >
         {slides.map((slide) => {
           const IconComponent = slide.icon;
+          const showImage = !failedImages[slide.id];
           return (
             <View key={slide.id} style={styles.slideContainer}>
               <View style={styles.imageSection}>
@@ -116,7 +131,16 @@ export default function WelcomeScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <IconComponent size={64} color="#ffffff" strokeWidth={1.5} />
+                  {showImage ? (
+                    <Image
+                      source={typeof slide.image === 'string' ? { uri: slide.image } : slide.image}
+                      style={styles.slideImage}
+                      resizeMode="cover"
+                      onError={() => setFailedImages((prev) => ({ ...prev, [slide.id]: true }))}
+                    />
+                  ) : (
+                    <IconComponent size={64} color="#ffffff" strokeWidth={1.5} />
+                  )}
                 </LinearGradient>
               </View>
 
@@ -237,16 +261,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   gradientSphere: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 220,
+    height: 220,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 8,
+    backgroundColor: '#ffffff',
+  },
+  slideImage: {
+    width: '100%',
+    height: '100%',
   },
   textSection: {
     alignItems: 'center',
