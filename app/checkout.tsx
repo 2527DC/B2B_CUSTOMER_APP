@@ -80,6 +80,7 @@ export default function CheckoutScreen() {
   const [subTotal, setSubTotal] = useState(0);
   const [shippingTotal, setShippingTotal] = useState(0);
   const [gstTotal, setGstTotal] = useState(0);
+  const [inclusiveGstTotal, setInclusiveGstTotal] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
   const [packageCount, setPackageCount] = useState(0);
   const [totalQty, setTotalQty] = useState(0);
@@ -129,84 +130,67 @@ export default function CheckoutScreen() {
     loadCheckoutDetails();
   }, []);
 
-  // Update calculations whenever packages, selected shipping methods, or shipping address state changes
+  // Update calculations whenever checkoutData changes
   useEffect(() => {
     if (!checkoutData || !checkoutData.packages) return;
 
     let sub = 0;
     let qty = 0;
     let pkgCount = Object.keys(checkoutData.packages).length;
+    let exclusiveGst = 0;
+    let inclusiveGst = 0;
 
-    // Calculate subtotal and item quantities
+    // Calculate subtotal, quantities, and GST breakdown from items
     Object.values(checkoutData.packages).forEach((pkg: any) => {
       pkg.items.forEach((item: any) => {
-        sub += item.price * item.qty;
-        qty += item.qty;
-      });
-    });
+        const itemPrice = parseFloat(item.price) || 0;
+        const itemQty = parseInt(item.qty, 10) || 1;
+        const baseTotal = itemPrice * itemQty;
+        sub += baseTotal;
+        qty += itemQty;
 
-    // Calculate shipping cost
-    let shipCost = 0;
-    let shipAdditional = 0;
-    Object.entries(checkoutData.packages).forEach(([pkgKey, pkgValue]: [string, any]) => {
-      const selectedMethod = selectedShippingMethods[pkgKey] || pkgValue.shipping?.[0];
-      if (!selectedMethod) return;
+        // Check GST attributes
+        let rate = 0;
+        let isInclusive = false;
 
-      pkgValue.items.forEach((item: any) => {
-        let itemShipping = 0;
-        if (selectedMethod.cost_based_on === 'Price') {
-          itemShipping = (item.price / 100) * (selectedMethod.cost || 0);
-        } else if (selectedMethod.cost_based_on === 'Weight') {
-          const weight = parseFloat(item.product?.weight || '0') || 0;
-          itemShipping = (weight / 100) * (selectedMethod.cost || 0);
-        } else {
-          itemShipping = selectedMethod.cost || 0;
+        if (item.gst_rate !== undefined && item.gst_rate !== null) {
+          rate = parseFloat(item.gst_rate) || 0;
+          isInclusive = Boolean(item.is_inclusive);
+        } else if (item.product?.product?.gst_group) {
+          const g = item.product.product.gst_group;
+          rate = parseFloat(g.total_percent ?? g.totalPercent) || 0;
+          isInclusive = Boolean(g.is_inclusive ?? g.isInclusive);
         }
-        shipCost += itemShipping * item.qty;
-        shipAdditional += (item.product?.sku?.additional_shipping || 0) * item.qty;
-      });
-    });
-    const finalShipCost = shipCost + shipAdditional;
 
-    // Calculate GST Tax
-    let gstSum = 0;
-    const sameState = selectedShippingAddress?.state === 'Karnataka'; // placeholder matching state
-    const flatGstPct = checkoutData.flat_gst?.tax_percentage || 0;
-    const isGstEnabled = checkoutData.is_gst_enable === 1;
-    const isGstModuleEnabled = checkoutData.is_gst_module_enable === 1;
-
-    Object.values(checkoutData.packages).forEach((pkg: any) => {
-      pkg.items.forEach((item: any) => {
-        let taxRate = flatGstPct;
-        if (item.product?.product?.gst_group) {
-          try {
-            const gstGroup = item.product.product.gst_group;
-            const sameStateGst = JSON.parse(gstGroup.same_state_gst || '{}');
-            const outsideStateGst = JSON.parse(gstGroup.outsite_state_gst || '{}');
-            
-            let rateSum = 0;
-            const gstMap = sameState ? sameStateGst : outsideStateGst;
-            Object.values(gstMap).forEach((val: any) => {
-              rateSum += parseFloat(val) || 0;
-            });
-            taxRate = rateSum;
-          } catch (e) {
-            taxRate = flatGstPct;
+        if (rate > 0) {
+          if (isInclusive) {
+            const taxable = baseTotal / (1 + rate / 100);
+            inclusiveGst += (baseTotal - taxable);
+          } else {
+            exclusiveGst += (baseTotal * rate) / 100;
           }
-        } else if (isGstModuleEnabled && isGstEnabled) {
-          taxRate = flatGstPct;
         }
-        gstSum += ((item.price * item.qty) * taxRate) / 100;
       });
     });
 
-    setSubTotal(sub);
+    // If server provides authoritative totals, use them
+    if (checkoutData.totals) {
+      setSubTotal(checkoutData.totals.sub_total ?? sub);
+      setGstTotal(checkoutData.totals.exclusive_tax ?? exclusiveGst);
+      setInclusiveGstTotal(checkoutData.totals.inclusive_tax ?? inclusiveGst);
+      setShippingTotal(0); // Delivery charges are 0 / disabled
+      setGrandTotal(checkoutData.totals.grand_total ?? (sub + (checkoutData.totals.exclusive_tax ?? exclusiveGst)));
+    } else {
+      setSubTotal(sub);
+      setGstTotal(exclusiveGst);
+      setInclusiveGstTotal(inclusiveGst);
+      setShippingTotal(0);
+      setGrandTotal(sub + exclusiveGst);
+    }
+
     setTotalQty(qty);
     setPackageCount(pkgCount);
-    setShippingTotal(finalShipCost);
-    setGstTotal(gstSum);
-    setGrandTotal(sub + finalShipCost + gstSum);
-  }, [checkoutData, selectedShippingMethods, selectedShippingAddress]);
+  }, [checkoutData]);
 
   const handleAddAddress = async () => {
     if (!formName || !formPhone || !formAddress || !formCity || !formState || !formPostalCode) {
@@ -265,10 +249,13 @@ export default function CheckoutScreen() {
       const productInfo: Record<string, any> = {};
       Object.values(checkoutData.packages).forEach((pkg: any) => {
         pkg.items.forEach((item: any) => {
+          const itemPrice = parseFloat(item.price) || 0;
+          const itemQty = typeof item.qty === 'number' ? item.qty : parseInt(item.qty.toString(), 10) || 1;
+          const lineTotal = item.total_price !== undefined ? parseFloat(item.total_price) : itemPrice * itemQty;
           productInfo[item.product_id] = {
             price: item.price.toString(),
-            total_price: item.total_price.toString(),
-            qty: typeof item.qty === 'number' ? item.qty : parseInt(item.qty.toString(), 10) || 1,
+            total_price: lineTotal.toString(),
+            qty: itemQty,
           };
         });
       });
@@ -509,44 +496,79 @@ export default function CheckoutScreen() {
 
               {/* Package Items */}
               <View style={styles.itemsList}>
-                {pkgValue.items.map((item: any) => (
-                  <View key={item.id} style={styles.itemRow}>
-                    <Text style={styles.itemName} numberOfLines={1}>
-                      {item.product?.product?.product_name || 'Product'}
-                    </Text>
-                    <Text style={styles.itemQty}>x{item.qty}</Text>
-                    <Text style={styles.itemPrice}>₹{(item.price * item.qty).toLocaleString('en-IN')}</Text>
-                  </View>
-                ))}
-              </View>
+                {pkgValue.items.map((item: any) => {
+                  const itemPrice = parseFloat(item.price) || 0;
+                  const itemQty = parseInt(item.qty, 10) || 1;
+                  const baseTotal = itemPrice * itemQty;
 
-              {/* Shipping Method Selector for this package */}
-              {pkgValue.shipping && pkgValue.shipping.length > 0 && (
-                <View style={styles.shippingSection}>
-                  <Text style={styles.shippingMethodLabel}>Shipping Method:</Text>
-                  <View style={styles.shippingOptions}>
-                    {pkgValue.shipping.map((method: any) => {
-                      const isSelected = currentShipping?.id === method.id;
-                      return (
-                        <TouchableOpacity
-                          key={method.id}
-                          style={[styles.shippingOptionBtn, isSelected && styles.shippingOptionBtnActive]}
-                          onPress={() => {
-                            setSelectedShippingMethods({
-                              ...selectedShippingMethods,
-                              [pkgKey]: method,
-                            });
-                          }}
-                        >
-                          <Text style={[styles.shippingOptionText, isSelected && styles.shippingOptionTextActive]}>
-                            {method.method_name} (₹{method.cost})
+                  let rate = 0;
+                  let isInclusive = false;
+
+                  if (item.gst_rate !== undefined && item.gst_rate !== null) {
+                    rate = parseFloat(item.gst_rate) || 0;
+                    isInclusive = Boolean(item.is_inclusive);
+                  } else if (item.product?.product?.gst_group) {
+                    const g = item.product.product.gst_group;
+                    rate = parseFloat(g.total_percent ?? g.totalPercent) || 0;
+                    isInclusive = Boolean(g.is_inclusive ?? g.isInclusive);
+                  }
+
+                  const lineTotal = item.total_price !== undefined
+                    ? parseFloat(item.total_price)
+                    : (isInclusive ? baseTotal : baseTotal + (baseTotal * rate) / 100);
+
+                  return (
+                    <View key={item.id} style={styles.itemCard}>
+                      <View style={styles.itemRowTop}>
+                        <Text style={styles.itemName} numberOfLines={1}>
+                          {item.product?.product?.product_name || 'Product'}
+                        </Text>
+                        <Text style={styles.itemPrice}>₹{lineTotal.toLocaleString('en-IN')}</Text>
+                      </View>
+                      <View style={styles.itemRowBottom}>
+                        <Text style={styles.itemMetaText}>
+                          Qty: {itemQty} × ₹{itemPrice.toLocaleString('en-IN')}
+                        </Text>
+                        {rate > 0 ? (
+                          <View
+                            style={[
+                              styles.gstBadge,
+                              isInclusive ? styles.gstBadgeInclusive : styles.gstBadgeExclusive,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.gstBadgeText,
+                                isInclusive ? styles.gstBadgeTextInclusive : styles.gstBadgeTextExclusive,
+                              ]}
+                            >
+                              GST {rate}% ({isInclusive ? 'Incl.' : '+ Excl.'})
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.gstBadge, styles.gstBadgeExempt]}>
+                            <Text style={[styles.gstBadgeText, styles.gstBadgeTextExempt]}>
+                              GST 0% (Exempt)
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Item-level Tax Breakdown */}
+                      {rate > 0 && (
+                        <View style={styles.itemTaxBreakdownRow}>
+                          <Text style={styles.itemTaxDetailText}>
+                            Taxable: ₹{(isInclusive ? baseTotal / (1 + rate / 100) : baseTotal).toFixed(2)}
                           </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
+                          <Text style={styles.itemTaxDetailText}>
+                            GST ({rate}%): ₹{(isInclusive ? (baseTotal - baseTotal / (1 + rate / 100)) : (baseTotal * rate) / 100).toFixed(2)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
             </View>
           );
         })}
@@ -589,15 +611,25 @@ export default function CheckoutScreen() {
             <Text style={styles.summaryValue}>₹{subTotal.toLocaleString('en-IN')}</Text>
           </View>
 
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryText}>GST Taxes</Text>
-            <Text style={styles.summaryValue}>₹{gstTotal.toLocaleString('en-IN')}</Text>
-          </View>
+          {gstTotal > 0 && (
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryText}>GST Taxes (Exclusive)</Text>
+              <Text style={[styles.summaryValue, { color: '#059669' }]}>
+                + ₹{gstTotal.toLocaleString('en-IN')}
+              </Text>
+            </View>
+          )}
 
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryText}>Delivery Charges</Text>
-            <Text style={styles.summaryValue}>₹{shippingTotal.toLocaleString('en-IN')}</Text>
-          </View>
+          {inclusiveGstTotal > 0 && (
+            <View style={styles.summaryItem}>
+              <Text style={[styles.summaryText, { color: '#64748b' }]}>
+                GST Included (in MRP)
+              </Text>
+              <Text style={[styles.summaryValue, { color: '#64748b', fontWeight: '500' }]}>
+                ₹{inclusiveGstTotal.toLocaleString('en-IN')} (incl.)
+              </Text>
+            </View>
+          )}
 
           <View style={styles.summaryDivider} />
 
@@ -902,66 +934,99 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
   },
   itemsList: {
+    gap: 10,
+  },
+  itemCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    gap: 6,
+  },
+  itemRowTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     gap: 8,
   },
-  itemRow: {
+  itemRowBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 2,
   },
   itemName: {
     fontSize: 13,
-    color: '#334155',
-    fontWeight: '500',
-    flex: 1,
-    marginRight: 12,
-  },
-  itemQty: {
-    fontSize: 13,
-    color: '#64748b',
+    color: '#1e293b',
     fontWeight: '600',
-    marginRight: 16,
+    flex: 1,
   },
   itemPrice: {
     fontSize: 13,
     fontWeight: '700',
     color: '#0f172a',
   },
-  shippingSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-    paddingTop: 12,
-    gap: 8,
-  },
-  shippingMethodLabel: {
+  itemMetaText: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#64748b',
+    fontWeight: '500',
   },
-  shippingOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  gstBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  shippingOptionBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1.5,
+  gstBadgeExclusive: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+  },
+  gstBadgeInclusive: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  gstBadgeExempt: {
+    backgroundColor: '#f1f5f9',
     borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
   },
-  shippingOptionBtnActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary10,
-  },
-  shippingOptionText: {
-    fontSize: 12,
-    color: '#64748b',
+  gstBadgeText: {
+    fontSize: 10,
     fontWeight: '600',
   },
-  shippingOptionTextActive: {
-    color: Colors.primary,
+  gstBadgeTextExclusive: {
+    color: '#047857',
+  },
+  gstBadgeTextInclusive: {
+    color: '#1d4ed8',
+  },
+  gstBadgeTextExempt: {
+    color: '#64748b',
+  },
+  itemTaxBreakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 6,
+  },
+  itemTaxDetailText: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemQty: {
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '600',
+    marginRight: 16,
   },
   paymentOption: {
     flexDirection: 'row',
