@@ -1,13 +1,30 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Tabs } from 'expo-router';
+import { View, StyleSheet, Text } from 'react-native';
+import { Tabs, Redirect } from 'expo-router';
 import { Home, LayoutGrid, ShoppingCart, Package, User } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/theme';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function TabLayout() {
+  const { isAuthenticated, isLoading, isOnboarded } = useAuth();
   const activeColor = Colors.primary; // #4f7942
   const inactiveColor = Colors.textSecondary; // #64748b
+  const { cartCount, cartItems } = useCart();
+  const displayCartCount = cartCount > 0 ? cartCount : (cartItems?.length || 0);
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isOnboarded) {
+    return <Redirect href="/welcome" />;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Tabs
@@ -28,7 +45,7 @@ export default function TabLayout() {
           <View style={styles.tabBarBackground}>
             <View style={styles.tabBarContainer}>
               <LinearGradient
-                colors={['#ffffff', Colors.background]}
+                colors={[Colors.surface, Colors.background]}
                 style={styles.gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
@@ -86,8 +103,15 @@ export default function TabLayout() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <ShoppingCart size={26} color="#ffffff" strokeWidth={2.5} />
+                <ShoppingCart size={26} color={Colors.textWhite} strokeWidth={2.5} />
               </LinearGradient>
+              {displayCartCount > 0 && (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeText}>
+                    {displayCartCount > 99 ? '99+' : displayCartCount}
+                  </Text>
+                </View>
+              )}
             </View>
           ),
         }}
@@ -152,7 +176,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 10,
     borderTopWidth: 1,
-    borderColor: '#e4e7e9',
+    borderColor: Colors.border,
   },
   gradient: {
     flex: 1,
@@ -167,6 +191,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 12,
+    position: 'relative',
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    backgroundColor: Colors.danger,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.surface,
+    elevation: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  badgeText: {
+    color: Colors.textWhite,
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   cartGradient: {
     width: 60,
