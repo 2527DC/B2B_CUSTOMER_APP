@@ -79,6 +79,12 @@ export const URLs = {
   cityByState: (stateId: string | number) =>
     `${API}/location/state/${stateId}/cities`,
 
+  // Official Customer Drop Location & Admin Approval
+  CUSTOMER_DROP_LOCATION_CURRENT:        `${API}/location/current`,
+  CUSTOMER_DROP_LOCATION_REQUEST_CHANGE: `${API}/location/request-change`,
+  LOCATION_SEARCH_AUTOCOMPLETE:          `${API}/location/search`,
+  LOCATION_REVERSE_GEOCODE:              `${API}/location/reverse-geocode`,
+
   // Orders
   ALL_ORDER_LIST:           `${API}/order-list`,
   ALL_ORDER_PENDING_LIST:   `${API}/order-pending-list`,

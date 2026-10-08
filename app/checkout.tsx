@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,8 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, MapPin, Store, CreditCard, ChevronRight, Plus, Check } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { ArrowLeft, MapPin, Store, CreditCard, ChevronRight, Plus, Check, Clock } from 'lucide-react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useCart } from '@/context/CartContext';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
@@ -85,6 +85,19 @@ export default function CheckoutScreen() {
   const [packageCount, setPackageCount] = useState(0);
   const [totalQty, setTotalQty] = useState(0);
 
+  const [dropLocationStatus, setDropLocationStatus] = useState<string | null>(null);
+
+  const fetchDropLocationStatus = async () => {
+    try {
+      const dropRes = await apiClient.get(URLs.CUSTOMER_DROP_LOCATION_CURRENT);
+      if (dropRes.data?.status) {
+        setDropLocationStatus(dropRes.data.status);
+      }
+    } catch (e) {
+      console.warn('Could not fetch drop location status:', e);
+    }
+  };
+
   const loadCheckoutDetails = async () => {
     try {
       setIsLoading(true);
@@ -118,6 +131,9 @@ export default function CheckoutScreen() {
           { text: 'OK', onPress: () => router.back() }
         ]);
       }
+
+      // 3. Fetch drop location status
+      await fetchDropLocationStatus();
     } catch (error) {
       console.error('Failed to load checkout information:', error);
       Alert.alert('Error', 'Unable to fetch checkout details.');
@@ -129,6 +145,12 @@ export default function CheckoutScreen() {
   useEffect(() => {
     loadCheckoutDetails();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDropLocationStatus();
+    }, [])
+  );
 
   // Update calculations whenever checkoutData changes
   useEffect(() => {
@@ -452,6 +474,30 @@ export default function CheckoutScreen() {
             </View>
             <ChevronRight size={18} color="#64748b" />
           </TouchableOpacity>
+
+          {/* Official Drop Dock Pinpoint Action & Status Badge */}
+          <View style={styles.dropLocationContainer}>
+            <TouchableOpacity
+              style={styles.pinpointBtn}
+              onPress={() => router.push('/location/select' as any)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.pinpointBtnLeft}>
+                <MapPin size={15} color={Colors.primary} />
+                <Text style={styles.pinpointBtnText}>Pinpoint Store Dock on Map</Text>
+              </View>
+              <ChevronRight size={16} color={Colors.primary} />
+            </TouchableOpacity>
+
+            {dropLocationStatus === 'PENDING_APPROVAL' && (
+              <View style={styles.pendingBadge}>
+                <Clock size={14} color="#b45309" />
+                <Text style={styles.pendingBadgeText}>
+                  Proposed location under verification by Dhatri
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View style={styles.divider} />
 
@@ -928,6 +974,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#ef4444',
     fontWeight: '500',
+  },
+  dropLocationContainer: {
+    gap: 8,
+    marginTop: 4,
+  },
+  pinpointBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  pinpointBtnLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pinpointBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  pendingBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#b45309',
+    flex: 1,
+    lineHeight: 16,
   },
   divider: {
     height: 1,

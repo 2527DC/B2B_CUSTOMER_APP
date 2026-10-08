@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
-import { User, HelpCircle, LogOut, ChevronRight, ShoppingBag, Heart, Package, Store, Wallet } from 'lucide-react-native';
+import { User, HelpCircle, LogOut, ChevronRight, ShoppingBag, Heart, Package, Store, Wallet, MapPin } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { useAuth } from '@/context/AuthContext';
@@ -82,6 +82,12 @@ export default function ProfileScreen() {
       title: 'Returns',
       subtitle: 'Return and exchange items',
       onPress: () => router.push({ pathname: '/(tabs)/orders', params: { tab: 'returns' } } as any),
+    },
+    {
+      icon: MapPin,
+      title: 'Store Drop Location',
+      subtitle: 'Pinpoint delivery dock on map',
+      onPress: () => router.push('/location/select' as any),
     },
     {
       icon: HelpCircle,
