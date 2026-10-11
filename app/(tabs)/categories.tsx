@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { CategorySidebar, ProductCard } from '@/components';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CategorySidebar, ProductCard, OfflineView, OfflineBanner } from '@/components';
 import { Category, Product } from '@/lib/supabase';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';
+import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
+
+const CATEGORIES_CACHE_KEY = '@dhatri_cached_categories_data';
 
 // Extend the Category type locally to include rawProducts and image_url
 interface ExtendedCategory extends Category {
@@ -49,9 +53,34 @@ export default function CategoriesScreen() {
   const [loading, setLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [errorInfo, setErrorInfo] = useState<FormattedError | null>(null);
+  const [isOfflineCached, setIsOfflineCached] = useState(false);
 
   useEffect(() => {
-    fetchCategories();
+    let isMounted = true;
+    AsyncStorage.getItem(CATEGORIES_CACHE_KEY)
+      .then((cached) => {
+        if (!isMounted || !cached) return;
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCategories(parsed);
+            setLoading(false);
+          }
+        } catch (e) {
+          console.warn('[CategoriesScreen] Cache parse error:', e);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) {
+          fetchCategories();
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -61,7 +90,8 @@ export default function CategoriesScreen() {
 
   const fetchCategories = async () => {
     try {
-      setLoading(true);
+      if (categories.length === 0) setLoading(true);
+      setErrorInfo(null);
       console.log(`[CategoriesScreen] Fetching categories from: ${URLs.ALL_CATEGORY}`);
       const response = await apiClient.get(URLs.ALL_CATEGORY);
       const categoryList = response.data?.data ?? [];
@@ -86,9 +116,17 @@ export default function CategoriesScreen() {
       }));
 
       setCategories(mappedCategories);
-      setSelectedCategory(null); // default to "All" category
+      setIsOfflineCached(false);
+      setErrorInfo(null);
+      AsyncStorage.setItem(CATEGORIES_CACHE_KEY, JSON.stringify(mappedCategories)).catch(() => {});
     } catch (error) {
       console.error('Error fetching categories:', error);
+      const friendly = getFriendlyErrorMessage(error, 'Failed to load categories');
+      if (categories.length > 0) {
+        setIsOfflineCached(true);
+      } else {
+        setErrorInfo(friendly);
+      }
     } finally {
       setLoading(false);
     }
@@ -141,10 +179,28 @@ export default function CategoriesScreen() {
     ? categories.find(c => c.id === selectedCategory)?.name || 'All Products'
     : 'All Products';
 
-  if (loading) {
+  if (loading && categories.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (errorInfo && categories.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Categories</Text>
+          <Text style={styles.subtitle}>Browse by category</Text>
+        </View>
+        <OfflineView
+          onRetry={fetchCategories}
+          isRetrying={loading}
+          isOffline={errorInfo.isOffline}
+          title={errorInfo.title}
+          message={errorInfo.message}
+        />
       </View>
     );
   }
@@ -173,6 +229,14 @@ export default function CategoriesScreen() {
           </View>
         </View>
       </View>
+
+      {isOfflineCached && (
+        <OfflineBanner
+          onRetry={fetchCategories}
+          isRetrying={loading}
+          message="You're offline • Showing saved categories"
+        />
+      )}
 
       <View style={styles.mainContent}>
         <CategorySidebar

@@ -8,14 +8,16 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
-import { Package, RotateCcw, Truck, CheckCircle, Clock, UserCheck, ShieldAlert, XCircle, AlertTriangle, ChevronRight } from 'lucide-react-native';
+import { Package, RotateCcw, Truck, UserCheck, ShieldAlert, ChevronRight } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';
+import OrderCard from '@/components/orders/OrderCard';
+import { OfflineView } from '@/components';
+import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
 
 // ─── Base URL and Asset Helper ──────────────────────────────────────────────
 const assetUrl = (path?: string): string => URLs.assetUrl(path);
@@ -192,13 +194,13 @@ export default function OrdersScreen() {
   
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<FormattedError | null>(null);
 
   // ─── Fetching Logic ────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async (isRefreshed = false) => {
     if (!isAuthenticated) return;
     if (!isRefreshed) setLoading(true);
-    setError(null);
+    setErrorInfo(null);
     try {
       const url = selectedStatus === 0
         ? `${URLs.API_URL}/order-by-delivery-status?lang=en`
@@ -215,7 +217,7 @@ export default function OrdersScreen() {
         setOrders([]);
       } else {
         console.error('[Orders] Fetch orders failed:', err?.message, err?.response?.status);
-        setError('Failed to fetch orders. Please try again.');
+        setErrorInfo(getFriendlyErrorMessage(err, 'Failed to fetch orders.'));
       }
     } finally {
       setLoading(false);
@@ -226,7 +228,7 @@ export default function OrdersScreen() {
   const fetchRefunds = useCallback(async (isRefreshed = false) => {
     if (!isAuthenticated) return;
     if (!isRefreshed) setLoading(true);
-    setError(null);
+    setErrorInfo(null);
     try {
       const url = URLs.ALL_ORDER_REFUND_LIST;
       console.log('[Orders] Loading Refunds URL:', url);
@@ -241,7 +243,7 @@ export default function OrdersScreen() {
         setRefunds([]);
       } else {
         console.error('[Orders] Fetch refunds failed:', err?.message, err?.response?.status);
-        setError('Failed to fetch return requests. Please try again.');
+        setErrorInfo(getFriendlyErrorMessage(err, 'Failed to fetch return requests.'));
       }
     } finally {
       setLoading(false);
@@ -264,56 +266,6 @@ export default function OrdersScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadData(true);
-  };
-
-  // ─── Status Helpers ────────────────────────────────────────────────────────
-  const getStatusIcon = (status: string | number, order?: ApiOrder) => {
-    if (order?.is_rto || order?.status === 'RTO_INITIATED' || order?.status === 'RTO_COMPLETED') {
-      return <RotateCcw size={15} color="#c2410c" strokeWidth={2.5} />;
-    }
-    if (order?.status === 'CANCELLED') {
-      return <XCircle size={15} color="#dc2626" strokeWidth={2.5} />;
-    }
-    const s = typeof status === 'string' ? parseInt(status, 10) : status;
-    if (s === 6) return <RotateCcw size={15} color="#c2410c" strokeWidth={2.5} />;
-    if (s === 4) return <XCircle size={15} color="#dc2626" strokeWidth={2.5} />;
-    if (s <= 1) return <Clock size={15} color="#d97706" strokeWidth={2.5} />;
-    if (s === 2) return <CheckCircle size={15} color={Colors.primary} strokeWidth={2.5} />;
-    if (s === 3) return <Truck size={15} color="#7c3aed" strokeWidth={2.5} />;
-    if (s >= 5) return <CheckCircle size={15} color="#059669" strokeWidth={2.5} />;
-    return <Package size={15} color="#4b5563" strokeWidth={2.5} />;
-  };
-
-  const getStatusText = (status: string | number, order?: ApiOrder) => {
-    if (order?.is_rto || order?.status === 'RTO_INITIATED' || order?.status === 'RTO_COMPLETED') {
-      return order?.status === 'RTO_COMPLETED' ? 'RTO Completed' : 'RTO Initiated';
-    }
-    if (order?.status === 'CANCELLED') return 'Cancelled';
-    const s = typeof status === 'string' ? parseInt(status, 10) : status;
-    if (s === 6) return 'RTO';
-    if (s === 4) return 'Cancelled';
-    if (s <= 1) return 'Pending';
-    if (s === 2) return 'Confirmed';
-    if (s === 3) return 'Out for Delivery';
-    if (s >= 5) return 'Delivered';
-    return 'Pending';
-  };
-
-  const getStatusColor = (status: string | number, order?: ApiOrder) => {
-    if (order?.is_rto || order?.status === 'RTO_INITIATED' || order?.status === 'RTO_COMPLETED') {
-      return { bg: '#ffedd5', text: '#c2410c' }; // Orange RTO
-    }
-    if (order?.status === 'CANCELLED') {
-      return { bg: '#fee2e2', text: '#991b1b' }; // Red Cancelled
-    }
-    const s = typeof status === 'string' ? parseInt(status, 10) : status;
-    if (s === 6) return { bg: '#ffedd5', text: '#c2410c' };
-    if (s === 4) return { bg: '#fee2e2', text: '#991b1b' };
-    if (s <= 1) return { bg: '#fef3c7', text: '#b45309' };
-    if (s === 2) return { bg: '#dbeafe', text: '#1e40af' };
-    if (s === 3) return { bg: '#ede9fe', text: '#5b21b6' };
-    if (s >= 5) return { bg: '#d1fae5', text: '#065f46' };
-    return { bg: '#f3f4f6', text: '#374151' };
   };
 
   // ─── Return Status Helpers ─────────────────────────────────────────────────
@@ -462,15 +414,14 @@ export default function OrdersScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Fetching details...</Text>
         </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <ShieldAlert size={48} color="#ef4444" strokeWidth={1.5} />
-          <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
-          <Text style={styles.errorSubtitle}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => loadData()}>
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
+      ) : errorInfo ? (
+        <OfflineView
+          onRetry={() => loadData()}
+          isRetrying={loading || refreshing}
+          isOffline={errorInfo.isOffline}
+          title={errorInfo.title}
+          message={errorInfo.message}
+        />
       ) : activeTab === 'orders' && orders.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
@@ -511,176 +462,18 @@ export default function OrdersScreen() {
           }
         >
           {activeTab === 'orders'
-            ? orders.map((order) => {
-                const salesmanName = order.salesman_name || order.salesman?.name;
-                return (
-                  <TouchableOpacity
-                    key={order.id}
-                    style={styles.orderCard}
-                    activeOpacity={0.9}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/order/[id]',
-                        params: { id: String(order.id) },
-                      })
-                    }
-                  >
-                    {/* Order Card Header */}
-                    <View style={styles.orderCardHeader}>
-                      <View>
-                        <Text style={styles.orderNumber}>#{order.order_number}</Text>
-                        <Text style={styles.orderDate}>{formatDate(order.created_at)}</Text>
-                      </View>
-                      <View style={styles.totalBlock}>
-                        <Text style={styles.totalLabel}>Grand Total</Text>
-                        <Text style={styles.grandTotalValue}>
-                          ₹{parseFloat(String(order.grand_total)).toLocaleString('en-IN')}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Salesman Badge - ONLY SHOWN IF SALESMAN IS ATTACHED */}
-                    {salesmanName ? (
-                      <View style={styles.salesmanCardBadge}>
-                        <UserCheck size={13} color="#0284c7" strokeWidth={2.2} />
-                        <Text style={styles.salesmanCardText}>
-                          Salesman: <Text style={styles.salesmanCardName}>{salesmanName}</Text>
-                        </Text>
-                      </View>
-                    ) : null}
-
-                    {/* RTO Notice Card */}
-                    {(order.is_rto || order.status === 'RTO_INITIATED' || order.status === 'RTO_COMPLETED') ? (
-                      <View style={styles.rtoCardNotice}>
-                        <View style={styles.rtoCardHeaderRow}>
-                          <RotateCcw size={13} color="#c2410c" strokeWidth={2.5} />
-                          <Text style={styles.rtoCardNoticeTitle}>
-                            {order.status === 'RTO_COMPLETED' ? 'Return to Origin (Completed)' : 'Return to Origin (In Transit)'}
-                          </Text>
-                        </View>
-                        {(order.rto_reason || order.cancel_reason || order.note) ? (
-                          <Text style={styles.rtoCardNoticeText}>
-                            Reason: {order.rto_reason || order.cancel_reason || order.note}
-                          </Text>
-                        ) : null}
-                      </View>
-                    ) : null}
-
-                    {/* Order Card Body (Packages & Items) */}
-                    <View style={styles.orderCardBody}>
-                      {order.packages && order.packages.length > 0 ? (
-                        order.packages.map((pkg, pIdx) => {
-                          const statusColors = getStatusColor(pkg.delivery_status, order);
-                          return (
-                            <View key={pkg.id || pIdx} style={styles.packageContainer}>
-                              <View style={styles.packageHeader}>
-                                <Text style={styles.packageCode}>
-                                  Package: {pkg.package_code || `PKG-${pkg.id}`}
-                                </Text>
-                                <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-                                  {getStatusIcon(pkg.delivery_status, order)}
-                                  <Text style={[styles.statusText, { color: statusColors.text }]}>
-                                    {getStatusText(pkg.delivery_status, order)}
-                                  </Text>
-                                </View>
-                              </View>
-
-                              {/* Products inside Package */}
-                              {pkg.products &&
-                                pkg.products.map((item, iIdx) => {
-                                  const prod = item.seller_product_sku?.product;
-                                  const prodName =
-                                    prod?.product_name ??
-                                    prod?.product?.product_name ??
-                                    (item as any).product_title ??
-                                    'Product Item';
-                                  const prodImg =
-                                    prod?.thum_img ??
-                                    prod?.product?.thumbnail_image_source ??
-                                    (item as any).thumbnail ??
-                                    '';
-                                  return (
-                                    <View key={item.id || iIdx} style={styles.productRow}>
-                                      <Image
-                                        source={
-                                          prodImg
-                                            ? { uri: assetUrl(prodImg) }
-                                            : require('@/assets/images/icon.png')
-                                        }
-                                        style={styles.productImage}
-                                      />
-                                      <View style={styles.productInfo}>
-                                        <Text style={styles.productName} numberOfLines={2}>
-                                          {prodName}
-                                        </Text>
-                                        <View style={styles.productMeta}>
-                                          <Text style={styles.productQty}>Qty: {item.qty}</Text>
-                                          <Text style={styles.productPrice}>
-                                            ₹{parseFloat(String(item.price)).toLocaleString('en-IN')}
-                                          </Text>
-                                        </View>
-                                      </View>
-                                    </View>
-                                  );
-                                })}
-                            </View>
-                          );
-                        })
-                      ) : order.items && order.items.length > 0 ? (
-                        <View style={styles.packageContainer}>
-                          {order.items.map((item: any, iIdx: number) => {
-                            const prodName =
-                              item.product_title ||
-                              item.seller_product_sku?.product?.product_name ||
-                              'Product Item';
-                            const prodImg =
-                              item.thumbnail || item.seller_product_sku?.product?.thum_img || '';
-                            return (
-                              <View key={item.id || iIdx} style={styles.productRow}>
-                                <Image
-                                  source={
-                                    prodImg
-                                      ? { uri: assetUrl(prodImg) }
-                                      : require('@/assets/images/icon.png')
-                                  }
-                                  style={styles.productImage}
-                                />
-                                <View style={styles.productInfo}>
-                                  <Text style={styles.productName} numberOfLines={2}>
-                                    {prodName}
-                                  </Text>
-                                  <View style={styles.productMeta}>
-                                    <Text style={styles.productQty}>Qty: {item.qty}</Text>
-                                    <Text style={styles.productPrice}>
-                                      ₹{parseFloat(String(item.price || item.unit_price)).toLocaleString('en-IN')}
-                                    </Text>
-                                  </View>
-                                </View>
-                              </View>
-                            );
-                          })}
-                        </View>
-                      ) : null}
-                    </View>
-
-                    {/* Actions */}
-                    <View style={styles.orderActions}>
-                      <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() =>
-                          router.push({
-                            pathname: '/order/[id]',
-                            params: { id: String(order.id) },
-                          })
-                        }
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.actionBtnText}>View Details</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+            ? orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/order/[id]',
+                      params: { id: String(order.id) },
+                    })
+                  }
+                />
+              ))
             : refunds.map((refund) => {
                 const statusInfo = getRefundStatusInfo(refund);
                 const itemsList = (refund.items && refund.items.length > 0)

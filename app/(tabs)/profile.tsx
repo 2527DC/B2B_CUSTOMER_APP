@@ -1,240 +1,302 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
-import { User, HelpCircle, LogOut, ChevronRight, ShoppingBag, Heart, Package, Store, Wallet, MapPin } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
+import { Bell, HelpCircle, LogOut, ShieldCheck } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useWishlist } from '@/context/WishlistContext';
-import { Colors } from '@/constants/theme';
+import { Colors, getComponentTheme } from '@/constants/theme';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import {
+  BusinessDetailsCard,
+  DropLocationCard,
+  SalesRepCard,
+  SectionTitle,
+  StatTiles,
+  WalletCard,
+  type DropLocationStatus,
+  type DropLocationSummary,
+  type SalesRep,
+} from '@/components/profile/ProfileCards';
+import MenuGroup from '@/components/profile/MenuGroup';
+import HelpSheet from '@/components/profile/HelpSheet';
+
+const badge = getComponentTheme(Colors).badge;
+const TAB_BAR_HEIGHT = 85;
+/** order_status values from the orders API that mean "still on its way". */
+const ACTIVE_ORDER_STATUSES = new Set([1, 2, 3]);
+
+interface ProfileData {
+  orderCount: number | null;
+  activeOrderCount: number;
+  returnCount: number | null;
+  walletBalance: number | null;
+  location: DropLocationSummary | null;
+  rep: SalesRep | null;
+}
+
+const EMPTY: ProfileData = {
+  orderCount: null,
+  activeOrderCount: 0,
+  returnCount: null,
+  walletBalance: null,
+  location: null,
+  rep: null,
+};
+
+function toWhatsAppNumber(phone: string) {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length === 10 ? `91${digits}` : digits;
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout, isAuthenticated } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { user, logout, isAuthenticated, refreshUser } = useAuth();
   const { wishlistCount } = useWishlist();
 
-  const [orderCount, setOrderCount] = useState(0);
-  const [returnCount, setReturnCount] = useState(0);
-  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [data, setData] = useState<ProfileData>(EMPTY);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
-  const appVersion = Constants.expoConfig?.version ?? '1.0.8';
+  // Fades in a solid bar behind the status bar once the green header has scrolled away.
+  const [scrollY] = useState(() => new Animated.Value(0));
+  const statusBarScrim = scrollY.interpolate({ inputRange: [140, 200], outputRange: [0, 1], extrapolate: 'clamp' });
 
-  const loadCounts = useCallback(async () => {
-    if (!isAuthenticated) return;
-    try {
-      // 1. Fetch orders count
-      const ordersRes = await apiClient.get(`${URLs.API_URL}/order-by-delivery-status?lang=en`);
-      if (ordersRes.data?.orders && Array.isArray(ordersRes.data.orders)) {
-        setOrderCount(ordersRes.data.orders.length);
-      }
-    } catch (e) {
-      // ignore
+  const mounted = useRef(true);
+  const requestId = useRef(0);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const appVersion = Constants.expoConfig?.version ?? '';
+
+  /** Loads every card in parallel. Each source fails independently and loading always ends. */
+  const loadData = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
     }
+    const id = ++requestId.current;
 
-    try {
-      // 2. Fetch returns count
-      const refundsRes = await apiClient.get(URLs.ALL_ORDER_REFUND_LIST);
-      if (refundsRes.data?.refundOrders && Array.isArray(refundsRes.data.refundOrders)) {
-        setReturnCount(refundsRes.data.refundOrders.length);
-      }
-    } catch (e) {
-      // ignore
-    }
+    const [ordersRes, refundsRes, walletRes, locationRes] = await Promise.allSettled([
+      apiClient.get(`${URLs.API_URL}/order-by-delivery-status?lang=en`),
+      apiClient.get(URLs.ALL_ORDER_REFUND_LIST),
+      apiClient.get(URLs.WALLET),
+      apiClient.get(URLs.CUSTOMER_DROP_LOCATION_CURRENT),
+    ]);
 
-    try {
-      // 3. Fetch wallet balance
-      const walletRes = await apiClient.get(URLs.WALLET);
-      if (walletRes.data?.wallet?.balance !== undefined) {
-        setWalletBalance(Number(walletRes.data.wallet.balance));
+    if (!mounted.current || id !== requestId.current) return;
+
+    setData((prev) => {
+      const next: ProfileData = { ...prev };
+
+      if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value.data?.orders)) {
+        const orders: any[] = ordersRes.value.data.orders;
+        next.orderCount = orders.length;
+        next.activeOrderCount = orders.filter((o) => ACTIVE_ORDER_STATUSES.has(Number(o?.order_status))).length;
+        // Orders are newest first; the API falls back to the store's assigned salesman.
+        const withRep = orders.find((o) => o?.salesman?.name || o?.salesman_name);
+        next.rep = withRep
+          ? {
+              name: withRep.salesman?.name || withRep.salesman_name,
+              phone: withRep.salesman?.phone || withRep.salesman_phone || null,
+              code: withRep.salesman?.salesman_code || null,
+            }
+          : prev.rep;
+      } else if (prev.orderCount === null) {
+        next.orderCount = 0;
       }
-    } catch (e) {
-      // ignore
-    }
+
+      if (refundsRes.status === 'fulfilled' && Array.isArray(refundsRes.value.data?.refundOrders)) {
+        next.returnCount = refundsRes.value.data.refundOrders.length;
+      } else if (prev.returnCount === null) {
+        next.returnCount = 0;
+      }
+
+      if (walletRes.status === 'fulfilled') {
+        const raw = walletRes.value.data?.wallet?.balance ?? walletRes.value.data?.balance;
+        if (raw !== undefined && raw !== null && !Number.isNaN(Number(raw))) next.walletBalance = Number(raw);
+        else if (prev.walletBalance === null) next.walletBalance = 0;
+      } else if (prev.walletBalance === null) {
+        next.walletBalance = 0;
+      }
+
+      if (locationRes.status === 'fulfilled' && locationRes.value.data?.success !== false) {
+        const info = locationRes.value.data;
+        next.location = {
+          status: (info?.status as DropLocationStatus) || 'NONE',
+          address: info?.activeLocation?.address || null,
+          pendingAddress: info?.pendingLocation?.address || null,
+          rejectionReason: info?.rejectionReason || null,
+        };
+      }
+
+      return next;
+    });
+    setLoading(false);
   }, [isAuthenticated]);
 
+  // First load also refreshes the user, so hub and verification status are current.
   useEffect(() => {
-    loadCounts();
-  }, [loadCounts]);
+    refreshUser().catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reload counts whenever the tab regains focus (e.g. after placing an order).
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadCounts();
-    setRefreshing(false);
+    try {
+      await Promise.allSettled([loadData(), refreshUser()]);
+    } finally {
+      if (mounted.current) setRefreshing(false);
+    }
   };
 
-  const menuItems = [
-    {
-      icon: ShoppingBag,
-      title: 'My Orders',
-      subtitle: 'Track and manage orders',
-      onPress: () => router.push('/(tabs)/orders'),
-    },
-    {
-      icon: Heart,
-      title: 'Wishlist',
-      subtitle: 'Your saved items',
-      onPress: () => router.push('/wishlist'),
-    },
-    {
-      icon: Package,
-      title: 'Returns',
-      subtitle: 'Return and exchange items',
-      onPress: () => router.push({ pathname: '/(tabs)/orders', params: { tab: 'returns' } } as any),
-    },
-    {
-      icon: MapPin,
-      title: 'Store Drop Location',
-      subtitle: 'Pinpoint delivery dock on map',
-      onPress: () => router.push('/location/select' as any),
-    },
-    {
-      icon: HelpCircle,
-      title: 'Help & Support',
-      subtitle: 'Get help from us',
-      onPress: () => router.push('/(tabs)'),
-    },
-  ];
+  const openEdit = () => router.push('/edit-profile');
+  const openOrders = () => router.push('/(tabs)/orders');
+  const openReturns = () => router.push({ pathname: '/(tabs)/orders', params: { tab: 'returns' } } as any);
+
+  const callRep = () => {
+    if (!data.rep?.phone) return;
+    Linking.openURL(`tel:${data.rep.phone}`).catch(() => Alert.alert('Unable to call', 'Please try again from your phone dialler.'));
+  };
+  const whatsAppRep = () => {
+    if (!data.rep?.phone) return;
+    const url = `https://wa.me/${toWhatsAppNumber(data.rep.phone)}?text=${encodeURIComponent(
+      `Hi ${data.rep.name}, this is ${user?.store_name || user?.name || 'a Dhatri store'}.`,
+    )}`;
+    Linking.openURL(url).catch(() => Alert.alert('WhatsApp unavailable', 'Please install WhatsApp or call instead.'));
+  };
+  const openPrivacy = () => {
+    WebBrowser.openBrowserAsync(`${URLs.HOST}/privacy-policy`).catch(() =>
+      Alert.alert('Unable to open', 'Please check your connection and try again.'),
+    );
+  };
+
+  const confirmLogout = () => {
+    Alert.alert('Log out of Dhatri?', 'You will need to verify your mobile number again to sign in.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log out', style: 'destructive', onPress: logout },
+    ]);
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 24 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
+        <ProfileHeader user={user} topInset={insets.top} onEdit={openEdit} />
+
+        <View style={styles.body}>
+          <View style={styles.overlap}>
+            <WalletCard balance={data.walletBalance} loading={loading} onPress={() => router.push('/wallet')} />
+          </View>
+
+          <StatTiles
+            tiles={[
+              {
+                key: 'orders',
+                label: 'Orders',
+                value: data.orderCount,
+                icon: 'orders',
+                chip: data.activeOrderCount > 0 ? `${data.activeOrderCount} active` : null,
+                onPress: openOrders,
+              },
+              { key: 'wishlist', label: 'Wishlist', value: wishlistCount ?? 0, icon: 'wishlist', onPress: () => router.push('/wishlist') },
+              { key: 'returns', label: 'Returns', value: data.returnCount, icon: 'returns', onPress: openReturns },
+            ]}
+          />
+
+          <SectionTitle>Delivery</SectionTitle>
+          <DropLocationCard location={data.location} loading={loading && !data.location} onPress={() => router.push('/location/select' as any)} />
+
+          {data.rep ? (
+            <>
+              <SectionTitle>Your Dhatri contact</SectionTitle>
+              <SalesRepCard rep={data.rep} onCall={callRep} onWhatsApp={whatsAppRep} />
+            </>
+          ) : null}
+
+          <SectionTitle>Business details</SectionTitle>
+          <BusinessDetailsCard gstNumber={user?.gst_number} hubName={user?.warehouse?.name} onEdit={openEdit} />
+
+          <SectionTitle>Settings & support</SectionTitle>
+          <MenuGroup
+            rows={[
+              { key: 'notifications', icon: Bell, title: 'Notifications', subtitle: 'Order updates and offers', onPress: () => router.push('/notifications') },
+              {
+                key: 'help',
+                icon: HelpCircle,
+                title: 'Help & support',
+                subtitle: data.rep ? `Talk to ${data.rep.name}` : 'Order issues and contact options',
+                onPress: () => setHelpOpen(true),
+              },
+              { key: 'privacy', icon: ShieldCheck, title: 'Privacy policy', onPress: openPrivacy },
+            ]}
+          />
+
+          <TouchableOpacity style={styles.logout} onPress={confirmLogout} activeOpacity={0.8} accessibilityRole="button">
+            <LogOut size={18} color={badge.dangerText} strokeWidth={2.4} />
+            <Text style={styles.logoutText}>Log out</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.version}>Dhatri B2B{appVersion ? `  ·  Version ${appVersion}` : ''}</Text>
         </View>
+      </Animated.ScrollView>
 
-        <TouchableOpacity
-          style={styles.profileCard}
-          onPress={() => router.push('/edit-profile')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.avatarContainer}>
-            {user?.store_name ? (
-              <Store size={32} color="#ffffff" strokeWidth={2} />
-            ) : (
-              <User size={36} color="#ffffff" strokeWidth={2} />
-            )}
-          </View>
-          <View style={styles.profileInfo}>
-            {user?.store_name ? (
-              <>
-                <Text style={styles.profileStoreTitle} numberOfLines={2}>
-                  {user.store_name}
-                </Text>
-                <Text style={styles.profileUserNameSmall} numberOfLines={1}>
-                  {user?.name || 'Customer'}
-                </Text>
-              </>
-            ) : (
-              <Text style={styles.profileStoreTitle} numberOfLines={2}>
-                {user?.name || 'Customer'}
-              </Text>
-            )}
-            <Text style={styles.profileEmail} numberOfLines={1}>
-              {user?.email || (user?.phone ? `+91 ${user.phone}` : '')}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => router.push('/edit-profile')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.editButtonText}>Edit</Text>
-          </TouchableOpacity>
-        </TouchableOpacity>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.statusBarScrim, { height: insets.top, opacity: statusBarScrim }]}
+      />
 
-        {/* Prominent Wallet Card */}
-        <TouchableOpacity
-          style={styles.walletCard}
-          onPress={() => router.push('/wallet')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.walletCardLeft}>
-            <View style={styles.walletIconCircle}>
-              <Wallet size={20} color="#ffffff" strokeWidth={2.2} />
-            </View>
-            <View>
-              <Text style={styles.walletCardTitle}>Dhatri Wallet</Text>
-              <Text style={styles.walletCardSubtitle}>Refunds & balance</Text>
-            </View>
-          </View>
-          <View style={styles.walletCardRight}>
-            <Text style={styles.walletBalanceAmount}>₹{walletBalance.toFixed(2)}</Text>
-            <View style={styles.walletActionRow}>
-              <Text style={styles.walletActionText}>History</Text>
-              <ChevronRight size={13} color="#059669" strokeWidth={2.5} />
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.statsContainer}>
-          <TouchableOpacity
-            style={styles.statItem}
-            onPress={() => router.push('/(tabs)/orders')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.statNumber}>{orderCount}</Text>
-            <Text style={styles.statLabel}>Orders</Text>
-          </TouchableOpacity>
-          <View style={styles.statDivider} />
-          <TouchableOpacity
-            style={styles.statItem}
-            onPress={() => router.push('/wishlist')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.statNumber}>{wishlistCount}</Text>
-            <Text style={styles.statLabel}>Wishlist</Text>
-          </TouchableOpacity>
-          <View style={styles.statDivider} />
-          <TouchableOpacity
-            style={styles.statItem}
-            onPress={() => router.push({ pathname: '/(tabs)/orders', params: { tab: 'returns' } } as any)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.statNumber}>{returnCount}</Text>
-            <Text style={styles.statLabel}>Returns</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.menuContainer}>
-          {menuItems.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <TouchableOpacity
-                key={index}
-                style={styles.menuItem}
-                onPress={item.onPress}
-                activeOpacity={0.7}
-              >
-                <View style={styles.menuIconContainer}>
-                  <Icon size={22} color={Colors.primary} strokeWidth={2} />
-                </View>
-                <View style={styles.menuContent}>
-                  <Text style={styles.menuTitle}>{item.title}</Text>
-                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-                </View>
-                <ChevronRight size={20} color="#cbd5e1" strokeWidth={2.5} />
-              </TouchableOpacity>
-            );
-          })}
-
-          <TouchableOpacity style={styles.logoutItem} onPress={logout} activeOpacity={0.7}>
-            <View style={styles.logoutIconContainer}>
-              <LogOut size={22} color="#ef4444" strokeWidth={2} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.logoutText}>Log Out</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.version}>Version {appVersion}</Text>
-      </ScrollView>
+      <HelpSheet
+        visible={helpOpen}
+        bottomInset={insets.bottom}
+        rep={data.rep}
+        onClose={() => setHelpOpen(false)}
+        onCallRep={() => {
+          setHelpOpen(false);
+          callRep();
+        }}
+        onWhatsAppRep={() => {
+          setHelpOpen(false);
+          whatsAppRep();
+        }}
+        onOpenOrders={() => {
+          setHelpOpen(false);
+          openOrders();
+        }}
+        onOpenPrivacy={() => {
+          setHelpOpen(false);
+          openPrivacy();
+        }}
+      />
     </View>
   );
 }
@@ -244,242 +306,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 60,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1e293b',
-    letterSpacing: -0.5,
-  },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    marginHorizontal: 20,
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  avatarContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileInfo: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  profileStoreTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.3,
-  },
-  profileUserNameSmall: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.primary,
-    marginTop: 2,
-  },
-  profileEmail: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  editButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.primary10,
-  },
-  editButtonText: {
-    fontSize: 13,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    marginHorizontal: 20,
-    marginTop: 12,
-    paddingVertical: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#e2e8f0',
-  },
-  menuContainer: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 16,
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
+  body: {
     paddingHorizontal: 16,
   },
-  menuIconContainer: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: Colors.primary10,
-    alignItems: 'center',
-    justifyContent: 'center',
+  statusBarScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
   },
-  menuContent: {
-    flex: 1,
-    marginLeft: 14,
+  overlap: {
+    marginTop: -40,
   },
-  menuTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-  menuSubtitle: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 1,
-  },
-  logoutItem: {
+  logout: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-  },
-  logoutIconContainer: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#fef2f2',
-    alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    marginTop: 28,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: badge.dangerBg,
+    backgroundColor: Colors.surface,
   },
   logoutText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#ef4444',
-    marginLeft: 14,
-  },
-  walletCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    marginHorizontal: 20,
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  walletCardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  walletIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  walletCardTitle: {
-    fontSize: 15,
     fontWeight: '700',
-    color: '#0f172a',
-  },
-  walletCardSubtitle: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  walletCardRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  walletBalanceAmount: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#059669',
-  },
-  walletActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#f0fdf4',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    marginTop: 2,
-  },
-  walletActionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#059669',
+    color: badge.dangerText,
   },
   version: {
     textAlign: 'center',
     fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 24,
+    color: Colors.textMuted,
+    marginTop: 16,
   },
 });

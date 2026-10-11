@@ -15,6 +15,8 @@ export interface User {
   email: string | null;
   phone: string;
   warehouse_id?: number | null;
+  // Assigned fulfilment hub, returned by GET /auth/me (absent on older login responses).
+  warehouse?: { id: number; name: string; city?: string | null } | null;
   store_name?: string | null;
   role?: string;
   gst_number?: string | null;
@@ -58,6 +60,9 @@ function normalizeUser(rawUser: any, fallbackPhone: string): User {
     email: rawUser?.email ?? null,
     phone: rawUser?.phone ?? fallbackPhone,
     warehouse_id: rawUser?.warehouse_id ?? null,
+    warehouse: rawUser?.warehouse
+      ? { id: Number(rawUser.warehouse.id), name: String(rawUser.warehouse.name ?? ''), city: rawUser.warehouse.city ?? null }
+      : null,
     store_name: rawUser?.store_name ?? null,
     gst_number: rawUser?.gst_number ?? null,
     shop_image_url: rawUser?.shop_image_url ?? null,

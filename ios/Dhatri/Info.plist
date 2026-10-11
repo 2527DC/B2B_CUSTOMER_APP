@@ -53,6 +53,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera to allow you to set your profile picture and support ticket image.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Dhatri needs access to your location to pinpoint your store dock for accurate cargo truck deliveries.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>We need access to your microphone for recording.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

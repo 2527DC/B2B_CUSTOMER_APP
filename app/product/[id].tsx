@@ -17,6 +17,8 @@ import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { Colors } from '@/constants/theme';
 import QtyInput from '@/components/QtyInput';
+import { OfflineView } from '@/components';
+import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
 
 const { width } = Dimensions.get('window');
 
@@ -99,7 +101,7 @@ export default function ProductDetailsScreen() {
 
   const [data, setData] = useState<ProductData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<FormattedError | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedSuccess, setAddedSuccess] = useState(false);
@@ -113,6 +115,7 @@ export default function ProductDetailsScreen() {
   const fetchProduct = async () => {
     try {
       setLoading(true);
+      setErrorInfo(null);
       const url = `${URLs.ALL_PRODUCTS}/${id}`;
       console.log('[ProductDetail] REQUEST →', url);
       const res = await apiClient.get<ApiResponse>(url);
@@ -125,7 +128,7 @@ export default function ProductDetailsScreen() {
       setQuantity(Math.max(1, res.data.data?.product?.minimum_order_qty ?? 1));
     } catch (err: any) {
       console.error('[ProductDetail] Error:', err?.message, err?.response?.status);
-      setError('Could not load product details.');
+      setErrorInfo(getFriendlyErrorMessage(err, 'Could not load product details.'));
     } finally {
       setLoading(false);
     }
@@ -171,11 +174,24 @@ export default function ProductDetailsScreen() {
   }
 
   // ── Error ──────────────────────────────────────────────────────────────────
-  if (error || !data) {
+  if (errorInfo || !data) {
+    if (errorInfo?.isOffline) {
+      return (
+        <OfflineView
+          onRetry={fetchProduct}
+          isRetrying={loading}
+          isOffline={true}
+          title={errorInfo.title}
+          message={errorInfo.message}
+          onGoBack={() => router.back()}
+        />
+      );
+    }
+
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorTitle}>Product Not Found</Text>
-        <Text style={styles.errorSubtitle}>{error ?? 'The product does not exist.'}</Text>
+        <Text style={styles.errorTitle}>{errorInfo?.title || 'Product Not Found'}</Text>
+        <Text style={styles.errorSubtitle}>{errorInfo?.message || 'The product does not exist.'}</Text>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </TouchableOpacity>

@@ -4,14 +4,18 @@ import {
   ActivityIndicator, ScrollView, RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { CustomHeader, PromoSlider, BrandSection, ProductCard } from '@/components';
+import { CustomHeader, PromoSlider, BrandSection, ProductCard, OfflineView, OfflineBanner } from '@/components';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { X, PackageOpen } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Brand, Product } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 import { fetchCustomerNotifications } from '@/lib/notifications';
+import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
+
+const HOME_CACHE_KEY = '@dhatri_cached_home_data';
 
 // ─── Raw API response types ──────────────────────────────────────────────────
 interface FeaturedBrand {
@@ -99,7 +103,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<FormattedError | null>(null);
+  const [isOfflineCached, setIsOfflineCached] = useState(false);
 
   const [featuredBrands, setFeaturedBrands] = useState<Brand[]>([]);
   const [sliderImages, setSliderImages] = useState<string[]>([]);
@@ -135,7 +140,41 @@ export default function HomeScreen() {
   );
 
   useEffect(() => {
-    fetchHomeData(false);
+    let isMounted = true;
+
+    // 1. Immediately hydrate from cache so returning users see instant content even if offline
+    AsyncStorage.getItem(HOME_CACHE_KEY)
+      .then((cached) => {
+        if (!isMounted || !cached) return;
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.sliderImages) && parsed.sliderImages.length > 0) {
+            setSliderImages(parsed.sliderImages);
+          }
+          if (Array.isArray(parsed.featuredBrands) && parsed.featuredBrands.length > 0) {
+            setFeaturedBrands(parsed.featuredBrands);
+          }
+          if (Array.isArray(parsed.topPicks) && parsed.topPicks.length > 0) {
+            setTopPicks(parsed.topPicks);
+          }
+          // If we had valid cached items, dismiss the blocking loader early
+          if (parsed.topPicks?.length || parsed.sliderImages?.length) {
+            setLoading(false);
+          }
+        } catch (e) {
+          console.warn('[HomeScreen] Cache parsing error:', e);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) {
+          fetchHomeData(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSelectBrand = async (brandId: string | null) => {
@@ -182,8 +221,13 @@ export default function HomeScreen() {
   }, [selectedBrand, featuredBrands]);
 
   const fetchHomeData = async (isPullRefresh = false) => {
-    if (isPullRefresh) setRefreshing(true);
-    else setLoading(true);
+    if (isPullRefresh) {
+      setRefreshing(true);
+    } else {
+      // Only show full loading spinner if we don't have any cached data displayed
+      setLoading(topPicks.length === 0 && sliderImages.length === 0);
+    }
+
     try {
       console.log('[HomeScreen] REQUEST →', URLs.HOME_PAGE);
 
@@ -207,16 +251,40 @@ export default function HomeScreen() {
         .map(toProduct);
       setTopPicks(picks);
 
+      setErrorInfo(null);
+      setIsOfflineCached(false);
+
+      // Save to cache for offline resilience
+      AsyncStorage.setItem(
+        HOME_CACHE_KEY,
+        JSON.stringify({
+          sliderImages: slides,
+          featuredBrands: brands,
+          topPicks: picks,
+          timestamp: Date.now(),
+        })
+      ).catch(() => {});
+
     } catch (err: any) {
       console.error('[HomeScreen] Fetch error:', err?.message, err?.response?.status, err?.response?.data);
-      setError('Failed to load home data. Please try again.');
+      const friendly = getFriendlyErrorMessage(err, 'Failed to load home data');
+
+      // If we already have items visible, do not blank out the user's screen!
+      // Instead, mark as offline cached so a non-blocking banner is shown.
+      if (topPicks.length > 0 || sliderImages.length > 0 || featuredBrands.length > 0) {
+        setIsOfflineCached(true);
+        setErrorInfo(null);
+      } else {
+        setErrorInfo(friendly);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  if (loading) {
+  // 1. Initial full-screen loading (only if no cache exists)
+  if (loading && topPicks.length === 0 && sliderImages.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -225,10 +293,22 @@ export default function HomeScreen() {
     );
   }
 
-  if (error) {
+  // 2. Full-screen Offline / Error state (only if no cache was available)
+  if (errorInfo && topPicks.length === 0 && sliderImages.length === 0) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={styles.container}>
+        <CustomHeader
+          onSearchPress={() => router.push('/search')}
+          onNotificationPress={() => router.push('/notifications' as any)}
+          unreadCount={unreadCount}
+        />
+        <OfflineView
+          onRetry={() => fetchHomeData(false)}
+          isRetrying={loading || refreshing}
+          isOffline={errorInfo.isOffline}
+          title={errorInfo.title}
+          message={errorInfo.message}
+        />
       </View>
     );
   }
@@ -252,6 +332,15 @@ export default function HomeScreen() {
         onNotificationPress={() => router.push('/notifications' as any)}
         unreadCount={unreadCount}
       />
+
+      {/* Offline banner when viewing cached data */}
+      {isOfflineCached && (
+        <OfflineBanner
+          onRetry={() => fetchHomeData(true)}
+          isRetrying={refreshing}
+          message="You're offline • Showing saved catalog"
+        />
+      )}
 
       {/* Promo Slider — API images */}
       <View style={styles.sliderWrapper}>

@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Plus } from 'lucide-react-native';
+import { Check, Package, Plus } from 'lucide-react-native';
 import { Product } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useCart } from '@/context/CartContext';
-import { Colors } from '@/constants/theme';
+import { Colors, getComponentTheme } from '@/constants/theme';
+
+const badge = getComponentTheme(Colors).badge;
 
 interface ProductCardProps {
   product: Product;
@@ -43,6 +45,74 @@ function getUnitSuffix(product: Product): string {
   return 'Bag';
 }
 
+const rupees = (value: number) => `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+
+/**
+ * Struck price, selling price and unit on one shared baseline.
+ * Rendered as a single Text so the parts never wrap apart; it shrinks slightly on narrow cards.
+ */
+function PriceLine({ price, mrp, unit, size }: { price: number; mrp: number | null; unit: string; size: 'sm' | 'md' }) {
+  const amount = size === 'md' ? styles.amountMd : styles.amountSm;
+  return (
+    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+      {mrp !== null ? (
+        <>
+          <Text style={[amount, styles.struck]}>{rupees(mrp)}</Text>
+          <Text style={amount}> </Text>
+        </>
+      ) : null}
+      <Text style={[amount, styles.selling]}>{rupees(price)}</Text>
+      {unit ? <Text style={styles.unit}> / {unit}</Text> : null}
+    </Text>
+  );
+}
+
+function AddPill({ count, onPress }: { count: number; onPress: () => void }) {
+  const inCart = count > 0;
+  return (
+    <TouchableOpacity
+      style={[styles.addPill, inCart && styles.addPillInCart]}
+      onPress={onPress}
+      activeOpacity={0.85}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={inCart ? `${count} in cart. Open product` : 'Add to cart'}
+    >
+      {inCart ? (
+        <>
+          <Check size={13} color={Colors.textWhite} strokeWidth={3} />
+          <Text style={styles.addPillTextInCart}>{count}</Text>
+        </>
+      ) : (
+        <>
+          <Plus size={13} color={Colors.primary} strokeWidth={3} />
+          <Text style={styles.addPillText}>ADD</Text>
+        </>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+function ProductImage({ uri }: { uri?: string }) {
+  if (uri && uri.trim() !== '') {
+    return <Image source={{ uri }} style={styles.image} resizeMode="contain" />;
+  }
+  return (
+    <View style={[styles.image, styles.imagePlaceholder]}>
+      <Package size={28} color={Colors.textMuted} strokeWidth={1.6} />
+    </View>
+  );
+}
+
+function DiscountTag({ percent }: { percent: number }) {
+  if (percent <= 0) return null;
+  return (
+    <View style={styles.discountTag}>
+      <Text style={styles.discountTagText}>{percent}% OFF</Text>
+    </View>
+  );
+}
+
 export function ProductCard({ product, viewMode }: ProductCardProps) {
   const router = useRouter();
   const { cartItems } = useCart();
@@ -59,53 +129,34 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
   const mrpVal = Number(product.mrp ?? 0);
   const hasDiscount = mrpVal > priceVal;
   const discountPercent = hasDiscount ? Math.round(((mrpVal - priceVal) / mrpVal) * 100) : 0;
+  const struck = hasDiscount ? mrpVal : null;
 
   if (viewMode === 'horizontal') {
     return (
-      <TouchableOpacity style={styles.horizontalCard} activeOpacity={0.8} onPress={handlePress}>
-        <View style={styles.horizontalImageContainer}>
-          {!!product.image_url && product.image_url.trim() !== '' ? (
-            <Image source={{ uri: product.image_url }} style={styles.horizontalImage} resizeMode="contain" />
-          ) : (
-            <View style={[styles.horizontalImage, { backgroundColor: '#e5e7eb' }]} />
-          )}
+      <TouchableOpacity style={styles.horizontalCard} activeOpacity={0.9} onPress={handlePress}>
+        <View style={styles.horizontalImageBox}>
+          <ProductImage uri={product.image_url} />
+          <DiscountTag percent={discountPercent} />
         </View>
 
-        {/* Top Right: Orange Offer Badge */}
-        {hasDiscount && discountPercent > 0 ? (
-          <View style={styles.horizontalOfferBadge}>
-            <Text style={styles.offerBadgeText}>{discountPercent}% OFF</Text>
-          </View>
-        ) : null}
-
         <View style={styles.horizontalContent}>
-          <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-          <Text style={styles.description} numberOfLines={1}>{product.description}</Text>
-          <View style={styles.priceRow}>
-            <View style={styles.priceContainer}>
-              <View style={styles.priceWithUnitRow}>
-                <Text style={styles.price}>₹{priceVal.toFixed(0)}</Text>
-                {!!unitSuffix && (
-                  <Text style={styles.unitSuffixText}> / {unitSuffix}</Text>
-                )}
-              </View>
-              {hasDiscount && (
-                <View style={styles.mrpRow}>
-                  <Text style={styles.mrp}>₹{mrpVal.toFixed(0)}</Text>
-                </View>
-              )}
+          <View>
+            <Text style={styles.name} numberOfLines={2}>
+              {product.name}
+            </Text>
+            {product.description ? (
+              <Text style={styles.description} numberOfLines={1}>
+                {product.description}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Price gets the full width; the add button sits below it on the right */}
+          <View style={styles.horizontalFooter}>
+            <PriceLine price={priceVal} mrp={struck} unit={unitSuffix} size="md" />
+            <View style={styles.horizontalAdd}>
+              <AddPill count={cartCount} onPress={handlePress} />
             </View>
-            <TouchableOpacity
-              style={[styles.addButton, cartCount > 0 && styles.addButtonInCart]}
-              onPress={handlePress}
-              activeOpacity={0.8}
-            >
-              {cartCount > 0 ? (
-                <Text style={styles.cartCountText}>{cartCount}</Text>
-              ) : (
-                <Plus size={22} color="#ffffff" strokeWidth={2.5} />
-              )}
-            </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
@@ -113,50 +164,21 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
   }
 
   return (
-    <TouchableOpacity style={styles.verticalCard} activeOpacity={0.8} onPress={handlePress}>
-      <View style={styles.verticalImageContainer}>
-        {!!product.image_url && product.image_url.trim() !== '' ? (
-          <Image source={{ uri: product.image_url }} style={styles.verticalImage} resizeMode="contain" />
-        ) : (
-          <View style={[styles.verticalImage, { backgroundColor: '#e5e7eb' }]} />
-        )}
-
-        {/* Top Right: Orange Offer Badge */}
-        {hasDiscount && discountPercent > 0 ? (
-          <View style={styles.offerBadgeTopRight}>
-            <Text style={styles.offerBadgeText}>{discountPercent}% OFF</Text>
-          </View>
-        ) : null}
-
-        <TouchableOpacity
-          style={[styles.verticalAddButtonFloating, cartCount > 0 && styles.addButtonInCart]}
-          activeOpacity={0.8}
-          onPress={handlePress}
-        >
-          {cartCount > 0 ? (
-            <Text style={styles.cartCountText}>{cartCount}</Text>
-          ) : (
-            <Plus size={18} color="#ffffff" strokeWidth={2.5} />
-          )}
-        </TouchableOpacity>
+    <TouchableOpacity style={styles.verticalCard} activeOpacity={0.9} onPress={handlePress}>
+      <View style={styles.verticalImageBox}>
+        <ProductImage uri={product.image_url} />
+        <DiscountTag percent={discountPercent} />
+        <View style={styles.verticalAdd}>
+          <AddPill count={cartCount} onPress={handlePress} />
+        </View>
       </View>
-      <View style={styles.verticalContent}>
-        <Text style={styles.verticalProductName} numberOfLines={2}>{product.name}</Text>
 
-        <View style={styles.verticalPriceRow}>
-          <View style={styles.verticalPriceContainer}>
-            <View style={styles.priceWithUnitRow}>
-              <Text style={styles.verticalPrice}>₹{priceVal.toFixed(0)}</Text>
-              {!!unitSuffix && (
-                <Text style={styles.verticalUnitSuffixText}> / {unitSuffix}</Text>
-              )}
-            </View>
-            {hasDiscount && (
-              <View style={styles.mrpRow}>
-                <Text style={styles.verticalMrp}>₹{mrpVal.toFixed(0)}</Text>
-              </View>
-            )}
-          </View>
+      <View style={styles.verticalContent}>
+        <Text style={styles.name} numberOfLines={2}>
+          {product.name}
+        </Text>
+        <View style={styles.verticalPrice}>
+          <PriceLine price={priceVal} mrp={struck} unit={unitSuffix} size="sm" />
         </View>
       </View>
     </TouchableOpacity>
@@ -164,227 +186,172 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
 }
 
 const styles = StyleSheet.create({
-  // Horizontal Card Styles
-  horizontalCard: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    marginBottom: 12,
-    marginHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  horizontalImageContainer: {
-    width: 130,
-    height: 130,
-    position: 'relative',
-    backgroundColor: '#f8fafc',
-  },
-  horizontalImage: {
+  /* ── Shared ── */
+  image: {
     width: '100%',
     height: '100%',
   },
-  horizontalContent: {
-    flex: 1,
-    padding: 14,
-    justifyContent: 'space-between',
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  productName: {
-    fontSize: 15,
+  name: {
+    fontSize: 14,
     fontWeight: '700',
-    color: '#0f172a',
-    lineHeight: 20,
+    color: Colors.text,
+    lineHeight: 19,
+    minHeight: 38, // always reserve two lines so prices align across a row
+    letterSpacing: -0.1,
   },
   description: {
     fontSize: 12,
-    color: '#64748b',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  priceContainer: {
-    flex: 1,
-    marginRight: 8,
-  },
-  priceWithUnitRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
-  },
-  price: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: Colors.primary,
-  },
-  unitSuffixText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748b',
-    marginLeft: 3,
-  },
-  mrpRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 1,
-  },
-  mrp: {
-    fontSize: 12,
-    color: '#dc2626', // Strikethrough MRP in RED
-    textDecorationLine: 'line-through',
-    fontWeight: '600',
-  },
-  discountBadge: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#15803d',
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  addButtonInCart: {
-    backgroundColor: Colors.success,
-    shadowColor: Colors.success,
-  },
-  cartCountText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
 
-  // Vertical Card Styles
-  verticalCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    margin: 6,
-    flex: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  verticalImageContainer: {
-    width: '100%',
-    height: 165,
-    position: 'relative',
-    backgroundColor: '#f8fafc',
-  },
-  verticalImage: {
-    width: '100%',
-    height: '100%',
-  },
-
-  // Top Right Orange Offer Badge
-  offerBadgeTopRight: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#ea580c', // Bright vibrant orange for offers!
-    paddingHorizontal: 7,
-    paddingVertical: 3.5,
-    borderRadius: 6,
-    zIndex: 10,
-    shadowColor: '#ea580c',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.35,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  horizontalOfferBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 12,
-    backgroundColor: '#ea580c', // Bright vibrant orange for offers!
-    paddingHorizontal: 7,
-    paddingVertical: 3.5,
-    borderRadius: 6,
-    zIndex: 10,
-    shadowColor: '#ea580c',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.35,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  offerBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: 0.3,
-  },
-  verticalContent: {
-    padding: 12,
-  },
-  verticalProductName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
-    lineHeight: 18,
-    minHeight: 36,
-  },
-  verticalPriceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  verticalPriceContainer: {
-    flex: 1,
-  },
-  verticalPrice: {
+  amountSm: {
     fontSize: 15,
     fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  amountMd: {
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  struck: {
+    color: badge.dangerText,
+    fontWeight: '600',
+    textDecorationLine: 'line-through',
+    textDecorationColor: badge.dangerText,
+  },
+  selling: {
     color: Colors.primary,
   },
-  verticalUnitSuffixText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748b',
-    marginLeft: 2,
-  },
-  verticalMrp: {
+  unit: {
     fontSize: 12,
-    color: '#dc2626', // Strikethrough MRP in RED
-    textDecorationLine: 'line-through',
     fontWeight: '600',
+    color: Colors.textSecondary,
   },
-  verticalAddButtonFloating: {
+
+  discountTag: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
+    top: 0,
+    left: 0,
+    backgroundColor: Colors.danger,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderBottomRightRadius: 10,
+  },
+  discountTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Colors.textWhite,
+    letterSpacing: 0.4,
+  },
+
+  addPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
+    gap: 3,
+    height: 30,
+    paddingHorizontal: 11,
+    borderRadius: 9,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    shadowColor: Colors.text,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 2,
+  },
+  addPillInCart: {
+    backgroundColor: Colors.primary,
+  },
+  addPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 0.4,
+  },
+  addPillTextInCart: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.textWhite,
+  },
+
+  /* ── Grid card ── */
+  verticalCard: {
+    flex: 1,
+    margin: 6,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    overflow: 'hidden',
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  verticalImageBox: {
+    height: 160,
+    padding: 12,
+    backgroundColor: Colors.background,
+  },
+  verticalAdd: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+  },
+  verticalContent: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
+    justifyContent: 'space-between',
+  },
+  verticalPrice: {
+    marginTop: 8,
+  },
+
+  /* ── List card ── */
+  horizontalCard: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  horizontalImageBox: {
+    width: 112,
+    height: 112,
+    padding: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.background,
+  },
+  horizontalContent: {
+    flex: 1,
+    marginLeft: 12,
+    paddingVertical: 2,
+    justifyContent: 'space-between',
+  },
+  horizontalFooter: {
+    marginTop: 6,
+    gap: 8,
+  },
+  horizontalAdd: {
+    alignItems: 'flex-end',
   },
 });
