@@ -237,8 +237,10 @@ export default function HomeScreen() {
       console.log('[HomeScreen] RESPONSE headers:', JSON.stringify(headers));
       console.log('[HomeScreen] RESPONSE keys:', Object.keys(data));
 
-      // ── Map sliders → absolute image URLs ────────────────────────────────
-      const slides = (data.sliders ?? []).map(s => assetUrl(s.slider_image));
+      // ── Map sliders → absolute image URLs (only valid non-empty URLs) ───
+      const slides = (data.sliders ?? [])
+        .map(s => assetUrl(s.slider_image))
+        .filter(uri => typeof uri === 'string' && uri.trim().length > 0);
       setSliderImages(slides);
 
       // ── Map brands ────────────────────────────────────────────────────────
@@ -342,10 +344,12 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* Promo Slider — API images */}
-      <View style={styles.sliderWrapper}>
-        <PromoSlider images={sliderImages} />
-      </View>
+      {/* Promo Slider — only rendered when backend returns active slider images */}
+      {sliderImages.length > 0 && (
+        <View style={styles.sliderWrapper}>
+          <PromoSlider images={sliderImages} />
+        </View>
+      )}
 
       {/* Featured Brands */}
       {featuredBrands.length > 0 && (

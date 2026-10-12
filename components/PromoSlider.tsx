@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, StyleSheet, ScrollView,
   Dimensions, TouchableOpacity, Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { Colors } from '@/constants/theme';
 
@@ -12,22 +11,20 @@ const SLIDE_WIDTH = width;
 
 interface PromoSliderProps {
   // Pass absolute image URLs from the API.
-  // Falls back to gradient placeholders if empty or not provided.
+  // If empty or not provided, PromoSlider renders nothing (null).
   images?: string[];
 }
-
-// Fallback gradient slides shown when no API images are available
-const fallbackSlides = [
-  { id: '1', title: 'Wholesale Grocery Deals', subtitle: 'Direct bulk pricing on top essentials', gradient: [Colors.primaryDark, Colors.primary] as const },
-  { id: '2', title: 'Fresh Grains & Pulses',    subtitle: '100% verified quality guarantee',     gradient: [Colors.primary, '#629352'] as const },
-  { id: '3', title: 'Instant B2B Delivery',     subtitle: 'Fast dispatch from your local hub',   gradient: ['#2e5927', Colors.primary] as const },
-];
 
 export function PromoSlider({ images }: PromoSliderProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
-  const useApiImages = images && images.length > 0;
-  const slideCount = useApiImages ? images.length : fallbackSlides.length;
+
+  // If no images returned from backend, do not display the slider
+  if (!images || images.length === 0) {
+    return null;
+  }
+
+  const slideCount = images.length;
 
   useEffect(() => {
     if (slideCount <= 1) return;
@@ -56,44 +53,29 @@ export function PromoSlider({ images }: PromoSliderProps) {
         decelerationRate="fast"
         contentContainerStyle={styles.scrollContent}
       >
-        {useApiImages
-          ? images.map((uri, i) => (
-              <TouchableOpacity key={i} activeOpacity={0.9} style={styles.slide}>
-                <Image
-                  source={{ uri }}
-                  style={styles.slideImage}
-                  resizeMode="cover"
-                  onError={e => console.warn('[PromoSlider] image load error', uri, e.nativeEvent.error)}
-                />
-              </TouchableOpacity>
-            ))
-          : fallbackSlides.map(slide => (
-              <TouchableOpacity key={slide.id} activeOpacity={0.9} style={styles.slide}>
-                <LinearGradient
-                  colors={slide.gradient}
-                  style={styles.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={styles.slideContent}>
-                    <Text style={styles.slideTitle}>{slide.title}</Text>
-                    <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>
-                  </View>
-                  <View style={styles.decorCircle} />
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
+        {images.map((uri, i) => (
+          <TouchableOpacity key={i} activeOpacity={0.9} style={styles.slide}>
+            <Image
+              source={{ uri }}
+              style={styles.slideImage}
+              resizeMode="cover"
+              onError={e => console.warn('[PromoSlider] image load error', uri, e.nativeEvent.error)}
+            />
+          </TouchableOpacity>
+        ))}
       </ScrollView>
 
-      {/* Dot indicators */}
-      <View style={styles.indicators}>
-        {Array.from({ length: slideCount }).map((_, i) => (
-          <View
-            key={i}
-            style={[styles.indicator, i === activeIndex && styles.indicatorActive]}
-          />
-        ))}
-      </View>
+      {/* Dot indicators — only shown if there are multiple slides */}
+      {slideCount > 1 && (
+        <View style={styles.indicators}>
+          {Array.from({ length: slideCount }).map((_, i) => (
+            <View
+              key={i}
+              style={[styles.indicator, i === activeIndex && styles.indicatorActive]}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -112,39 +94,6 @@ const styles = StyleSheet.create({
   slideImage: {
     width: '100%',
     height: '100%',
-  },
-  gradient: {
-    width: '100%',
-    height: '100%',
-    padding: 20,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  slideContent: {
-    flex: 1,
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  slideTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#ffffff',
-    marginBottom: 6,
-    letterSpacing: -0.5,
-  },
-  slideSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '500',
-  },
-  decorCircle: {
-    position: 'absolute',
-    right: -30,
-    top: -30,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   indicators: {
     flexDirection: 'row',
