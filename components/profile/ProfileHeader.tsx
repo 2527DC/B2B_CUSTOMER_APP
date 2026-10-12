@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from 'react-native-svg';
 import { BadgeCheck, CircleAlert, Clock, Leaf, Pencil, Warehouse } from 'lucide-react-native';
@@ -72,13 +72,16 @@ interface ProfileHeaderProps {
   onEdit: () => void;
 }
 
-/** Identity header: circular store avatar with verification seal, name, contact and hub. */
+/** Identity header: circular shop photo (or initials) with verification seal, name, contact and hub. */
 export default function ProfileHeader({ user, topInset, onEdit }: ProfileHeaderProps) {
   const displayName = user?.store_name || user?.name || 'Your store';
   const ownerLine = [user?.store_name ? user?.name : null, user?.phone ? `+91 ${user.phone}` : null]
     .filter(Boolean)
     .join('  ·  ');
   const photo = user?.shop_image_url ? URLs.assetUrl(user.shop_image_url) : null;
+  // Initials stay visible if the shop photo cannot be loaded (deleted file, offline, bad URL).
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const showPhoto = !!photo && photo !== failedPhoto;
   const hubName = user?.warehouse?.name;
   const status = user?.approval_status;
   const statusNote = status === 'PENDING' ? 'Verification pending' : status === 'REJECTED' ? 'Verification rejected' : null;
@@ -104,8 +107,14 @@ export default function ProfileHeader({ user, topInset, onEdit }: ProfileHeaderP
       <View style={styles.identity}>
         <View style={styles.avatarWrap}>
           <View style={styles.avatarRing}>
-            {photo ? (
-              <Image source={{ uri: photo }} style={styles.avatarImage} accessibilityIgnoresInvertColors />
+            {showPhoto ? (
+              <Image
+                source={{ uri: photo }}
+                style={styles.avatarImage}
+                onError={() => setFailedPhoto(photo)}
+                accessibilityLabel={`${displayName} shop photo`}
+                accessibilityIgnoresInvertColors
+              />
             ) : (
               <View style={styles.avatarFallback}>
                 <Text style={styles.avatarInitials}>{initialsOf(displayName)}</Text>

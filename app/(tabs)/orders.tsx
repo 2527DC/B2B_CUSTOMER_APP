@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,21 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
 } from 'react-native';
-import { Package, RotateCcw, Truck, UserCheck, ShieldAlert, ChevronRight } from 'lucide-react-native';
+import {
+  Package,
+  RotateCcw,
+  Truck,
+  UserCheck,
+  ShieldAlert,
+  ChevronRight,
+  Search,
+  X,
+  RefreshCw,
+} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
@@ -147,20 +159,38 @@ interface ApiRefund {
 interface StatusChip {
   id: number;
   label: string;
+  dotColor: string;
 }
 
 const ORDER_STATUS_CHIPS: StatusChip[] = [
-  { id: 0, label: 'All' },
-  { id: 1, label: 'Pending' },
-  { id: 2, label: 'Confirmed' },
-  { id: 3, label: 'Out for Delivery' },
-  { id: 5, label: 'Delivered' },
-  { id: 6, label: 'RTO / Returned' },
-  { id: 4, label: 'Cancelled' },
+  { id: 0, label: 'All', dotColor: '#64748b' },
+  { id: 1, label: 'Pending', dotColor: '#f59e0b' },
+  { id: 2, label: 'Confirmed', dotColor: '#0284c7' },
+  { id: 3, label: 'Out for Delivery', dotColor: '#6366f1' },
+  { id: 5, label: 'Delivered', dotColor: '#10b981' },
+  { id: 6, label: 'RTO / Returned', dotColor: '#f97316' },
+  { id: 4, label: 'Cancelled', dotColor: '#ef4444' },
+];
+
+interface ReturnStatusChip {
+  id: string;
+  label: string;
+  dotColor: string;
+}
+
+const RETURN_STATUS_CHIPS: ReturnStatusChip[] = [
+  { id: 'ALL', label: 'All Returns', dotColor: '#64748b' },
+  { id: 'REQUESTED', label: 'Requested', dotColor: '#f59e0b' },
+  { id: 'DRIVER_ASSIGNED', label: 'Driver Assigned', dotColor: '#0284c7' },
+  { id: 'PICKED_UP', label: 'Picked Up', dotColor: '#6366f1' },
+  { id: 'RECEIVED_AT_WAREHOUSE', label: 'At Warehouse', dotColor: '#8b5cf6' },
+  { id: 'COMPLETED', label: 'Refunded', dotColor: '#10b981' },
+  { id: 'REJECTED', label: 'Rejected', dotColor: '#ef4444' },
 ];
 
 export default function OrdersScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { tab, status: statusParam } = useLocalSearchParams<{ tab?: string; status?: string }>();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -191,10 +221,69 @@ export default function OrdersScreen() {
 
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [refunds, setRefunds] = useState<ApiRefund[]>([]);
+
+  // Search and return filter states
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedReturnStatus, setSelectedReturnStatus] = useState<string>('ALL');
   
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [errorInfo, setErrorInfo] = useState<FormattedError | null>(null);
+
+  // Active in-transit orders counter
+  const activeOrdersCount = useMemo(() => {
+    return orders.filter((o) => {
+      const isRto = o.is_rto || o.status === 'RTO_INITIATED' || o.status === 'RTO_COMPLETED';
+      if (isRto || o.status === 'CANCELLED') return false;
+      const raw = o.packages?.[0]?.delivery_status ?? o.order_status ?? 1;
+      const s = typeof raw === 'string' ? parseInt(raw, 10) : raw;
+      return s === 1 || s === 2 || s === 3;
+    }).length;
+  }, [orders]);
+
+  // Client-side search filtering
+  const filteredOrders = useMemo(() => {
+    if (!searchQuery.trim()) return orders;
+    const q = searchQuery.toLowerCase().trim();
+    return orders.filter((o) => {
+      if (o.order_number?.toLowerCase().includes(q)) return true;
+      if (String(o.id).includes(q)) return true;
+      if (o.salesman_name?.toLowerCase().includes(q)) return true;
+      const inItems = (o.items || []).some((item) => {
+        const name = item.seller_product_sku?.product?.product_name || '';
+        return name.toLowerCase().includes(q);
+      });
+      if (inItems) return true;
+      const inPackages = (o.packages || []).some((pkg) =>
+        (pkg.products || []).some((p) => {
+          const name = p.seller_product_sku?.product?.product_name || '';
+          return name.toLowerCase().includes(q);
+        })
+      );
+      return inPackages;
+    });
+  }, [orders, searchQuery]);
+
+  const filteredRefunds = useMemo(() => {
+    let list = refunds;
+    if (selectedReturnStatus !== 'ALL') {
+      list = list.filter((r) => {
+        const st = (r.status || '').toUpperCase();
+        if (selectedReturnStatus === 'COMPLETED') {
+          return st === 'REFUNDED' || r.is_completed === 1 || r.is_refunded === 1;
+        }
+        return st === selectedReturnStatus;
+      });
+    }
+    if (!searchQuery.trim()) return list;
+    const q = searchQuery.toLowerCase().trim();
+    return list.filter((r) => {
+      if (String(r.id).includes(q)) return true;
+      if (r.order_number?.toLowerCase().includes(q)) return true;
+      return (r.items || []).some((i) => (i.product_name || '').toLowerCase().includes(q));
+    });
+  }, [refunds, selectedReturnStatus, searchQuery]);
 
   // ─── Fetching Logic ────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async (isRefreshed = false) => {
@@ -317,9 +406,13 @@ export default function OrdersScreen() {
   if (!isAuthenticated) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Orders</Text>
-          <Text style={styles.subtitle}>Track your purchases and refunds</Text>
+        <View style={[styles.headerSurface, { paddingTop: Math.max(insets.top, 14), paddingBottom: 16 }]}>
+          <View style={styles.headerTopRow}>
+            <View style={styles.titleColumn}>
+              <Text style={styles.title}>My Orders</Text>
+              <Text style={styles.subtitle}>Track your wholesale purchases and refunds</Text>
+            </View>
+          </View>
         </View>
         <View style={styles.unauthContent}>
           <View style={styles.unauthIconBg}>
@@ -343,70 +436,247 @@ export default function OrdersScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>My Orders</Text>
-        <Text style={styles.subtitle}>Track and manage your order history</Text>
-      </View>
+      {/* ── Top Navigation & Header Surface ── */}
+      <View style={[styles.headerSurface, { paddingTop: Math.max(insets.top, 14) }]}>
+        {/* Row 1: Title, Dynamic Status, and Quick Action Buttons */}
+        <View style={styles.headerTopRow}>
+          <View style={styles.titleColumn}>
+            <Text style={styles.title}>My Orders</Text>
+            <View style={styles.subtitleRow}>
+              <View
+                style={[
+                  styles.statusPulseDot,
+                  { backgroundColor: activeOrdersCount > 0 ? '#10b981' : '#94a3b8' },
+                ]}
+              />
+              <Text style={styles.subtitle}>
+                {activeTab === 'orders'
+                  ? activeOrdersCount > 0
+                    ? `${activeOrdersCount} in transit • ${orders.length} total`
+                    : `${orders.length} order${orders.length === 1 ? '' : 's'} recorded`
+                  : `${refunds.length} return request${refunds.length === 1 ? '' : 's'}`}
+              </Text>
+            </View>
+          </View>
 
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'orders' && styles.tabActive]}
-          onPress={() => setActiveTab('orders')}
-          activeOpacity={0.7}
-        >
-          <Package
-            size={18}
-            color={activeTab === 'orders' ? Colors.primary : '#64748b'}
-            strokeWidth={2}
-          />
-          <Text style={[styles.tabText, activeTab === 'orders' && styles.tabTextActive]}>
-            My Orders
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'returns' && styles.tabActive]}
-          onPress={() => setActiveTab('returns')}
-          activeOpacity={0.7}
-        >
-          <RotateCcw
-            size={18}
-            color={activeTab === 'returns' ? Colors.primary : '#64748b'}
-            strokeWidth={2}
-          />
-          <Text style={[styles.tabText, activeTab === 'returns' && styles.tabTextActive]}>
-            Returns
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={[styles.headerActionButton, isSearchOpen && styles.headerActionButtonActive]}
+              onPress={() => {
+                setIsSearchOpen((prev) => !prev);
+                if (isSearchOpen) setSearchQuery('');
+              }}
+              activeOpacity={0.7}
+              accessibilityLabel="Search orders"
+            >
+              <Search
+                size={18}
+                color={isSearchOpen ? Colors.primary : '#475569'}
+                strokeWidth={2.2}
+              />
+            </TouchableOpacity>
 
-      {/* Horizontal Status Chips for Orders */}
-      {activeTab === 'orders' && (
-        <View style={styles.chipsOuterContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsContentContainer}
-          >
-            {ORDER_STATUS_CHIPS.map((chip) => {
-              const isSelected = selectedStatus === chip.id;
-              return (
-                <TouchableOpacity
-                  key={chip.id}
-                  style={[styles.statusChip, isSelected && styles.statusChipActive]}
-                  onPress={() => setSelectedStatus(chip.id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.statusChipTxt, isSelected && styles.statusChipTxtActive]}>
-                    {chip.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={() => onRefresh()}
+              disabled={refreshing}
+              activeOpacity={0.7}
+              accessibilityLabel="Refresh list"
+            >
+              <RefreshCw
+                size={17}
+                color={refreshing ? Colors.primary : '#475569'}
+                strokeWidth={2.2}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
+
+        {/* Row 2: Search Input (Expandable) */}
+        {isSearchOpen && (
+          <View style={styles.searchBarWrapper}>
+            <Search size={16} color="#94a3b8" strokeWidth={2} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={
+                activeTab === 'orders'
+                  ? 'Search by order # or product...'
+                  : 'Search by return # or product...'
+              }
+              placeholderTextColor="#94a3b8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.searchClearBtn}
+              >
+                <X size={14} color="#64748b" strokeWidth={2.5} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Row 3: Segmented Switcher (Orders vs Returns) */}
+        <View style={styles.segmentedContainer}>
+          <TouchableOpacity
+            style={[styles.segmentTab, activeTab === 'orders' && styles.segmentTabActive]}
+            onPress={() => {
+              setActiveTab('orders');
+              setSearchQuery('');
+            }}
+            activeOpacity={0.8}
+          >
+            <Package
+              size={16}
+              color={activeTab === 'orders' ? Colors.primary : '#64748b'}
+              strokeWidth={activeTab === 'orders' ? 2.2 : 1.8}
+            />
+            <Text
+              style={[
+                styles.segmentTabText,
+                activeTab === 'orders' && styles.segmentTabTextActive,
+              ]}
+            >
+              Orders
+            </Text>
+            {orders.length > 0 && (
+              <View
+                style={[
+                  styles.segmentBadge,
+                  activeTab === 'orders' && styles.segmentBadgeActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.segmentBadgeText,
+                    activeTab === 'orders' && styles.segmentBadgeTextActive,
+                  ]}
+                >
+                  {orders.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.segmentTab, activeTab === 'returns' && styles.segmentTabActive]}
+            onPress={() => {
+              setActiveTab('returns');
+              setSearchQuery('');
+            }}
+            activeOpacity={0.8}
+          >
+            <RotateCcw
+              size={16}
+              color={activeTab === 'returns' ? Colors.primary : '#64748b'}
+              strokeWidth={activeTab === 'returns' ? 2.2 : 1.8}
+            />
+            <Text
+              style={[
+                styles.segmentTabText,
+                activeTab === 'returns' && styles.segmentTabTextActive,
+              ]}
+            >
+              Returns & Claims
+            </Text>
+            {refunds.length > 0 && (
+              <View
+                style={[
+                  styles.segmentBadge,
+                  activeTab === 'returns' && styles.segmentBadgeActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.segmentBadgeText,
+                    activeTab === 'returns' && styles.segmentBadgeTextActive,
+                  ]}
+                >
+                  {refunds.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Row 4: Status Filter Chips */}
+        {activeTab === 'orders' ? (
+          <View style={styles.chipsOuterContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipsContentContainer}
+            >
+              {ORDER_STATUS_CHIPS.map((chip) => {
+                const isSelected = selectedStatus === chip.id;
+                return (
+                  <TouchableOpacity
+                    key={chip.id}
+                    style={[styles.statusChip, isSelected && styles.statusChipActive]}
+                    onPress={() => setSelectedStatus(chip.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.statusDot,
+                        { backgroundColor: isSelected ? '#ffffff' : chip.dotColor },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.statusChipTxt,
+                        isSelected && styles.statusChipTxtActive,
+                      ]}
+                    >
+                      {chip.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : (
+          <View style={styles.chipsOuterContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipsContentContainer}
+            >
+              {RETURN_STATUS_CHIPS.map((chip) => {
+                const isSelected = selectedReturnStatus === chip.id;
+                return (
+                  <TouchableOpacity
+                    key={chip.id}
+                    style={[styles.statusChip, isSelected && styles.statusChipActive]}
+                    onPress={() => setSelectedReturnStatus(chip.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.statusDot,
+                        { backgroundColor: isSelected ? '#ffffff' : chip.dotColor },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.statusChipTxt,
+                        isSelected && styles.statusChipTxtActive,
+                      ]}
+                    >
+                      {chip.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+      </View>
 
       {/* Main Content Area */}
       {loading && !refreshing ? (
@@ -422,7 +692,7 @@ export default function OrdersScreen() {
           title={errorInfo.title}
           message={errorInfo.message}
         />
-      ) : activeTab === 'orders' && orders.length === 0 ? (
+      ) : activeTab === 'orders' && filteredOrders.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
@@ -430,12 +700,27 @@ export default function OrdersScreen() {
           <View style={styles.emptyIconContainer}>
             <Package size={42} color="#94a3b8" strokeWidth={1.5} />
           </View>
-          <Text style={styles.emptyTitle}>No orders found</Text>
-          <Text style={styles.emptySubtitle}>
-            There are no orders listed under this delivery status.
+          <Text style={styles.emptyTitle}>
+            {searchQuery ? 'No matching orders' : 'No orders found'}
           </Text>
+          <Text style={styles.emptySubtitle}>
+            {searchQuery
+              ? `No orders match "${searchQuery}". Check the order number or search terms.`
+              : selectedStatus === 0
+              ? 'You have not placed any orders yet.'
+              : `No orders listed under "${ORDER_STATUS_CHIPS.find((c) => c.id === selectedStatus)?.label || 'this'}" status.`}
+          </Text>
+          {searchQuery ? (
+            <TouchableOpacity
+              style={styles.clearSearchBtn}
+              onPress={() => setSearchQuery('')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.clearSearchBtnText}>Clear Search</Text>
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
-      ) : activeTab === 'returns' && refunds.length === 0 ? (
+      ) : activeTab === 'returns' && filteredRefunds.length === 0 ? (
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
@@ -443,10 +728,25 @@ export default function OrdersScreen() {
           <View style={styles.emptyIconContainer}>
             <RotateCcw size={42} color="#94a3b8" strokeWidth={1.5} />
           </View>
-          <Text style={styles.emptyTitle}>No returns yet</Text>
-          <Text style={styles.emptySubtitle}>
-            You haven{"'"}t requested any order returns or refunds yet.
+          <Text style={styles.emptyTitle}>
+            {searchQuery ? 'No matching returns' : 'No returns found'}
           </Text>
+          <Text style={styles.emptySubtitle}>
+            {searchQuery
+              ? `No return requests match "${searchQuery}".`
+              : selectedReturnStatus === 'ALL'
+              ? "You haven't requested any order returns or refunds yet."
+              : `No return requests currently in "${RETURN_STATUS_CHIPS.find((c) => c.id === selectedReturnStatus)?.label || 'this'}" state.`}
+          </Text>
+          {searchQuery ? (
+            <TouchableOpacity
+              style={styles.clearSearchBtn}
+              onPress={() => setSearchQuery('')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.clearSearchBtnText}>Clear Search</Text>
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
       ) : (
         <ScrollView
@@ -462,7 +762,7 @@ export default function OrdersScreen() {
           }
         >
           {activeTab === 'orders'
-            ? orders.map((order) => (
+            ? filteredOrders.map((order) => (
                 <OrderCard
                   key={order.id}
                   order={order}
@@ -474,7 +774,7 @@ export default function OrdersScreen() {
                   }
                 />
               ))
-            : refunds.map((refund) => {
+            : filteredRefunds.map((refund) => {
                 const statusInfo = getRefundStatusInfo(refund);
                 const itemsList = (refund.items && refund.items.length > 0)
                   ? refund.items
@@ -599,71 +899,185 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontWeight: '500',
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 12,
+  headerSurface: {
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
+    zIndex: 10,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  titleColumn: {
+    flex: 1,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
-    color: '#1e293b',
+    color: '#0f172a',
     letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748b',
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: 2,
   },
-  tabContainer: {
+  statusPulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  headerActions: {
     flexDirection: 'row',
-    marginHorizontal: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 5,
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  tab: {
+  headerActionButtonActive: {
+    backgroundColor: Colors.primary10,
+    borderColor: Colors.primary,
+  },
+  searchBarWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    height: 40,
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 6,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0f172a',
+    paddingVertical: 0,
+  },
+  searchClearBtn: {
+    padding: 4,
+  },
+  segmentedContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 13,
+    padding: 3.5,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  segmentTab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8.5,
+    paddingHorizontal: 8,
     borderRadius: 10,
     gap: 6,
   },
-  tabActive: {
-    backgroundColor: Colors.primary10,
+  segmentTabActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  tabText: {
+  segmentTabText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#64748b',
   },
-  tabTextActive: {
-    color: Colors.primary,
+  segmentTabTextActive: {
+    color: '#0f172a',
     fontWeight: '700',
   },
+  segmentBadge: {
+    backgroundColor: '#e2e8f0',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+    minWidth: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentBadgeActive: {
+    backgroundColor: Colors.primary10,
+  },
+  segmentBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  segmentBadgeTextActive: {
+    color: Colors.primary,
+  },
   chipsOuterContainer: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   chipsContentContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     gap: 8,
+    paddingVertical: 2,
   },
   statusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
   statusChipActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusChipTxt: {
     fontSize: 12,
@@ -672,10 +1086,31 @@ const styles = StyleSheet.create({
   },
   statusChipTxtActive: {
     color: '#ffffff',
+    fontWeight: '700',
   },
   listContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 110,
+  },
+  clearSearchBtn: {
+    marginTop: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  clearSearchBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   unauthContent: {
     flex: 1,
