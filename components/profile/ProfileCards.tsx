@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import {
   ChevronRight,
   FileText,
   Heart,
+  ImageOff,
   MapPin,
   MessageCircle,
   Phone,
@@ -282,6 +283,75 @@ export function BusinessDetailsCard({
   );
 }
 
+/* ─────────────────────────── Shop photo & documents ─────────────────────────── */
+
+export function isPdfUrl(url?: string | null) {
+  return /\.pdf($|[?#])/i.test(url || '');
+}
+
+function FileTile({ label, url, onView }: { label: string; url: string | null; onView: (url: string) => void }) {
+  // A PDF, or an image that fails to load, shows an icon tile; tapping still opens the file
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const pdf = isPdfUrl(url);
+  const showImage = !!url && !pdf && url !== failedUrl;
+
+  return (
+    <View style={styles.flex1}>
+      <TouchableOpacity
+        style={styles.fileThumb}
+        onPress={() => url && onView(url)}
+        disabled={!url}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={url ? `View ${label}` : `${label} not uploaded`}
+      >
+        {showImage ? (
+          <Image source={{ uri: url }} style={styles.fileImage} onError={() => setFailedUrl(url)} accessibilityIgnoresInvertColors />
+        ) : (
+          <View style={styles.fileEmpty}>
+            {url ? (
+              <FileText size={26} color={pdf ? badge.dangerText : Colors.textSecondary} strokeWidth={2} />
+            ) : (
+              <ImageOff size={24} color={Colors.textMuted} strokeWidth={2} />
+            )}
+            <Text style={styles.fileEmptyText}>{url ? (pdf ? 'PDF · tap to open' : 'Tap to open') : 'Not uploaded'}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+      <Text style={styles.fileLabel} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+export function ShopFilesCard({
+  shopImageUrl,
+  documentUrl,
+  onView,
+  onEdit,
+}: {
+  shopImageUrl: string | null;
+  documentUrl: string | null;
+  onView: (url: string) => void;
+  onEdit: () => void;
+}) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.fileRow}>
+        <FileTile label="Shop photo" url={shopImageUrl} onView={onView} />
+        <FileTile label="ID / shop document" url={documentUrl} onView={onView} />
+      </View>
+      <TouchableOpacity style={styles.cardFooter} onPress={onEdit} activeOpacity={0.7} accessibilityRole="button">
+        <Text style={styles.cardFooterText}>
+          {shopImageUrl || documentUrl ? 'Replace photo or document' : 'Upload shop photo and document'}
+        </Text>
+        <ChevronRight size={16} color={Colors.primary} strokeWidth={2.6} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 /* ─────────────────────────── Styles ─────────────────────────── */
 
 const styles = StyleSheet.create({
@@ -421,4 +491,18 @@ const styles = StyleSheet.create({
   detailMuted: { maxWidth: '55%', fontSize: 13, color: Colors.textMuted },
   detailAction: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   divider: { height: 1, backgroundColor: Colors.borderLight },
+
+  fileRow: { flexDirection: 'row', gap: 12 },
+  fileThumb: {
+    aspectRatio: 4 / 3,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  fileImage: { width: '100%', height: '100%' },
+  fileEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 8 },
+  fileEmptyText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted, textAlign: 'center' },
+  fileLabel: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary, marginTop: 8 },
 });

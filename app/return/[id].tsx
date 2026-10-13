@@ -17,7 +17,6 @@ import {
   Truck,
   CheckCircle,
   PackageCheck,
-  DollarSign,
   XCircle,
   Clock,
   Phone,

@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as WebBrowser from 'expo-web-browser';
 import {
   ArrowLeft,
   User as UserIcon,
@@ -33,6 +34,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 import { URLs } from '@/config/urls';
+import { isPdfUrl } from '@/components/profile/ProfileCards';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -58,6 +60,18 @@ export default function EditProfileScreen() {
     if (!path) return '';
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
     return `${URLs.PUBLIC_URL}${path}`;
+  };
+
+  const documentIsPdf = isPdfUrl(documentUrl);
+  const viewDocument = () => {
+    const url = resolveMediaUrl(documentUrl);
+    if (!documentIsPdf) {
+      setPreviewUri(url);
+      return;
+    }
+    WebBrowser.openBrowserAsync(url).catch(() =>
+      Alert.alert('Unable to open', 'Please check your connection and try again.'),
+    );
   };
 
   const pickAndUpload = async (type: 'shop' | 'doc') => {
@@ -306,17 +320,24 @@ export default function EditProfileScreen() {
               <Text style={styles.docItemLabel}>Trade License / Business Proof</Text>
               {documentUrl ? (
                 <View style={styles.docPreviewCard}>
-                  <Image
-                    source={{ uri: resolveMediaUrl(documentUrl) }}
-                    style={styles.docThumb}
-                    resizeMode="cover"
-                  />
+                  {documentIsPdf ? (
+                    <View style={[styles.docThumb, styles.pdfThumb]}>
+                      <FileText size={22} color={Colors.danger} />
+                      <Text style={styles.pdfThumbText}>PDF</Text>
+                    </View>
+                  ) : (
+                    <Image
+                      source={{ uri: resolveMediaUrl(documentUrl) }}
+                      style={styles.docThumb}
+                      resizeMode="cover"
+                    />
+                  )}
                   <View style={styles.docInfo}>
                     <Text style={styles.docStatusText}>✓ Document Uploaded</Text>
                     <View style={styles.docBtnRow}>
                       <TouchableOpacity
                         style={styles.actionPill}
-                        onPress={() => setPreviewUri(resolveMediaUrl(documentUrl))}
+                        onPress={viewDocument}
                         activeOpacity={0.7}
                       >
                         <Eye size={14} color="#0284c7" />
@@ -530,6 +551,19 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 10,
     backgroundColor: '#e2e8f0',
+  },
+  pdfThumb: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  pdfThumbText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.danger,
   },
   docInfo: {
     flex: 1,

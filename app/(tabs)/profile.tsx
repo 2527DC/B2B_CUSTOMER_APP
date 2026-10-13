@@ -16,14 +16,17 @@ import {
   DropLocationCard,
   SalesRepCard,
   SectionTitle,
+  ShopFilesCard,
   StatTiles,
   WalletCard,
+  isPdfUrl,
   type DropLocationStatus,
   type DropLocationSummary,
   type SalesRep,
 } from '@/components/profile/ProfileCards';
 import MenuGroup from '@/components/profile/MenuGroup';
 import HelpSheet from '@/components/profile/HelpSheet';
+import FilePreviewModal from '@/components/profile/FilePreviewModal';
 
 const badge = getComponentTheme(Colors).badge;
 const TAB_BAR_HEIGHT = 85;
@@ -63,6 +66,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
 
   // Fades in a solid bar behind the status bar once the green header has scrolled away.
   const [scrollY] = useState(() => new Animated.Value(0));
@@ -182,6 +186,19 @@ export default function ProfileScreen() {
     )}`;
     Linking.openURL(url).catch(() => Alert.alert('WhatsApp unavailable', 'Please install WhatsApp or call instead.'));
   };
+  const shopPhoto = user?.shop_image_url ? URLs.assetUrl(user.shop_image_url) : null;
+  const shopDocument = user?.document_url ? URLs.assetUrl(user.document_url) : null;
+  // Images open full screen in the app; a PDF needs the browser's viewer
+  const viewFile = (url: string) => {
+    if (!isPdfUrl(url)) {
+      setPreviewUri(url);
+      return;
+    }
+    WebBrowser.openBrowserAsync(url).catch(() =>
+      Alert.alert('Unable to open', 'Please check your connection and try again.'),
+    );
+  };
+
   const openPrivacy = () => {
     WebBrowser.openBrowserAsync(`${URLs.HOST}/privacy-policy`).catch(() =>
       Alert.alert('Unable to open', 'Please check your connection and try again.'),
@@ -246,6 +263,9 @@ export default function ProfileScreen() {
           <SectionTitle>Business details</SectionTitle>
           <BusinessDetailsCard gstNumber={user?.gst_number} hubName={user?.warehouse?.name} onEdit={openEdit} />
 
+          <SectionTitle>Shop photo & documents</SectionTitle>
+          <ShopFilesCard shopImageUrl={shopPhoto} documentUrl={shopDocument} onView={viewFile} onEdit={openEdit} />
+
           <SectionTitle>Settings & support</SectionTitle>
           <MenuGroup
             rows={[
@@ -274,6 +294,8 @@ export default function ProfileScreen() {
         pointerEvents="none"
         style={[styles.statusBarScrim, { height: insets.top, opacity: statusBarScrim }]}
       />
+
+      <FilePreviewModal uri={previewUri} topInset={insets.top} onClose={() => setPreviewUri(null)} />
 
       <HelpSheet
         visible={helpOpen}
