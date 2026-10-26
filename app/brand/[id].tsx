@@ -9,7 +9,8 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import { ArrowLeft, PackageOpen, LayoutGrid, List } from 'lucide-react-native';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
@@ -41,6 +42,7 @@ const toProduct = (item: any): Product => {
     units: unitStr,
     unit_value: item.unit_value ?? item.skus?.[0]?.weight ?? (item.skus?.[0]?.sku && item.skus[0].sku.length <= 15 ? item.skus[0].sku : undefined),
     pack_size: item.unit_value ?? (item.skus?.[0]?.variant_name && item.skus[0].variant_name.length <= 20 ? item.skus[0].variant_name : undefined) ?? item.skus?.[0]?.weight,
+    pack_kg: item.pack_kg ?? item.skus?.[0]?.pack_kg ?? undefined,
     rating: 0,
     reviews_count: 0,
     created_at: '',
@@ -48,7 +50,6 @@ const toProduct = (item: any): Product => {
 };
 
 export default function BrandProductsScreen() {
-  const router = useRouter();
   const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
   const brandId = id;
   const brandName = name ? decodeURIComponent(name) : 'Brand';
@@ -93,7 +94,7 @@ export default function BrandProductsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           style={styles.backButton}
           activeOpacity={0.7}
         >
@@ -149,7 +150,7 @@ export default function BrandProductsScreen() {
           </Text>
           <TouchableOpacity
             style={styles.browseAllBtn}
-            onPress={() => router.back()}
+            onPress={() => goBack()}
             activeOpacity={0.8}
           >
             <Text style={styles.browseAllBtnText}>Browse Other Brands</Text>

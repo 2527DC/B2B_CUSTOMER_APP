@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import {
   ArrowLeft,
   Wallet,
@@ -38,7 +39,6 @@ interface WalletTransactionItem {
 }
 
 export default function WalletScreen() {
-  const router = useRouter();
   const { isAuthenticated } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -129,7 +129,7 @@ export default function WalletScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => goBack()}>
           <ArrowLeft size={22} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Digital Wallet</Text>

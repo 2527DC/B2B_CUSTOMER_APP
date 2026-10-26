@@ -14,7 +14,8 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
@@ -131,7 +132,6 @@ interface ReasonOption {
 }
 
 export default function OrderDetailsScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const orderId = params.id as string;
@@ -353,7 +353,7 @@ export default function OrderDetailsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
             <ChevronLeft size={24} color="#1e293b" />
           </TouchableOpacity>
           <Text style={styles.topBarTitle}>Order Details</Text>
@@ -389,7 +389,7 @@ export default function OrderDetailsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Top Header */}
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <ChevronLeft size={24} color="#1e293b" />
         </TouchableOpacity>
         <View style={styles.topBarCenter}>

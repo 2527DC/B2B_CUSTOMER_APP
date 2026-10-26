@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Search as SearchIcon, X, Tag, ShoppingBag, AlertCircle, ArrowUpRight } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Product } from '@/lib/supabase';
@@ -31,7 +31,6 @@ interface LiveSearchResponse {
 }
 
 export default function SearchScreen() {
-  const router = useRouter();
   const [keyword, setKeyword] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,6 +88,7 @@ export default function SearchScreen() {
             units: unitStr,
             unit_value: p.unit_value ?? p.weight,
             pack_size: p.pack_size ?? p.unit_value ?? p.weight,
+            pack_kg: p.pack_kg ?? undefined,
             rating: 0,
             reviews_count: 0,
             created_at: '',
@@ -120,7 +120,7 @@ export default function SearchScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header Search Input Row */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backButton} onPress={() => goBack()} activeOpacity={0.7}>
           <ArrowLeft size={22} color="#0f172a" />
         </TouchableOpacity>
         <View style={styles.searchContainer}>

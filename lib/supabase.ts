@@ -34,6 +34,7 @@ export type Product = {
   units?: string;
   unit_value?: string;
   pack_size?: string;
+  pack_kg?: number;      // kg in one bag; price per kg = price / pack_kg
   rating?: number;
   reviews_count?: number;
   created_at: string;

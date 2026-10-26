@@ -5,9 +5,10 @@ import {
   KeyboardAvoidingView, Keyboard, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import {
   ChevronLeft, Heart, ShoppingCart,
-  Plus, Minus, ShieldCheck, Tag, Package,
+  Plus, Minus, ShieldCheck, Tag, Package, Weight,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +20,7 @@ import { Colors } from '@/constants/theme';
 import QtyInput from '@/components/QtyInput';
 import { OfflineView } from '@/components';
 import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
+import { formatKg, formatRate, pricePerKg } from '@/lib/perKg';
 
 const { width } = Dimensions.get('window');
 
@@ -58,6 +60,7 @@ interface Sku {
   id: number;
   sku?: string;
   weight?: string | null;
+  pack_kg?: number | null; // kg in one bag; null when the variant has no weight
   unit_name?: string | null;
   variant_name?: string | null;
   attributes?: { name: string; value: string }[];
@@ -183,7 +186,7 @@ export default function ProductDetailsScreen() {
           isOffline={true}
           title={errorInfo.title}
           message={errorInfo.message}
-          onGoBack={() => router.back()}
+          onGoBack={() => goBack()}
         />
       );
     }
@@ -192,7 +195,7 @@ export default function ProductDetailsScreen() {
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>{errorInfo?.title || 'Product Not Found'}</Text>
         <Text style={styles.errorSubtitle}>{errorInfo?.message || 'The product does not exist.'}</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => goBack()}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -239,6 +242,12 @@ export default function ProductDetailsScreen() {
   }
 
   const effectiveUnit = unitName || 'Bag';
+  const unitLower = effectiveUnit.toLowerCase();
+
+  // Price per kg follows the price being charged, including the bulk tier for this quantity
+  const packKg = sku?.pack_kg ?? null;
+  const perKg = pricePerKg(sellPrice, packKg);
+  const packLabel = packKg ? `${formatKg(packKg)} kg${unitLower.startsWith('kg') ? '' : ` ${unitLower}`}` : '';
 
   // Gallery: thumbnail first, then gallery images
   const galleryUris = [
@@ -271,7 +280,7 @@ export default function ProductDetailsScreen() {
     >
       {/* Floating Header */}
       <View style={[styles.floatingHeader, { paddingTop: Math.max(insets.top, 12) }]}>
-        <TouchableOpacity style={styles.circleBtn} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.circleBtn} onPress={() => goBack()} activeOpacity={0.7}>
           <ChevronLeft size={24} color="#1e293b" strokeWidth={2.5} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
@@ -369,10 +378,13 @@ export default function ProductDetailsScreen() {
 
           {/* Pricing */}
           <View style={styles.pricingRow}>
-            <Text style={styles.sellPrice}>₹{sellPrice.toFixed(0)}</Text>
+            <Text style={styles.sellPrice}>
+              {formatINR(sellPrice)}
+              <Text style={styles.sellUnit}> / {effectiveUnit}</Text>
+            </Text>
             {hasDiscount && (
               <View style={styles.mrpContainer}>
-                <Text style={styles.mrpText}>₹{mrpPrice.toFixed(0)}</Text>
+                <Text style={styles.mrpText}>{formatINR(mrpPrice)}</Text>
                 {discountPct > 0 && (
                   <View style={styles.inlineDiscountBadge}>
                     <Text style={styles.inlineDiscountBadgeText}>{discountPct}% OFF</Text>
@@ -388,18 +400,36 @@ export default function ProductDetailsScreen() {
             </View>
           </View>
 
-          {/* Unit & Value Highlight Banner */}
+          {/* Price per kg when the bag weight is known, else the pack and its rate */}
           <View style={styles.unitHighlightCard}>
             <View style={styles.unitIconContainer}>
-              <Package size={18} color="#059669" strokeWidth={2.2} />
+              {perKg !== null ? (
+                <Weight size={18} color={Colors.primary} strokeWidth={2.2} />
+              ) : (
+                <Package size={18} color={Colors.primary} strokeWidth={2.2} />
+              )}
             </View>
             <View style={styles.unitTextCol}>
-              <Text style={styles.unitHeadline}>
-                {packDisplay ? `${packDisplay} Pack` : `1 ${effectiveUnit}`}
-              </Text>
-              <Text style={styles.unitSubRate}>
-                Unit Rate: <Text style={styles.unitSubRateBold}>₹{sellPrice.toFixed(0)} per {effectiveUnit}</Text>
-              </Text>
+              {perKg !== null ? (
+                <>
+                  <Text style={styles.perKgHeadline} accessibilityLabel={`${formatRate(perKg)} per kilogram`}>
+                    {formatRate(perKg)}
+                    <Text style={styles.perKgHeadlineUnit}> per kg</Text>
+                  </Text>
+                  <Text style={styles.unitSubRate}>
+                    {packLabel} at {formatINR(sellPrice)}{activeTier ? ' (bulk price)' : ''}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.unitHeadline}>
+                    {packDisplay ? `${packDisplay} Pack` : `1 ${effectiveUnit}`}
+                  </Text>
+                  <Text style={styles.unitSubRate}>
+                    Unit Rate: <Text style={styles.unitSubRateBold}>₹{sellPrice.toFixed(0)} per {effectiveUnit}</Text>
+                  </Text>
+                </>
+              )}
             </View>
           </View>
 
@@ -455,6 +485,11 @@ export default function ProductDetailsScreen() {
                         <Text style={[styles.variantPrice, selected && styles.variantPriceActive]}>
                           {formatINR(v.selling_price)}
                         </Text>
+                        {pricePerKg(v.selling_price, v.pack_kg) !== null && (
+                          <Text style={styles.variantPerKg}>
+                            {formatRate(pricePerKg(v.selling_price, v.pack_kg)!)}/kg
+                          </Text>
+                        )}
                         {(v.whole_sale_prices?.length ?? 0) > 0 && (
                           <Text style={[styles.variantMeta, selected && styles.variantMetaActive]}>
                             Bulk from {formatINR(Math.min(...v.whole_sale_prices!.map(tierPrice)))}
@@ -481,14 +516,20 @@ export default function ProductDetailsScreen() {
                 )}
               </View>
               <View style={[styles.wholesaleRow, styles.wholesaleHeaderRow]}>
-                <Text style={styles.wholesaleHeaderText}>Quantity</Text>
-                <Text style={styles.wholesaleHeaderText}>Price / unit</Text>
+                <Text style={[styles.wholesaleHeaderText, styles.wholesaleQtyCol]}>Quantity</Text>
+                <Text style={[styles.wholesaleHeaderText, styles.wholesalePriceCol]}>Per {unitLower}</Text>
+                {packKg !== null && (
+                  <Text style={[styles.wholesaleHeaderText, styles.wholesalePerKgCol]}>Per kg</Text>
+                )}
               </View>
               <View style={[styles.wholesaleRow, !activeTier && styles.wholesaleRowActive]}>
                 <Text style={[styles.wholesaleQty, !activeTier && styles.wholesaleQtyActive]}>
                   {wholeSalePrices[0].min_qty > 1 ? `1 – ${wholeSalePrices[0].min_qty - 1} units` : 'Regular price'}
                 </Text>
                 <Text style={styles.wholesalePrice}>{formatINR(baseSellPrice)}</Text>
+                {packKg !== null && (
+                  <Text style={styles.wholesalePerKg}>{formatRate(pricePerKg(baseSellPrice, packKg) ?? 0)}</Text>
+                )}
               </View>
               {wholeSalePrices.map((tier) => {
                 const isActive = tier.id === activeTier?.id;
@@ -504,12 +545,16 @@ export default function ProductDetailsScreen() {
                   >
                     <Text style={[styles.wholesaleQty, isActive && styles.wholesaleQtyActive]}>{range}</Text>
                     <Text style={styles.wholesalePrice}>{formatINR(tierPrice(tier))}</Text>
+                    {packKg !== null && (
+                      <Text style={styles.wholesalePerKg}>{formatRate(pricePerKg(tierPrice(tier), packKg) ?? 0)}</Text>
+                    )}
                   </TouchableOpacity>
                 );
               })}
               {nextTier && (
                 <Text style={styles.nextTierText}>
-                  Add {nextTier.min_qty - quantity} more to pay {formatINR(tierPrice(nextTier))} per unit
+                  Add {nextTier.min_qty - quantity} more to pay {formatINR(tierPrice(nextTier))} per {unitLower}
+                  {packKg !== null ? ` (${formatRate(pricePerKg(tierPrice(nextTier), packKg) ?? 0)}/kg)` : ''}
                 </Text>
               )}
             </View>
@@ -690,6 +735,7 @@ const styles = StyleSheet.create({
 
   pricingRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 },
   sellPrice:   { fontSize: 28, fontWeight: '800', color: Colors.primary },
+  sellUnit:    { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
   mrpContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-end', marginBottom: 4 },
   mrpText:     { fontSize: 16, color: '#dc2626', textDecorationLine: 'line-through', fontWeight: '600' },
   inlineDiscountBadge: { backgroundColor: '#fee2e2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
@@ -699,39 +745,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: Colors.primary10,
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: Colors.primary20,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
     marginTop: 4,
     marginBottom: 8,
   },
   unitIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#dcfce7',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   unitTextCol: {
     flex: 1,
   },
+  perKgHeadline: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: Colors.primaryDark,
+    letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'],
+  },
+  perKgHeadlineUnit: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
   unitHeadline: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#15803d',
+    color: Colors.primaryDark,
   },
   unitSubRate: {
     fontSize: 12,
-    color: '#166534',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   unitSubRateBold: {
     fontWeight: '800',
-    color: '#14532d',
+    color: Colors.text,
   },
 
   stockBadge: {
@@ -757,8 +815,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
   },
-  wholesaleQty:   { fontSize: 14, color: '#475569' },
-  wholesalePrice: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  wholesaleQty:   { flex: 1, fontSize: 14, color: '#475569' },
+  wholesalePrice: { minWidth: 84, textAlign: 'right', fontSize: 14, fontWeight: '700', color: Colors.primary, fontVariant: ['tabular-nums'] },
+  wholesalePerKg: { minWidth: 76, textAlign: 'right', fontSize: 13, fontWeight: '600', color: Colors.textSecondary, fontVariant: ['tabular-nums'] },
+  wholesaleQtyCol:    { flex: 1 },
+  wholesalePriceCol:  { minWidth: 84, textAlign: 'right' },
+  wholesalePerKgCol:  { minWidth: 76, textAlign: 'right' },
   wholesaleHeaderRow: { paddingVertical: 6 },
   wholesaleHeaderText: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase' },
   wholesaleRowActive: { backgroundColor: Colors.primary10, borderRadius: 8, paddingHorizontal: 8, borderBottomColor: 'transparent' },
@@ -782,6 +844,7 @@ const styles = StyleSheet.create({
   variantNameActive: { color: Colors.primary },
   variantPrice: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginTop: 2 },
   variantPriceActive: { color: Colors.text },
+  variantPerKg: { fontSize: 11, fontWeight: '700', color: Colors.primaryDark, marginTop: 1, fontVariant: ['tabular-nums'] },
   variantMeta: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
   variantMetaActive: { color: Colors.textSecondary },
 

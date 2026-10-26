@@ -93,6 +93,7 @@ const toProduct = (item: any): Product => {
     units: unitStr,
     unit_value: item.unit_value ?? item.skus?.[0]?.weight ?? (item.skus?.[0]?.sku && item.skus[0].sku.length <= 15 ? item.skus[0].sku : undefined),
     pack_size: item.unit_value ?? (item.skus?.[0]?.variant_name && item.skus[0].variant_name.length <= 20 ? item.skus[0].variant_name : undefined) ?? item.skus?.[0]?.weight,
+    pack_kg: item.pack_kg ?? item.skus?.[0]?.pack_kg ?? undefined,
     rating: 0,
     reviews_count: 0,
     created_at: '',

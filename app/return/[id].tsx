@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import {
   ArrowLeft,
   RotateCcw,
@@ -132,7 +133,7 @@ export default function ReturnDetailsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <AlertTriangle size={48} color="#ef4444" />
         <Text style={styles.errorText}>{error || 'Return request not found'}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => goBack()}>
           <Text style={styles.retryBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -197,7 +198,7 @@ export default function ReturnDetailsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => goBack()}>
           <ArrowLeft size={22} color="#0f172a" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>

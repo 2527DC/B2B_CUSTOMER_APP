@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Store, CreditCard, ChevronRight, Plus, Check, Clock } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import { useCart } from '@/context/CartContext';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
@@ -128,7 +129,7 @@ export default function CheckoutScreen() {
         setSelectedShippingMethods(initialMethods);
       } else {
         Alert.alert('Checkout Empty', 'You have no selected items to checkout.', [
-          { text: 'OK', onPress: () => router.back() }
+          { text: 'OK', onPress: () => goBack() }
         ]);
       }
 
@@ -434,7 +435,7 @@ export default function CheckoutScreen() {
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <ArrowLeft size={22} color="#0f172a" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Order Checkout</Text>

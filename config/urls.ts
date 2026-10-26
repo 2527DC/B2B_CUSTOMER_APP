@@ -4,7 +4,8 @@ export const PUBLIC_URL = `${WEBSITE_URL}public/`;
 export const DRIVERS_API_URL = `${WEBSITE_URL}api/drivers`;
 
 const HOST = process.env.EXPO_PUBLIC_HOST_URL ?? 'https://dhatri-opal.vercel.app';
-const isNextJsBackend = HOST.includes('dhatri-opal.vercel.app') || HOST.includes('localhost:3000');
+// The Next.js API in production, or a local dev server on any port (localhost / 127.0.0.1)
+const isNextJsBackend = HOST.includes('dhatri-opal.vercel.app') || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(HOST);
 const API  = isNextJsBackend ? `${HOST}/api/v1/app` : `${HOST}/api`;
 
 // ─── Endpoints (ported from Flutter URLs mixin) ──────────────────────────────

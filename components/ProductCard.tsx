@@ -5,6 +5,7 @@ import { Product } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useCart } from '@/context/CartContext';
 import { Colors, getComponentTheme } from '@/constants/theme';
+import { formatRate, pricePerKg } from '@/lib/perKg';
 
 const badge = getComponentTheme(Colors).badge;
 
@@ -48,22 +49,34 @@ function getUnitSuffix(product: Product): string {
 const rupees = (value: number) => `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
 /**
- * Struck price, selling price and unit on one shared baseline.
- * Rendered as a single Text so the parts never wrap apart; it shrinks slightly on narrow cards.
+ * The price paid for one bag, then the MRP it is down from.
+ * One Text so the parts share a baseline and never wrap apart; shrinks slightly on narrow cards.
  */
 function PriceLine({ price, mrp, unit, size }: { price: number; mrp: number | null; unit: string; size: 'sm' | 'md' }) {
-  const amount = size === 'md' ? styles.amountMd : styles.amountSm;
   return (
-    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+      <Text style={size === 'md' ? styles.priceMd : styles.priceSm}>{rupees(price)}</Text>
+      {unit ? <Text style={styles.unit}> / {unit}</Text> : null}
       {mrp !== null ? (
         <>
-          <Text style={[amount, styles.struck]}>{rupees(mrp)}</Text>
-          <Text style={amount}> </Text>
+          {/* Spacing outside the struck text so the line only crosses the price */}
+          <Text style={styles.unit}>{'  '}</Text>
+          <Text style={styles.mrp}>{rupees(mrp)}</Text>
         </>
       ) : null}
-      <Text style={[amount, styles.selling]}>{rupees(price)}</Text>
-      {unit ? <Text style={styles.unit}> / {unit}</Text> : null}
     </Text>
+  );
+}
+
+/** What one bag's price comes to per kg, the figure buyers compare across 26, 30 and 50 kg bags. */
+function PerKgTag({ perKg }: { perKg: number }) {
+  return (
+    <View style={styles.perKgTag}>
+      <Text style={styles.perKgText}>
+        {formatRate(perKg)}
+        <Text style={styles.perKgUnit}> /kg</Text>
+      </Text>
+    </View>
   );
 }
 
@@ -130,10 +143,27 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
   const hasDiscount = mrpVal > priceVal;
   const discountPercent = hasDiscount ? Math.round(((mrpVal - priceVal) / mrpVal) * 100) : 0;
   const struck = hasDiscount ? mrpVal : null;
+  const perKg = pricePerKg(priceVal, product.pack_kg);
+
+  // Read as one sentence by screen readers instead of a string of separate numbers
+  const a11yLabel = [
+    product.name,
+    `${rupees(priceVal)} per ${unitSuffix.toLowerCase()}`,
+    perKg !== null ? `${formatRate(perKg)} per kilogram` : null,
+    discountPercent > 0 ? `${discountPercent}% off ${rupees(mrpVal)}` : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   if (viewMode === 'horizontal') {
     return (
-      <TouchableOpacity style={styles.horizontalCard} activeOpacity={0.9} onPress={handlePress}>
+      <TouchableOpacity
+        style={styles.horizontalCard}
+        activeOpacity={0.9}
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+      >
         <View style={styles.horizontalImageBox}>
           <ProductImage uri={product.image_url} />
           <DiscountTag percent={discountPercent} />
@@ -151,12 +181,13 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
             ) : null}
           </View>
 
-          {/* Price gets the full width; the add button sits below it on the right */}
+          {/* Prices stacked on the left, the add button level with their bottom on the right */}
           <View style={styles.horizontalFooter}>
-            <PriceLine price={priceVal} mrp={struck} unit={unitSuffix} size="md" />
-            <View style={styles.horizontalAdd}>
-              <AddPill count={cartCount} onPress={handlePress} />
+            <View style={styles.horizontalPrices}>
+              <PriceLine price={priceVal} mrp={struck} unit={unitSuffix} size="md" />
+              {perKg !== null && <PerKgTag perKg={perKg} />}
             </View>
+            <AddPill count={cartCount} onPress={handlePress} />
           </View>
         </View>
       </TouchableOpacity>
@@ -164,7 +195,13 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
   }
 
   return (
-    <TouchableOpacity style={styles.verticalCard} activeOpacity={0.9} onPress={handlePress}>
+    <TouchableOpacity
+      style={styles.verticalCard}
+      activeOpacity={0.9}
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+    >
       <View style={styles.verticalImageBox}>
         <ProductImage uri={product.image_url} />
         <DiscountTag percent={discountPercent} />
@@ -179,6 +216,8 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
         </Text>
         <View style={styles.verticalPrice}>
           <PriceLine price={priceVal} mrp={struck} unit={unitSuffix} size="sm" />
+          {/* The slot keeps its height without a rate, so prices line up across a row */}
+          <View style={styles.perKgSlot}>{perKg !== null && <PerKgTag perKg={perKg} />}</View>
         </View>
       </View>
     </TouchableOpacity>
@@ -209,29 +248,59 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  amountSm: {
-    fontSize: 15,
+  // The bag price is the strongest thing on the card, in the brand green
+  priceSm: {
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: -0.2,
+    color: Colors.primary,
+    letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'],
   },
-  amountMd: {
+  priceMd: {
     fontSize: 17,
     fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  struck: {
-    color: badge.dangerText,
-    fontWeight: '600',
-    textDecorationLine: 'line-through',
-    textDecorationColor: badge.dangerText,
-  },
-  selling: {
     color: Colors.primary,
+    letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'],
   },
   unit: {
     fontSize: 12,
     fontWeight: '600',
     color: Colors.textSecondary,
+  },
+  // The struck-off MRP and its line are red, after the price paid
+  mrp: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: badge.dangerText,
+    textDecorationLine: 'line-through',
+    textDecorationColor: badge.dangerText,
+  },
+
+  perKgTag: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: Colors.primary10,
+  },
+  perKgSlot: {
+    minHeight: 21,
+    marginTop: 5,
+    justifyContent: 'center',
+  },
+  perKgText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.1,
+  },
+  perKgUnit: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 
   discountTag: {
@@ -348,10 +417,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   horizontalFooter: {
-    marginTop: 6,
-    gap: 8,
-  },
-  horizontalAdd: {
+    marginTop: 8,
+    flexDirection: 'row',
     alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  horizontalPrices: {
+    flexShrink: 1,
+    gap: 5,
   },
 });

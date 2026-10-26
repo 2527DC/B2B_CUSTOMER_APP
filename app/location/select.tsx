@@ -13,7 +13,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import {
   ArrowLeft,
   Search,
@@ -75,7 +75,6 @@ const DEFAULT_REGION: Region = {
 };
 
 export default function DropLocationPickerScreen() {
-  const router = useRouter();
   const mapRef = useRef<MapView>(null);
 
   // Search & Predictions
@@ -311,7 +310,7 @@ export default function DropLocationPickerScreen() {
           [
             {
               text: 'OK',
-              onPress: () => router.back(),
+              onPress: () => goBack(),
             },
           ]
         );
@@ -334,7 +333,7 @@ export default function DropLocationPickerScreen() {
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => goBack()}
             style={styles.backButton}
             activeOpacity={0.7}
           >

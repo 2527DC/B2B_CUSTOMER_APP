@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import { ArrowLeft, Heart, ShoppingBag, Trash2, ChevronRight } from 'lucide-react-native';
 import { useWishlist, WishlistItem } from '@/context/WishlistContext';
 import { useCart } from '@/context/CartContext';
@@ -86,7 +87,7 @@ export default function WishlistScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           activeOpacity={0.7}
         >
           <ArrowLeft size={22} color="#1e293b" />

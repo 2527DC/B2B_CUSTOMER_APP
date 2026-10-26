@@ -14,7 +14,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -37,7 +37,6 @@ import { URLs } from '@/config/urls';
 import { isPdfUrl } from '@/components/profile/ProfileCards';
 
 export default function EditProfileScreen() {
-  const router = useRouter();
   const { user, updateProfile, uploadDocument } = useAuth();
 
   const [name, setName] = useState(user?.name || '');
@@ -130,7 +129,7 @@ export default function EditProfileScreen() {
       });
 
       Alert.alert('Success', 'Profile and documents updated successfully!', [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => goBack() },
       ]);
     } catch (e: any) {
       console.error('Update profile error:', e);
@@ -146,7 +145,7 @@ export default function EditProfileScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           activeOpacity={0.7}
         >
           <ArrowLeft size={22} color="#1e293b" />

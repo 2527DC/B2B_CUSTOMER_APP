@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Search, X, Tag } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { goBack } from '@/lib/navigation';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Brand } from '@/lib/supabase';
@@ -98,7 +99,7 @@ export default function AllBrandsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           style={styles.backButton}
           activeOpacity={0.7}
         >
