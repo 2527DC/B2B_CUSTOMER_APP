@@ -3,10 +3,12 @@ export const WEBSITE_URL = 'https://dhatri.store/';
 export const PUBLIC_URL = `${WEBSITE_URL}public/`;
 export const DRIVERS_API_URL = `${WEBSITE_URL}api/drivers`;
 
-const HOST = process.env.EXPO_PUBLIC_HOST_URL ?? 'https://dhatri-opal.vercel.app';
-// The Next.js API in production, or a local dev server on any port (localhost / 127.0.0.1)
-const isNextJsBackend = HOST.includes('dhatri-opal.vercel.app') || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(HOST);
-const API  = isNextJsBackend ? `${HOST}/api/v1/app` : `${HOST}/api`;
+const HOST = process.env.EXPO_PUBLIC_HOST_URL ?? 'http://localhost:3001';
+// The Next.js API in production, or a local dev server on any port (localhost / 127.0.0.1 / local network IP)
+const isNextJsBackend =
+  HOST.includes('dhatri-opal.vercel.app') ||
+  /^https?:\/\/(localhost|127\.0\.0\.1|172\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?/.test(HOST);
+const API = isNextJsBackend ? `${HOST}/api/v1/app` : `${HOST}/api`;
 
 // ─── Endpoints (ported from Flutter URLs mixin) ──────────────────────────────
 export const URLs = {
@@ -35,6 +37,7 @@ export const URLs = {
 
   // Brands
   ALL_BRAND:          `${API}/product/brand`,
+  BRAND_SUGGESTIONS:  `${API}/seller/brand-suggestions`,
 
   // Sliders
   ALL_SLIDERS:        `${API}/appearance/sliders`,
@@ -107,6 +110,7 @@ export const URLs = {
 
   // Cart
   CART:                     `${API}/cart`,
+  CART_RECOMMENDATIONS:     `${API}/cart/recommendations`,
   CART_QUANTITY_UPDATE:     `${API}/cart/update-qty`,
   CART_SELECT_UNSELECT_ALL:    `${API}/cart/select-all`,
   CART_SELECT_UNSELECT_SELLER: `${API}/cart/select-seller-item`,

@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
-    "dev:local": "EXPO_NO_TELEMETRY=1 EXPO_PUBLIC_HOST_URL=http://localhost:3000 expo start --clear",
+    "dev:local": "EXPO_NO_TELEMETRY=1 EXPO_PUBLIC_HOST_URL=http://localhost:3001 expo start --clear",
     "ios": "EXPO_NO_TELEMETRY=1 expo run:ios",
     "ios:open": "xcrun simctl launch booted com.dhatri.store",
     "reload": "node scripts/reload.js",

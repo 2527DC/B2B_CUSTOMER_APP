@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';
 import QtyInput from '@/components/QtyInput';
+import { CartRecommendationsSection } from '@/components/CartRecommendationsSection';
 
 export default function CartScreen() {
   const {
@@ -207,6 +208,9 @@ export default function CartScreen() {
                 </View>
               );
             })}
+
+            {/* Quick Restock & Frequently Ordered Together */}
+            <CartRecommendationsSection onItemAdded={fetchCart} />
           </ScrollView>
 
           {/* Checkout Panel */}

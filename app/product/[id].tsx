@@ -8,7 +8,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/lib/navigation';
 import {
   ChevronLeft, Heart, ShoppingCart,
-  Plus, Minus, ShieldCheck, Tag, Package, Weight,
+  Plus, Minus, ShieldCheck, Tag, Package, Weight, Check,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,6 +76,21 @@ interface Seller {
   phone?: string;
   description?: string;
 }
+export interface LinkedProductItem {
+  id: number;
+  product_name: string;
+  thumbnail_image_source?: string;
+  price: number;
+  mrp?: number;
+  brand_name?: string | null;
+  brand_id?: number | null;
+  unit_name?: string;
+  pack_size?: string;
+  pack_kg?: number;
+  minimum_order_qty?: number;
+  sku_id: number;
+  seller_id?: number;
+}
 interface ProductData {
   id: number;
   product_name: string;
@@ -86,6 +101,8 @@ interface ProductData {
   product: ProductInfo;
   skus?: Sku[];
   seller?: Seller;
+  related_products?: LinkedProductItem[];
+  cross_sales?: LinkedProductItem[];
 }
 interface ApiResponse {
   data: ProductData;
@@ -108,8 +125,31 @@ export default function ProductDetailsScreen() {
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedSuccess, setAddedSuccess] = useState(false);
+  const [addingLinkedId, setAddingLinkedId] = useState<number | null>(null);
+  const [addedLinkedId, setAddedLinkedId] = useState<number | null>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [selectedSkuId, setSelectedSkuId] = useState<number | null>(null);
+
+  const handleAddLinked = async (item: LinkedProductItem) => {
+    try {
+      setAddingLinkedId(item.sku_id);
+      const ok = await addToCart(
+        item.id,
+        item.sku_id,
+        item.minimum_order_qty || 1,
+        item.price,
+        item.seller_id || 1
+      );
+      if (ok) {
+        setAddedLinkedId(item.sku_id);
+        setTimeout(() => setAddedLinkedId(null), 1200);
+      }
+    } catch (err) {
+      console.error('[ProductDetail] Quick add linked failed:', err);
+    } finally {
+      setAddingLinkedId(null);
+    }
+  };
 
   useEffect(() => {
     if (id) fetchProduct();
@@ -584,6 +624,150 @@ export default function ProductDetailsScreen() {
             </>
           )}
 
+          {/* Compare Alternative Brands (Same Category) */}
+          {Boolean(data.related_products && data.related_products.length > 0) && (
+            <>
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionTitle}>Compare Alternative Brands</Text>
+                  <Text style={styles.sectionHint}>Same Category</Text>
+                </View>
+                <Text style={styles.linkedSubtitle}>
+                  Comparable brands available in your warehouse for rate-per-kg comparison
+                </Text>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.linkedScroll}>
+                  {data.related_products!.map((alt) => {
+                    const currentRate = pricePerKg(baseSellPrice, packKg);
+                    const altRate = pricePerKg(alt.price, alt.pack_kg);
+                    const isCheaper = currentRate !== null && altRate !== null && altRate < currentRate;
+                    const diffPerKg = isCheaper ? currentRate - altRate : 0;
+                    const imgSrc = alt.thumbnail_image_source;
+
+                    return (
+                      <TouchableOpacity
+                        key={alt.id}
+                        style={styles.linkedCard}
+                        activeOpacity={0.88}
+                        onPress={() => router.push(`/product/${alt.id}`)}
+                      >
+                        <View style={styles.linkedImgWrap}>
+                          {imgSrc ? (
+                            <Image source={{ uri: assetUrl(imgSrc) }} style={styles.linkedImg} resizeMode="contain" />
+                          ) : (
+                            <Package size={22} color="#94a3b8" />
+                          )}
+                          {isCheaper && (
+                            <View style={styles.savingsBadge}>
+                              <Text style={styles.savingsBadgeText}>⚡ ₹{diffPerKg.toFixed(1)}/kg cheaper</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <Text style={styles.linkedName} numberOfLines={2}>
+                          {alt.product_name}
+                        </Text>
+                        {alt.brand_name && (
+                          <Text style={styles.linkedBrand} numberOfLines={1}>
+                            Brand: {alt.brand_name}
+                          </Text>
+                        )}
+
+                        <View style={styles.linkedPriceRow}>
+                          <Text style={styles.linkedPrice}>₹{alt.price.toLocaleString('en-IN')}</Text>
+                          {altRate !== null && (
+                            <Text style={styles.linkedRate}>{formatRate(altRate)}/kg</Text>
+                          )}
+                        </View>
+
+                        <View style={styles.viewAltBtn}>
+                          <Text style={styles.viewAltBtnText}>View Alternative ›</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+              <View style={styles.divider} />
+            </>
+          )}
+
+          {/* Frequently Stocked Together (Category Basket) */}
+          {Boolean(data.cross_sales && data.cross_sales.length > 0) && (
+            <>
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionTitle}>Frequently Stocked Together</Text>
+                  <Text style={styles.sectionHint}>Category Basket</Text>
+                </View>
+                <Text style={styles.linkedSubtitle}>
+                  Retailers stocking this item usually order these companion lines:
+                </Text>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.linkedScroll}>
+                  {data.cross_sales!.map((item) => {
+                    const isAdding = addingLinkedId === item.sku_id;
+                    const isAdded = addedLinkedId === item.sku_id;
+                    const rate = pricePerKg(item.price, item.pack_kg);
+                    const imgSrc = item.thumbnail_image_source;
+
+                    return (
+                      <View key={item.id} style={styles.linkedCard}>
+                        <TouchableOpacity activeOpacity={0.88} onPress={() => router.push(`/product/${item.id}`)}>
+                          <View style={styles.linkedImgWrap}>
+                            {imgSrc ? (
+                              <Image source={{ uri: assetUrl(imgSrc) }} style={styles.linkedImg} resizeMode="contain" />
+                            ) : (
+                              <Package size={22} color="#94a3b8" />
+                            )}
+                          </View>
+
+                          <Text style={styles.linkedName} numberOfLines={2}>
+                            {item.product_name}
+                          </Text>
+                          {item.pack_size ? (
+                            <Text style={styles.linkedBrand} numberOfLines={1}>
+                              {item.pack_size}
+                            </Text>
+                          ) : null}
+
+                          <View style={styles.linkedPriceRow}>
+                            <Text style={styles.linkedPrice}>₹{item.price.toLocaleString('en-IN')}</Text>
+                            {rate !== null && (
+                              <Text style={styles.linkedRate}>{formatRate(rate)}/kg</Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.linkedAddBtn, isAdded && styles.linkedAddBtnSuccess]}
+                          onPress={() => handleAddLinked(item)}
+                          disabled={isAdding || isAdded}
+                          activeOpacity={0.85}
+                        >
+                          {isAdding ? (
+                            <ActivityIndicator size="small" color="#ffffff" />
+                          ) : isAdded ? (
+                            <View style={styles.linkedBtnRow}>
+                              <Check size={12} color="#ffffff" strokeWidth={3} />
+                              <Text style={styles.linkedBtnText}>Added ✓</Text>
+                            </View>
+                          ) : (
+                            <View style={styles.linkedBtnRow}>
+                              <Plus size={12} color="#ffffff" strokeWidth={3} />
+                              <Text style={styles.linkedBtnText}>+ Add ({item.minimum_order_qty || 1} MOQ)</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+              <View style={styles.divider} />
+            </>
+          )}
+
           {/* Seller info */}
           {data.seller && (
             <View style={styles.sellerCard}>
@@ -900,4 +1084,44 @@ const styles = StyleSheet.create({
   btnAmount:    { color: Colors.textWhite, fontSize: 16, fontWeight: '800' },
   btnBreakdown: { color: Colors.textWhite, fontSize: 11, fontWeight: '500', opacity: 0.85 },
   btnText:     { color: '#ffffff', fontSize: 15, fontWeight: '700' },
+
+  // Linked products & recommendations
+  linkedSubtitle: { fontSize: 12, color: '#64748b', marginTop: -4, marginBottom: 8 },
+  linkedScroll: { gap: 12, paddingVertical: 4 },
+  linkedCard: {
+    width: 168, backgroundColor: '#ffffff', borderRadius: 14,
+    borderWidth: 1, borderColor: '#e2e8f0', padding: 10,
+    justifyContent: 'space-between',
+    shadowColor: '#0f172a', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+  },
+  linkedImgWrap: {
+    width: '100%', height: 105, backgroundColor: '#f8fafc',
+    borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
+  linkedImg: { width: '85%', height: '85%' },
+  savingsBadge: {
+    position: 'absolute', top: 6, left: 6,
+    backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', borderWidth: 1,
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
+  },
+  savingsBadgeText: { fontSize: 9, fontWeight: '700', color: '#047857' },
+  linkedName: { fontSize: 13, fontWeight: '700', color: '#1e293b', lineHeight: 18, minHeight: 36, marginTop: 8 },
+  linkedBrand: { fontSize: 11, fontWeight: '600', color: '#64748b', marginTop: 2 },
+  linkedPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 4 },
+  linkedPrice: { fontSize: 14, fontWeight: '800', color: Colors.primary },
+  linkedRate: { fontSize: 11, fontWeight: '600', color: '#94a3b8' },
+  viewAltBtn: {
+    marginTop: 8, paddingVertical: 6, backgroundColor: '#f8fafc',
+    borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0',
+  },
+  viewAltBtnText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  linkedAddBtn: {
+    marginTop: 8, height: 32, borderRadius: 8,
+    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
+  },
+  linkedAddBtnSuccess: { backgroundColor: Colors.success },
+  linkedBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  linkedBtnText: { color: '#ffffff', fontSize: 11, fontWeight: '700' },
 });

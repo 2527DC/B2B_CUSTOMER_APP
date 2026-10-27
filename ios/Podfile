@@ -20,8 +20,8 @@ ENV['RCT_USE_PREBUILT_RNCORE'] ||= podfile_properties['ios.buildReactNativeFromS
 ENV['RCT_HERMES_V1_ENABLED'] ||= '0' if podfile_properties['expo.useHermesV1'] == 'false'
 # An explicit `ios.usePrecompiledModules: false` must win even when the env var is already set
 # (e.g. EXPO_USE_PRECOMPILED_MODULES exported by EAS Build), so force-disable here before the default.
-ENV['EXPO_USE_PRECOMPILED_MODULES'] = '0' if podfile_properties['EXPO_USE_PRECOMPILED_MODULES'] == 'false'
-ENV['EXPO_USE_PRECOMPILED_MODULES'] ||= '1'
+ENV['EXPO_USE_PRECOMPILED_MODULES'] = '0' if podfile_properties['EXPO_USE_PRECOMPILED_MODULES'] == 'false' || podfile_properties['ios.usePrecompiledModules'] == 'false'
+ENV['EXPO_USE_PRECOMPILED_MODULES'] ||= '0'
 platform :ios, podfile_properties['ios.deploymentTarget'] || '16.4'
 
 prepare_react_native_project!

@@ -10,5 +10,6 @@ export { default as Button } from './Button';
 export { default as QtyInput } from './QtyInput';
 export { AppUpdateModal } from './AppUpdateModal';
 export { ThemeSelectorModal } from './ThemeSelectorModal';
+export { CartRecommendationsSection } from './CartRecommendationsSection';
 export { OfflineView } from './OfflineView';
 export { OfflineBanner } from './OfflineBanner';
