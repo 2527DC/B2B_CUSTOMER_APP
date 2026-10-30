@@ -362,10 +362,7 @@ export default function ProductDetailsScreen() {
   const lineBreakdown = `${quantity} × ${formatINR(sellPrice)}`;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={styles.container}>
       {/* Floating Header */}
       <View style={[styles.floatingHeader, { paddingTop: Math.max(insets.top, 12) }]}>
         <TouchableOpacity style={styles.circleBtn} onPress={() => goBack()} activeOpacity={0.7}>
@@ -947,6 +944,9 @@ export default function ProductDetailsScreen() {
               max={maxQty}
               onCommit={setQuantity}
               live
+              unitPrice={sellPrice}
+              unitName={unitLower}
+              productName={p?.product_name}
               keypadLabel={`${lineBreakdown} = ${formatINR(lineTotal)}`}
               style={styles.qtyVal}
             />
@@ -997,7 +997,7 @@ export default function ProductDetailsScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -181,6 +181,9 @@ export default function CartScreen() {
                                 </TouchableOpacity>
                                 <QtyInput
                                   value={item.qty}
+                                  min={1}
+                                  unitPrice={item.price}
+                                  productName={productName}
                                   onCommit={(qty) => handleQtyChange(item, qty)}
                                   style={styles.stepperValue}
                                 />
