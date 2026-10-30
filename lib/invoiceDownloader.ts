@@ -3,37 +3,11 @@ import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { URLs } from '@/config/urls';
 
-// Safe lazy accessor for ExpoSharing to avoid crash when native binary is not recompiled
-function getExpoSharing(): any | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('expo-sharing');
-    if (mod && typeof mod.isAvailableAsync === 'function') {
-      return mod;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Safe lazy accessor for ExpoFileSystem to avoid crash when native binary is not recompiled
-function getExpoFileSystem(): any | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('expo-file-system');
-    if (mod && mod.File && mod.Paths) {
-      return mod;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Downloads or views the official tax invoice PDF for an order.
- * Works seamlessly whether ExpoSharing/FileSystem are compiled into the native binary or not.
+ * Opens or downloads the official tax invoice PDF for an order.
+ * Uses WebBrowser (native in-app Safari / Chrome Custom Tabs) which has
+ * native PDF viewing, pinch-to-zoom, system Share sheet (WhatsApp, AirDrop),
+ * Save to Files, and Print built-in without requiring unlinked native modules.
  */
 export async function downloadOrderInvoice(
   orderId: string | number,
@@ -47,7 +21,7 @@ export async function downloadOrderInvoice(
       (await AsyncStorage.getItem('@auth_token')) ||
       (await AsyncStorage.getItem('authToken'));
 
-    // Append token query param so authenticated downloads work in in-app Safari/Chrome tabs
+    // Append token query param for authenticated in-app browser streaming
     const separator = rawUrl.includes('?') ? '&' : '?';
     const invoiceUrlWithToken = token
       ? `${rawUrl}${separator}token=${encodeURIComponent(token)}`
@@ -61,60 +35,36 @@ export async function downloadOrderInvoice(
       return { success: true, uri: invoiceUrlWithToken };
     }
 
-    // 2. Try native FileSystem + Sharing if compiled in this build
-    const Sharing = getExpoSharing();
-    const FileSystem = getExpoFileSystem();
+    // 2. Mobile Platform (iOS & Android)
+    // Opens native in-app Safari/Chrome tab which renders the PDF with full native share sheet & save controls
+    await WebBrowser.openBrowserAsync(invoiceUrlWithToken, {
+      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      toolbarColor: '#4f7942',
+      controlsColor: '#ffffff',
+    });
 
-    if (Sharing && FileSystem) {
-      try {
-        const cleanNumber = (orderNumber || String(orderId)).replace(/[^a-zA-Z0-9_-]/g, '_');
-        const filename = `Invoice_${cleanNumber}.pdf`;
-        const destination = new FileSystem.File(FileSystem.Paths.document, filename);
-
-        const headers: Record<string, string> = {
-          Accept: 'application/pdf',
-        };
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const downloadedFile = await FileSystem.File.downloadFileAsync(
-          rawUrl,
-          destination,
-          { headers, idempotent: true }
-        );
-
-        const canShare = await Sharing.isAvailableAsync();
-        if (canShare) {
-          await Sharing.shareAsync(downloadedFile.uri, {
-            mimeType: 'application/pdf',
-            dialogTitle: `Tax Invoice - #${orderNumber}`,
-            UTI: 'com.adobe.pdf',
-          });
-          return { success: true, uri: downloadedFile.uri };
-        }
-      } catch (nativeErr) {
-        // Native module or write failure: log and smoothly fall through to in-app WebBrowser
-        console.warn('Native sharing/download failed, falling back to WebBrowser:', nativeErr);
-      }
-    }
-
-    // 3. Guaranteed In-App Browser Fallback (Safari / Chrome Custom Tabs)
-    // Has native iOS/Android PDF reader, print, and share sheet built-in
+    return { success: true, uri: invoiceUrlWithToken };
+  } catch (error: any) {
+    console.warn('WebBrowser failed to open invoice, falling back to Linking:', error);
     try {
-      await WebBrowser.openBrowserAsync(invoiceUrlWithToken);
-      return { success: true, uri: invoiceUrlWithToken };
-    } catch {
-      // If WebBrowser fails, try standard system Linking
+      const rawUrl = URLs.ORDER_INVOICE(orderId);
+      const token =
+        (await AsyncStorage.getItem('@auth_token')) ||
+        (await AsyncStorage.getItem('authToken'));
+      const separator = rawUrl.includes('?') ? '&' : '?';
+      const invoiceUrlWithToken = token
+        ? `${rawUrl}${separator}token=${encodeURIComponent(token)}`
+        : rawUrl;
+
       await Linking.openURL(invoiceUrlWithToken);
       return { success: true, uri: invoiceUrlWithToken };
+    } catch (fallbackError: any) {
+      console.error('Failed to open invoice:', fallbackError);
+      Alert.alert(
+        'Invoice Download',
+        'Unable to open the tax invoice PDF right now. Please check your connection and try again.'
+      );
+      return { success: false, error: fallbackError?.message || 'Download failed' };
     }
-  } catch (error: any) {
-    console.error('Failed to open or download tax invoice:', error);
-    Alert.alert(
-      'Invoice Download',
-      'Unable to open the tax invoice PDF right now. Please check your connection and try again.'
-    );
-    return { success: false, error: error?.message || 'Download failed' };
   }
 }
