@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Image, ScrollView,
   TouchableOpacity, ActivityIndicator, Dimensions, Alert,
-  KeyboardAvoidingView, Keyboard, Platform,
+  KeyboardAvoidingView, Keyboard, Platform, UIManager, LayoutAnimation,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBack } from '@/lib/navigation';
 import {
   ChevronLeft, Heart, ShoppingCart,
   Plus, Minus, ShieldCheck, Tag, Package, Weight, Check,
+  ChevronDown,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -81,15 +82,23 @@ export interface LinkedProductItem {
   product_name: string;
   thumbnail_image_source?: string;
   price: number;
+  selling_price?: number;
+  min_sell_price?: number;
   mrp?: number;
+  max_sell_price?: number;
+  MaxSellingPrice?: number;
   brand_name?: string | null;
   brand_id?: number | null;
   unit_name?: string;
+  units?: string;
+  unit?: string;
   pack_size?: string;
   pack_kg?: number;
   minimum_order_qty?: number;
   sku_id: number;
   seller_id?: number;
+  skus?: Sku[];
+  product?: any;
 }
 interface ProductData {
   id: number;
@@ -111,6 +120,28 @@ interface ApiResponse {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const assetUrl = (path?: string): string => URLs.assetUrl(path);
 
+function formatUnit(rawUnit?: string | null): string {
+  if (!rawUnit) return 'Bag';
+  const u = rawUnit.trim();
+  if (!u) return 'Bag';
+  const lower = u.toLowerCase();
+  if (lower === 'kg') return 'Kg';
+  if (lower === 'gm' || lower === 'g') return 'Gm';
+  if (lower === 'pcs' || lower === 'piece' || lower === 'pieces') return 'Pcs';
+  if (lower === 'box') return 'Box';
+  if (lower === 'bag') return 'Bag';
+  if (lower === 'litre' || lower === 'ltr' || lower === 'l') return 'Litre';
+  if (lower === 'ml') return 'Ml';
+  if (lower === 'pkt' || lower === 'pack') return 'Pack';
+  if (lower === 'tin') return 'Tin';
+  if (lower === 'can') return 'Can';
+  return u.charAt(0).toUpperCase() + u.slice(1);
+}
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -129,6 +160,8 @@ export default function ProductDetailsScreen() {
   const [addedLinkedId, setAddedLinkedId] = useState<number | null>(null);
   const [activeImage, setActiveImage] = useState(0);
   const [selectedSkuId, setSelectedSkuId] = useState<number | null>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [specsExpanded, setSpecsExpanded] = useState(false);
 
   const handleAddLinked = async (item: LinkedProductItem) => {
     try {
@@ -149,6 +182,16 @@ export default function ProductDetailsScreen() {
     } finally {
       setAddingLinkedId(null);
     }
+  };
+
+  const toggleDetails = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setDetailsExpanded(prev => !prev);
+  };
+
+  const toggleSpecs = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSpecsExpanded(prev => !prev);
   };
 
   useEffect(() => {
@@ -606,8 +649,24 @@ export default function ProductDetailsScreen() {
           {!!p?.description && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Product Details</Text>
-                <Text style={styles.descText}>{p.description}</Text>
+                <TouchableOpacity
+                  style={styles.accordionHeader}
+                  onPress={toggleDetails}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Product Details"
+                  accessibilityState={{ expanded: detailsExpanded }}
+                >
+                  <Text style={styles.sectionTitle}>Product Details</Text>
+                  <ChevronDown
+                    size={20}
+                    color={Colors.textSecondary}
+                    style={{ transform: [{ rotate: detailsExpanded ? '180deg' : '0deg' }] }}
+                  />
+                </TouchableOpacity>
+                {detailsExpanded && (
+                  <Text style={[styles.descText, styles.accordionBody]}>{p.description}</Text>
+                )}
               </View>
               <View style={styles.divider} />
             </>
@@ -617,8 +676,24 @@ export default function ProductDetailsScreen() {
           {!!p?.specification && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Specifications</Text>
-                <Text style={styles.descText}>{p.specification}</Text>
+                <TouchableOpacity
+                  style={styles.accordionHeader}
+                  onPress={toggleSpecs}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Specifications"
+                  accessibilityState={{ expanded: specsExpanded }}
+                >
+                  <Text style={styles.sectionTitle}>Specifications</Text>
+                  <ChevronDown
+                    size={20}
+                    color={Colors.textSecondary}
+                    style={{ transform: [{ rotate: specsExpanded ? '180deg' : '0deg' }] }}
+                  />
+                </TouchableOpacity>
+                {specsExpanded && (
+                  <Text style={[styles.descText, styles.accordionBody]}>{p.specification}</Text>
+                )}
               </View>
               <View style={styles.divider} />
             </>
@@ -638,8 +713,14 @@ export default function ProductDetailsScreen() {
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.linkedScroll}>
                   {data.related_products!.map((alt) => {
+                    const altPrice = Number(alt.price ?? (alt as any).selling_price ?? (alt as any).min_sell_price ?? 0);
+                    const altMrp = Number(alt.mrp ?? (alt as any).max_sell_price ?? (alt as any).MaxSellingPrice ?? (alt as any).skus?.[0]?.mrp ?? (alt as any).product?.mrp ?? 0);
+                    const hasDiscount = altMrp > altPrice;
+                    const discountPercent = hasDiscount ? Math.round(((altMrp - altPrice) / altMrp) * 100) : 0;
+                    const struck = hasDiscount ? altMrp : null;
+                    const altUnit = formatUnit(alt.unit_name || (alt as any).units || (alt as any).unit || (alt as any).skus?.[0]?.unit_name);
                     const currentRate = pricePerKg(baseSellPrice, packKg);
-                    const altRate = pricePerKg(alt.price, alt.pack_kg);
+                    const altRate = pricePerKg(altPrice, alt.pack_kg ?? (alt as any).skus?.[0]?.pack_kg);
                     const isCheaper = currentRate !== null && altRate !== null && altRate < currentRate;
                     const diffPerKg = isCheaper ? currentRate - altRate : 0;
                     const imgSrc = alt.thumbnail_image_source;
@@ -655,7 +736,12 @@ export default function ProductDetailsScreen() {
                           {imgSrc ? (
                             <Image source={{ uri: assetUrl(imgSrc) }} style={styles.linkedImg} resizeMode="contain" />
                           ) : (
-                            <Package size={22} color="#94a3b8" />
+                            <Package size={26} color="#94a3b8" />
+                          )}
+                          {discountPercent > 0 && (
+                            <View style={styles.discountTag}>
+                              <Text style={styles.discountTagText}>{discountPercent}% OFF</Text>
+                            </View>
                           )}
                           {isCheaper && (
                             <View style={styles.savingsBadge}>
@@ -667,17 +753,37 @@ export default function ProductDetailsScreen() {
                         <Text style={styles.linkedName} numberOfLines={2}>
                           {alt.product_name}
                         </Text>
-                        {alt.brand_name && (
+                        {alt.brand_name ? (
                           <Text style={styles.linkedBrand} numberOfLines={1}>
                             Brand: {alt.brand_name}
                           </Text>
-                        )}
+                        ) : alt.pack_size ? (
+                          <Text style={styles.linkedBrand} numberOfLines={1}>
+                            {alt.pack_size}
+                          </Text>
+                        ) : null}
 
-                        <View style={styles.linkedPriceRow}>
-                          <Text style={styles.linkedPrice}>₹{alt.price.toLocaleString('en-IN')}</Text>
-                          {altRate !== null && (
-                            <Text style={styles.linkedRate}>{formatRate(altRate)}/kg</Text>
-                          )}
+                        <View style={styles.linkedPriceBlock}>
+                          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.linkedPriceLine}>
+                            <Text style={styles.linkedPrice}>₹{altPrice.toLocaleString('en-IN')}</Text>
+                            {altUnit ? <Text style={styles.linkedUnit}> / {altUnit}</Text> : null}
+                            {struck !== null ? (
+                              <>
+                                <Text style={styles.linkedUnit}>{'  '}</Text>
+                                <Text style={styles.linkedMrp}>₹{struck.toLocaleString('en-IN')}</Text>
+                              </>
+                            ) : null}
+                          </Text>
+                          <View style={styles.perKgSlot}>
+                            {altRate !== null && (
+                              <View style={styles.perKgTag}>
+                                <Text style={styles.perKgText}>
+                                  {formatRate(altRate)}
+                                  <Text style={styles.perKgUnit}> /kg</Text>
+                                </Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
 
                         <View style={styles.viewAltBtn}>
@@ -708,7 +814,13 @@ export default function ProductDetailsScreen() {
                   {data.cross_sales!.map((item) => {
                     const isAdding = addingLinkedId === item.sku_id;
                     const isAdded = addedLinkedId === item.sku_id;
-                    const rate = pricePerKg(item.price, item.pack_kg);
+                    const itemPrice = Number(item.price ?? (item as any).selling_price ?? (item as any).min_sell_price ?? 0);
+                    const itemMrp = Number(item.mrp ?? (item as any).max_sell_price ?? (item as any).MaxSellingPrice ?? (item as any).skus?.[0]?.mrp ?? (item as any).product?.mrp ?? 0);
+                    const hasDiscount = itemMrp > itemPrice;
+                    const discountPercent = hasDiscount ? Math.round(((itemMrp - itemPrice) / itemMrp) * 100) : 0;
+                    const struck = hasDiscount ? itemMrp : null;
+                    const itemUnit = formatUnit(item.unit_name || (item as any).units || (item as any).unit || (item as any).skus?.[0]?.unit_name);
+                    const rate = pricePerKg(itemPrice, item.pack_kg ?? (item as any).skus?.[0]?.pack_kg);
                     const imgSrc = item.thumbnail_image_source;
 
                     return (
@@ -718,24 +830,49 @@ export default function ProductDetailsScreen() {
                             {imgSrc ? (
                               <Image source={{ uri: assetUrl(imgSrc) }} style={styles.linkedImg} resizeMode="contain" />
                             ) : (
-                              <Package size={22} color="#94a3b8" />
+                              <Package size={26} color="#94a3b8" />
+                            )}
+                            {discountPercent > 0 && (
+                              <View style={styles.discountTag}>
+                                <Text style={styles.discountTagText}>{discountPercent}% OFF</Text>
+                              </View>
                             )}
                           </View>
 
                           <Text style={styles.linkedName} numberOfLines={2}>
                             {item.product_name}
                           </Text>
-                          {item.pack_size ? (
+                          {item.brand_name ? (
+                            <Text style={styles.linkedBrand} numberOfLines={1}>
+                              Brand: {item.brand_name}
+                            </Text>
+                          ) : item.pack_size ? (
                             <Text style={styles.linkedBrand} numberOfLines={1}>
                               {item.pack_size}
                             </Text>
                           ) : null}
 
-                          <View style={styles.linkedPriceRow}>
-                            <Text style={styles.linkedPrice}>₹{item.price.toLocaleString('en-IN')}</Text>
-                            {rate !== null && (
-                              <Text style={styles.linkedRate}>{formatRate(rate)}/kg</Text>
-                            )}
+                          <View style={styles.linkedPriceBlock}>
+                            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.linkedPriceLine}>
+                              <Text style={styles.linkedPrice}>₹{itemPrice.toLocaleString('en-IN')}</Text>
+                              {itemUnit ? <Text style={styles.linkedUnit}> / {itemUnit}</Text> : null}
+                              {struck !== null ? (
+                                <>
+                                  <Text style={styles.linkedUnit}>{'  '}</Text>
+                                  <Text style={styles.linkedMrp}>₹{struck.toLocaleString('en-IN')}</Text>
+                                </>
+                              ) : null}
+                            </Text>
+                            <View style={styles.perKgSlot}>
+                              {rate !== null && (
+                                <View style={styles.perKgTag}>
+                                  <Text style={styles.perKgText}>
+                                    {formatRate(rate)}
+                                    <Text style={styles.perKgUnit}> /kg</Text>
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
                           </View>
                         </TouchableOpacity>
 
@@ -994,6 +1131,15 @@ const styles = StyleSheet.create({
   section:       { gap: 10, marginBottom: 4 },
   sectionTitle:  { fontSize: 16, fontWeight: '700', color: '#1e293b' },
   descText:      { fontSize: 14, color: '#64748b', lineHeight: 22 },
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  accordionBody: {
+    marginTop: 2,
+  },
 
   wholesaleRow: {
     flexDirection: 'row', justifyContent: 'space-between',
@@ -1089,39 +1235,130 @@ const styles = StyleSheet.create({
   linkedSubtitle: { fontSize: 12, color: '#64748b', marginTop: -4, marginBottom: 8 },
   linkedScroll: { gap: 12, paddingVertical: 4 },
   linkedCard: {
-    width: 168, backgroundColor: '#ffffff', borderRadius: 14,
-    borderWidth: 1, borderColor: '#e2e8f0', padding: 10,
+    width: 172,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 10,
     justifyContent: 'space-between',
-    shadowColor: '#0f172a', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   linkedImgWrap: {
-    width: '100%', height: 105, backgroundColor: '#f8fafc',
-    borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center',
+    width: '100%',
+    height: 120,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
   },
   linkedImg: { width: '85%', height: '85%' },
+  discountTag: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: Colors.danger,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderBottomRightRadius: 8,
+    zIndex: 2,
+  },
+  discountTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: Colors.textWhite,
+    letterSpacing: 0.3,
+  },
   savingsBadge: {
-    position: 'absolute', top: 6, left: 6,
-    backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', borderWidth: 1,
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    zIndex: 2,
   },
   savingsBadgeText: { fontSize: 9, fontWeight: '700', color: '#047857' },
   linkedName: { fontSize: 13, fontWeight: '700', color: '#1e293b', lineHeight: 18, minHeight: 36, marginTop: 8 },
   linkedBrand: { fontSize: 11, fontWeight: '600', color: '#64748b', marginTop: 2 },
-  linkedPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 4 },
-  linkedPrice: { fontSize: 14, fontWeight: '800', color: Colors.primary },
-  linkedRate: { fontSize: 11, fontWeight: '600', color: '#94a3b8' },
-  viewAltBtn: {
-    marginTop: 8, paddingVertical: 6, backgroundColor: '#f8fafc',
-    borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0',
+  linkedPriceBlock: {
+    marginTop: 6,
   },
-  viewAltBtnText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  linkedPriceLine: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  linkedPrice: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.primary,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.2,
+  },
+  linkedUnit: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+  },
+  linkedMrp: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.danger,
+    textDecorationLine: 'line-through',
+    textDecorationColor: Colors.danger,
+  },
+  perKgSlot: {
+    minHeight: 22,
+    marginTop: 4,
+    justifyContent: 'center',
+  },
+  perKgTag: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: Colors.primary10,
+  },
+  perKgText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.primaryDark,
+    fontVariant: ['tabular-nums'],
+  },
+  perKgUnit: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  viewAltBtn: {
+    marginTop: 8,
+    paddingVertical: 8,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  viewAltBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
   linkedAddBtn: {
-    marginTop: 8, height: 32, borderRadius: 8,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
+    marginTop: 8,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   linkedAddBtnSuccess: { backgroundColor: Colors.success },
   linkedBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  linkedBtnText: { color: '#ffffff', fontSize: 11, fontWeight: '700' },
+  linkedBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
 });

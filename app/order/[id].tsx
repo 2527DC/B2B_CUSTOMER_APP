@@ -34,6 +34,9 @@ import {
   CreditCard,
   Building2,
   AlertTriangle,
+  Minus,
+  Plus,
+  Check,
 } from 'lucide-react-native';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
@@ -60,13 +63,29 @@ const formatDate = (dateStr?: string | null) => {
 
 interface OrderItem {
   id: number;
+  product_id?: number | string;
+  product_sku_id?: number | string;
+  seller_product_sku_id?: number | string;
+  sku_id?: number | string;
   product_title: string;
   variant_name?: string;
   sku_code?: string;
   qty: number;
+  quantity?: number;
   unit_price: number;
   total_price: number;
   thumbnail?: string;
+}
+
+interface ReturnDraftItem {
+  productSkuId: string;
+  productTitle: string;
+  variantName?: string;
+  unitPrice: number;
+  maxQty: number; // item.quantity
+  selectedQty: number;
+  isSelected: boolean;
+  reasonId?: number;
 }
 
 interface DeliveryState {
@@ -154,6 +173,43 @@ export default function OrderDetailsScreen() {
   const [selectedReturnReasonId, setSelectedReturnReasonId] = useState<number | null>(null);
   const [returnNote, setReturnNote] = useState('');
   const [returnLoading, setReturnLoading] = useState(false);
+  const [returnItems, setReturnItems] = useState<ReturnDraftItem[]>([]);
+
+  // Selected return items & summary totals
+  const selectedReturnItems = useMemo(
+    () => returnItems.filter((it) => it.isSelected && it.selectedQty > 0),
+    [returnItems]
+  );
+
+  const totalReturnUnits = useMemo(
+    () => selectedReturnItems.reduce((acc, it) => acc + it.selectedQty, 0),
+    [selectedReturnItems]
+  );
+
+  const totalReturnRefund = useMemo(
+    () => selectedReturnItems.reduce((acc, it) => acc + it.selectedQty * it.unitPrice, 0),
+    [selectedReturnItems]
+  );
+
+  const toggleItemSelection = (productSkuId: string) => {
+    setReturnItems((prev) =>
+      prev.map((item) =>
+        item.productSkuId === productSkuId
+          ? { ...item, isSelected: !item.isSelected }
+          : item
+      )
+    );
+  };
+
+  const updateItemQty = (productSkuId: string, delta: number) => {
+    setReturnItems((prev) =>
+      prev.map((item) => {
+        if (item.productSkuId !== productSkuId) return item;
+        const newQty = Math.max(1, Math.min(item.maxQty, item.selectedQty + delta));
+        return { ...item, selectedQty: newQty };
+      })
+    );
+  };
 
   const fetchOrderDetails = useCallback(async (isRefreshed = false) => {
     if (!orderId) return;
@@ -228,8 +284,31 @@ export default function OrderDetailsScreen() {
     }
   };
 
-  // Fetch return reasons
+  // Fetch return reasons & initialize return items draft
   const openReturnModal = async () => {
+    if (order && order.items) {
+      const initialItems: ReturnDraftItem[] = order.items.map((item) => {
+        const qty = item.quantity ?? item.qty ?? 1;
+        const skuId = String(
+          item.product_sku_id ||
+          item.seller_product_sku_id ||
+          item.sku_id ||
+          item.id
+        );
+        return {
+          productSkuId: skuId,
+          productTitle: item.product_title || 'Product',
+          variantName: item.variant_name,
+          unitPrice: Number(item.unit_price) || 0,
+          maxQty: qty,
+          selectedQty: qty,
+          isSelected: true,
+          reasonId: undefined,
+        };
+      });
+      setReturnItems(initialItems);
+    }
+    setReturnNote('');
     setReturnModalVisible(true);
     try {
       const res = await apiClient.get(URLs.REFUND_REASONS_LIST);
@@ -246,12 +325,27 @@ export default function OrderDetailsScreen() {
   // Submit return request
   const handleReturnOrder = async () => {
     if (!order) return;
+    if (selectedReturnItems.length === 0) {
+      Alert.alert('Selection Required', 'Please select at least one item to return.');
+      return;
+    }
+    if (!selectedReturnReasonId) {
+      Alert.alert('Reason Required', 'Please select a reason for the return.');
+      return;
+    }
+
     try {
       setReturnLoading(true);
       const res = await apiClient.post(URLs.REFUND_STORE, {
         order_id: order.id,
         reason_id: selectedReturnReasonId,
         additional_info: returnNote,
+        items: selectedReturnItems.map((it) => ({
+          product_sku_id: it.productSkuId,
+          return_qty: it.selectedQty,
+          quantity: it.selectedQty,
+          reason_id: it.reasonId || selectedReturnReasonId,
+        })),
       });
 
       if (res.data?.success) {
@@ -778,39 +872,188 @@ export default function OrderDetailsScreen() {
       {/* RETURN / RVP MODAL */}
       <Modal visible={returnModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Request Return for #{order.order_number}</Text>
-            <Text style={styles.modalSubtitle}>Please choose a reason for returning this order:</Text>
+          <View style={[styles.modalContent, styles.returnModalContainer]}>
+            <Text style={styles.modalTitle}>Select Items to Return</Text>
+            <Text style={styles.modalSubtitle}>
+              Order #{order.order_number} &bull; Choose items and quantities to return
+            </Text>
 
-            <ScrollView style={{ maxHeight: 200, marginVertical: 10 }}>
-              {returnReasons.map((reason) => {
-                const isSelected = selectedReturnReasonId === reason.id;
+            <ScrollView
+              style={styles.returnModalScroll}
+              showsVerticalScrollIndicator={true}
+              contentContainerStyle={{ paddingBottom: 10 }}
+            >
+              {/* Product items list */}
+              <Text style={styles.returnModalSectionLabel}>Items to Return</Text>
+              {returnItems.map((item) => {
+                const lineRefund = item.selectedQty * item.unitPrice;
                 return (
-                  <TouchableOpacity
-                    key={reason.id}
-                    style={[styles.reasonOption, isSelected && styles.reasonOptionSelected]}
-                    onPress={() => setSelectedReturnReasonId(reason.id)}
-                    activeOpacity={0.7}
+                  <View
+                    key={item.productSkuId}
+                    style={[
+                      styles.returnItemCard,
+                      item.isSelected && styles.returnItemCardSelected,
+                    ]}
                   >
-                    <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-                      {isSelected ? <View style={styles.radioDot} /> : null}
+                    <View style={styles.returnItemRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.checkboxBox,
+                          item.isSelected && styles.checkboxBoxSelected,
+                        ]}
+                        onPress={() => toggleItemSelection(item.productSkuId)}
+                        activeOpacity={0.7}
+                      >
+                        {item.isSelected ? (
+                          <Check size={14} color="#ffffff" strokeWidth={3} />
+                        ) : null}
+                      </TouchableOpacity>
+
+                      <View style={styles.returnItemDetails}>
+                        <TouchableOpacity
+                          onPress={() => toggleItemSelection(item.productSkuId)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.returnItemTitle,
+                              !item.isSelected && styles.returnItemTitleDisabled,
+                            ]}
+                            numberOfLines={2}
+                          >
+                            {item.productTitle}
+                          </Text>
+                          {item.variantName ? (
+                            <Text style={styles.returnItemVariant}>
+                              Variant: {item.variantName}
+                            </Text>
+                          ) : null}
+                          <Text style={styles.returnItemPriceHint}>
+                            Unit: ₹{item.unitPrice.toLocaleString('en-IN')} &bull; Max: {item.maxQty}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Stepper & Line Refund */}
+                        <View style={styles.returnItemControlsRow}>
+                          <View style={styles.stepperContainer}>
+                            <TouchableOpacity
+                              style={[
+                                styles.stepperBtn,
+                                (!item.isSelected || item.selectedQty <= 1) && styles.stepperBtnDisabled,
+                              ]}
+                              onPress={() => updateItemQty(item.productSkuId, -1)}
+                              disabled={!item.isSelected || item.selectedQty <= 1}
+                              activeOpacity={0.7}
+                            >
+                              <Minus
+                                size={14}
+                                color={!item.isSelected || item.selectedQty <= 1 ? '#94a3b8' : '#0f172a'}
+                                strokeWidth={2.5}
+                              />
+                            </TouchableOpacity>
+
+                            <View style={styles.stepperValueContainer}>
+                              <Text
+                                style={[
+                                  styles.stepperValueText,
+                                  !item.isSelected && styles.stepperValueTextDisabled,
+                                ]}
+                              >
+                                {item.selectedQty}
+                              </Text>
+                            </View>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.stepperBtn,
+                                (!item.isSelected || item.selectedQty >= item.maxQty) && styles.stepperBtnDisabled,
+                              ]}
+                              onPress={() => updateItemQty(item.productSkuId, 1)}
+                              disabled={!item.isSelected || item.selectedQty >= item.maxQty}
+                              activeOpacity={0.7}
+                            >
+                              <Plus
+                                size={14}
+                                color={!item.isSelected || item.selectedQty >= item.maxQty ? '#94a3b8' : '#0f172a'}
+                                strokeWidth={2.5}
+                              />
+                            </TouchableOpacity>
+                          </View>
+
+                          <View style={styles.returnItemLineTotalBox}>
+                            <Text style={styles.returnItemLineTotalLabel}>Refund:</Text>
+                            <Text
+                              style={[
+                                styles.returnItemLineTotalValue,
+                                !item.isSelected && styles.returnItemLineTotalValueDisabled,
+                              ]}
+                            >
+                              ₹{lineRefund.toLocaleString('en-IN', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
                     </View>
-                    <Text style={[styles.reasonOptionText, isSelected && styles.reasonOptionTextSelected]}>
-                      {reason.name || reason.reason}
-                    </Text>
-                  </TouchableOpacity>
+                  </View>
                 );
               })}
+
+              {/* Common Reason Selector */}
+              <Text style={[styles.returnModalSectionLabel, { marginTop: 14 }]}>
+                Reason for Return
+              </Text>
+              <View style={styles.reasonListContainer}>
+                {returnReasons.map((reason) => {
+                  const isSelected = selectedReturnReasonId === reason.id;
+                  return (
+                    <TouchableOpacity
+                      key={reason.id}
+                      style={[styles.reasonOption, isSelected && styles.reasonOptionSelected]}
+                      onPress={() => setSelectedReturnReasonId(reason.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+                        {isSelected ? <View style={styles.radioDot} /> : null}
+                      </View>
+                      <Text
+                        style={[styles.reasonOptionText, isSelected && styles.reasonOptionTextSelected]}
+                      >
+                        {reason.name || reason.reason}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Additional Notes input */}
+              <Text style={[styles.returnModalSectionLabel, { marginTop: 14 }]}>
+                Additional Notes
+              </Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Tell us more about the reason for return..."
+                placeholderTextColor="#94a3b8"
+                value={returnNote}
+                onChangeText={setReturnNote}
+                multiline
+              />
             </ScrollView>
 
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Tell us more about the reason for return..."
-              placeholderTextColor="#94a3b8"
-              value={returnNote}
-              onChangeText={setReturnNote}
-              multiline
-            />
+            {/* Dynamic Live Summary */}
+            <View style={styles.returnSummaryBox}>
+              <Text style={styles.returnSummaryText}>
+                Total Items to Return: <Text style={styles.returnSummaryBold}>{totalReturnUnits}</Text> | Total Refund:{' '}
+                <Text style={styles.returnSummaryBold}>
+                  ₹{totalReturnRefund.toLocaleString('en-IN', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </Text>
+              </Text>
+            </View>
 
             <View style={styles.modalActionButtons}>
               <TouchableOpacity
@@ -822,9 +1065,13 @@ export default function OrderDetailsScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalConfirmBtn, { backgroundColor: '#15803d' }]}
+                style={[
+                  styles.modalConfirmBtn,
+                  { backgroundColor: '#15803d' },
+                  (selectedReturnItems.length === 0 || returnLoading) && { opacity: 0.6 },
+                ]}
                 onPress={handleReturnOrder}
-                disabled={returnLoading}
+                disabled={selectedReturnItems.length === 0 || returnLoading}
               >
                 {returnLoading ? (
                   <ActivityIndicator size="small" color="#ffffff" />
@@ -1428,5 +1675,155 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  returnModalContainer: {
+    maxHeight: '90%',
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 16,
+  },
+  returnModalScroll: {
+    maxHeight: 380,
+    marginVertical: 8,
+  },
+  returnModalSectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  returnItemCard: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+  },
+  returnItemCardSelected: {
+    borderColor: '#86efac',
+    backgroundColor: '#f0fdf4',
+  },
+  returnItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  checkboxBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#94a3b8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    marginTop: 2,
+    backgroundColor: '#ffffff',
+  },
+  checkboxBoxSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  returnItemDetails: {
+    flex: 1,
+  },
+  returnItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  returnItemTitleDisabled: {
+    color: '#94a3b8',
+  },
+  returnItemVariant: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  returnItemPriceHint: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  returnItemControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  stepperContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  stepperBtn: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  stepperBtnDisabled: {
+    opacity: 0.35,
+  },
+  stepperValueContainer: {
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepperValueText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  stepperValueTextDisabled: {
+    color: '#94a3b8',
+  },
+  returnItemLineTotalBox: {
+    alignItems: 'flex-end',
+  },
+  returnItemLineTotalLabel: {
+    fontSize: 10,
+    color: '#64748b',
+  },
+  returnItemLineTotalValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  returnItemLineTotalValueDisabled: {
+    color: '#94a3b8',
+  },
+  reasonListContainer: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  returnSummaryBox: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  returnSummaryText: {
+    fontSize: 12,
+    color: '#166534',
+    textAlign: 'center',
+  },
+  returnSummaryBold: {
+    fontWeight: '800',
+    color: '#15803d',
   },
 });
