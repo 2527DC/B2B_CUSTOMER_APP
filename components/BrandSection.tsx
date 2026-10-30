@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
-import { Brand } from '@/lib/supabase';
+import type { Brand } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 
 interface BrandSectionProps {

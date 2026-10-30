@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { goBack } from '@/lib/navigation';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
-import { Brand } from '@/lib/supabase';
+import type { Brand } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 
 const assetUrl = (path?: string): string => URLs.assetUrl(path);

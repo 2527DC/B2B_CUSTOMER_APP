@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Smartphone, Shirt, Dumbbell, Home, Sparkles, BookOpen, Gamepad2, Utensils, type LucideIcon } from 'lucide-react-native';
-import { Category } from '@/lib/supabase';
+import type { Category } from '@/lib/supabase';
 import { Colors } from '@/constants/theme';
 
 interface CategorySidebarProps {

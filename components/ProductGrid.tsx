@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { List, Grid3X3 } from 'lucide-react-native';
-import { Product } from '@/lib/supabase';
+import type { Product } from '@/lib/supabase';
 import { ProductCard } from './ProductCard';
 import { Colors } from '@/constants/theme';
 

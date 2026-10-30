@@ -110,9 +110,19 @@ export function AppUpdateModal() {
     const checkAppVersion = async () => {
       let resolvedInfo: AppVersionInfo | null = null;
 
-      // 1. First attempt: Try Supabase app_config table
+      // 1. First attempt: Try Next.js backend API config endpoint
       try {
-        if (supabase) {
+        const res = await apiClient.get(URLs.APP_CONFIG);
+        if (res.data?.latest_version) {
+          resolvedInfo = res.data;
+        }
+      } catch (e) {
+        // Backend API check failed, continue to next fallback
+      }
+
+      // 2. Second attempt: Try Supabase app_config table (if credentials configured)
+      if (!resolvedInfo && supabase) {
+        try {
           const { data, error } = await supabase
             .from('app_config')
             .select('*')
@@ -122,20 +132,8 @@ export function AppUpdateModal() {
           if (!error && data?.latest_version) {
             resolvedInfo = data;
           }
-        }
-      } catch (e) {
-        // Supabase check failed, continue to next fallback
-      }
-
-      // 2. Second attempt: Try backend API config endpoint (if available)
-      if (!resolvedInfo) {
-        try {
-          const res = await apiClient.get(URLs.APP_CONFIG);
-          if (res.data?.latest_version) {
-            resolvedInfo = res.data;
-          }
         } catch (e) {
-          // Backend API check failed, continue to store fallback
+          // Supabase check failed, continue to next fallback
         }
       }
 
