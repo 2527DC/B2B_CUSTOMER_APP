@@ -107,6 +107,8 @@ export const URLs = {
     `${API}/order-by-delivery-status?status=${status}`,
   ORDER_DETAILS: (orderId: string | number) =>
     `${API}/orders/${orderId}`,
+  ORDER_INVOICE: (orderId: string | number) =>
+    `${API}/orders/${orderId}/invoice?download=true`,
 
   // Cart
   CART:                     `${API}/cart`,

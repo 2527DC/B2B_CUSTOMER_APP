@@ -37,10 +37,13 @@ import {
   Minus,
   Plus,
   Check,
+  FileText,
+  Download,
 } from 'lucide-react-native';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';
+import { downloadOrderInvoice } from '@/lib/invoiceDownloader';
 
 const assetUrl = (path?: string): string => URLs.assetUrl(path);
 
@@ -174,6 +177,7 @@ export default function OrderDetailsScreen() {
   const [returnNote, setReturnNote] = useState('');
   const [returnLoading, setReturnLoading] = useState(false);
   const [returnItems, setReturnItems] = useState<ReturnDraftItem[]>([]);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
 
   // Selected return items & summary totals
   const selectedReturnItems = useMemo(
@@ -209,6 +213,18 @@ export default function OrderDetailsScreen() {
         return { ...item, selectedQty: newQty };
       })
     );
+  };
+
+  const handleDownloadInvoice = async () => {
+    if (!order) return;
+    try {
+      setIsDownloadingInvoice(true);
+      await downloadOrderInvoice(order.id, order.order_number);
+    } catch (err: any) {
+      console.error('Invoice download failed:', err);
+    } finally {
+      setIsDownloadingInvoice(false);
+    }
   };
 
   const fetchOrderDetails = useCallback(async (isRefreshed = false) => {
@@ -551,6 +567,52 @@ export default function OrderDetailsScreen() {
               ) : null}
             </View>
           ) : null}
+        </View>
+
+        {/* Tax Invoice Card / Download Action */}
+        <View style={styles.invoiceCard}>
+          <View style={styles.invoiceLeft}>
+            <View style={styles.invoiceIconBox}>
+              <FileText size={20} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.invoiceTitleRow}>
+                <Text style={styles.invoiceTitle}>Tax Invoice</Text>
+                {order.is_confirmed || order.status !== 'PENDING' ? (
+                  <View style={styles.invoiceBadgeReady}>
+                    <Text style={styles.invoiceBadgeReadyText}>Ready</Text>
+                  </View>
+                ) : (
+                  <View style={styles.invoiceBadgePending}>
+                    <Text style={styles.invoiceBadgePendingText}>Pending</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.invoiceSubtitle}>
+                {order.is_confirmed || order.status !== 'PENDING'
+                  ? 'Official GST compliant tax invoice available for download'
+                  : 'Generated once order is confirmed by warehouse'}
+              </Text>
+            </View>
+          </View>
+
+          {(order.is_confirmed || order.status !== 'PENDING') && (
+            <TouchableOpacity
+              style={[styles.downloadInvoiceBtn, isDownloadingInvoice && { opacity: 0.7 }]}
+              onPress={handleDownloadInvoice}
+              disabled={isDownloadingInvoice}
+              activeOpacity={0.8}
+            >
+              {isDownloadingInvoice ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Download size={14} color="#ffffff" strokeWidth={2.5} />
+                  <Text style={styles.downloadInvoiceBtnText}>Download PDF</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Delivery Timeline Stepper */}
@@ -1825,5 +1887,84 @@ const styles = StyleSheet.create({
   returnSummaryBold: {
     fontWeight: '800',
     color: '#15803d',
+  },
+  invoiceCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  invoiceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  invoiceIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#ecfdf5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1fae5',
+  },
+  invoiceTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  invoiceTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  invoiceBadgeReady: {
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  invoiceBadgeReadyText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  invoiceBadgePending: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  invoiceBadgePendingText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  invoiceSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  downloadInvoiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  downloadInvoiceBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

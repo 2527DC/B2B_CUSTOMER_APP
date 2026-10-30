@@ -97,7 +97,8 @@
           "photosPermission": "We need access to your photo library to allow you to set your profile picture and support ticket image."
         }
       ],
-      "./plugins/withSceneLifecycle"
+      "./plugins/withSceneLifecycle",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true
