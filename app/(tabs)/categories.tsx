@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CategorySidebar, ProductCard, OfflineView, OfflineBanner } from '@/components';
-import type { Category, Product } from '@/lib/supabase';
+import type { Category, Product } from '@/types/catalog';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';

@@ -15,7 +15,7 @@ import { ArrowLeft, Search as SearchIcon, X, Tag, ShoppingBag, AlertCircle, Arro
 import { goBack } from '@/lib/navigation';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
-import type { Product } from '@/lib/supabase';
+import type { Product } from '@/types/catalog';
 import { ProductCard } from '@/components';
 import { Colors } from '@/constants/theme';
 

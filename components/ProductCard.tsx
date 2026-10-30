@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Check, Package, Plus } from 'lucide-react-native';
-import type { Product } from '@/lib/supabase';
+import type { Product } from '@/types/catalog';
 import { useRouter } from 'expo-router';
 import { useCart } from '@/context/CartContext';
 import { Colors, getComponentTheme } from '@/constants/theme';

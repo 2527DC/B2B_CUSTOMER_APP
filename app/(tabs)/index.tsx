@@ -10,7 +10,7 @@ import { X, PackageOpen } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
-import type { Brand, Product } from '@/lib/supabase';
+import type { Brand, Product } from '@/types/catalog';
 import { Colors } from '@/constants/theme';
 import { fetchCustomerNotifications } from '@/lib/notifications';
 import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';

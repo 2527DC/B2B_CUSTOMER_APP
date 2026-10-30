@@ -13,7 +13,6 @@ import Constants from 'expo-constants';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';
-import { supabase } from '@/lib/supabase';
 
 export interface AppVersionInfo {
   latest_version: string;
@@ -110,34 +109,17 @@ export function AppUpdateModal() {
     const checkAppVersion = async () => {
       let resolvedInfo: AppVersionInfo | null = null;
 
-      // 1. First attempt: Try Next.js backend API config endpoint
+      // 1. First attempt: Query Next.js backend API config endpoint (/api/v1/app/config)
       try {
         const res = await apiClient.get(URLs.APP_CONFIG);
         if (res.data?.latest_version) {
           resolvedInfo = res.data;
         }
       } catch (e) {
-        // Backend API check failed, continue to next fallback
+        // Backend API check failed, continue to store fallback
       }
 
-      // 2. Second attempt: Try Supabase app_config table (if credentials configured)
-      if (!resolvedInfo && supabase) {
-        try {
-          const { data, error } = await supabase
-            .from('app_config')
-            .select('*')
-            .eq('id', 'dhatri_customer')
-            .maybeSingle();
-
-          if (!error && data?.latest_version) {
-            resolvedInfo = data;
-          }
-        } catch (e) {
-          // Supabase check failed, continue to next fallback
-        }
-      }
-
-      // 3. Third attempt: Query App Store / Play Store directly (like Flutter upgrader)
+      // 2. Fallback: Query App Store / Play Store metadata directly
       if (!resolvedInfo) {
         resolvedInfo = await fetchStoreVersion();
       }
