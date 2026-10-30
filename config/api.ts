@@ -50,9 +50,13 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${_authToken}`;
       }
 
+      const fullUrl = config.url?.startsWith('http')
+        ? config.url
+        : `${config.baseURL ?? ''}${config.url ?? ''}`;
+
       console.log('🚀 [API Request]:', {
         method: config.method?.toUpperCase(),
-        url: `${config.baseURL ?? ''}${config.url ?? ''}`,
+        url: fullUrl,
         hasAuth: !!_authToken,
       });
 

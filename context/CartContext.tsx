@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Alert } from 'react-native';
 import apiClient from '../config/api';
 import { URLs } from '../config/urls';
 import { useAuth } from './AuthContext';
@@ -163,8 +164,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
       return false;
-    } catch (error) {
-      console.error('Failed to add to cart:', error);
+    } catch (error: any) {
+      const serverMsg = error?.response?.data?.error;
+      if (serverMsg) {
+        Alert.alert('Stock Notice', serverMsg);
+      }
+      console.error('Failed to add to cart:', serverMsg || error?.message || error);
       return false;
     } finally {
       setIsLoading(false);

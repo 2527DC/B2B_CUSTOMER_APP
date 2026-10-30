@@ -238,8 +238,6 @@ export default function ProductDetailsScreen() {
       if (success) {
         setAddedSuccess(true);
         setTimeout(() => setAddedSuccess(false), 2000);
-      } else {
-        Alert.alert('Error', 'Failed to add item to cart.');
       }
     } catch (err: any) {
       console.error(err);
@@ -339,16 +337,23 @@ export default function ProductDetailsScreen() {
     ...(p?.gallary_images ?? []).map(g => assetUrl(g.images_source)),
   ].filter(Boolean);
 
-  const heroUri = galleryUris[activeImage] ?? galleryUris[0] ?? '';
-  const minQty = p?.minimum_order_qty ?? 1;
-  const maxQty = p?.max_order_qty && p.max_order_qty > 0 ? p.max_order_qty : undefined;
-
   // Cart summary: distinct lines in the whole cart, units of this product already in it
   const cartLineCount = cartItems.length;
   // Cart items carry the SKU id in item.product.id; count only the selected variant when there are several
   const inCartQty = cartItems
     .filter((item) => item.product_id === data.id && (!hasVariants || item.product?.id === sku?.id))
     .reduce((sum, item) => sum + item.qty, 0);
+
+  const heroUri = galleryUris[activeImage] ?? galleryUris[0] ?? '';
+  const minQty = p?.minimum_order_qty ?? 1;
+  const availableStock =
+    sku?.product_stock !== undefined && sku.product_stock !== null
+      ? Math.max(0, sku.product_stock - inCartQty)
+      : undefined;
+  const maxQty =
+    p?.max_order_qty && p.max_order_qty > 0
+      ? (availableStock !== undefined ? Math.min(p.max_order_qty, availableStock) : p.max_order_qty)
+      : availableStock;
   const openCart = () => router.push('/(tabs)/cart');
 
   const formatINR = (amount: number) =>
