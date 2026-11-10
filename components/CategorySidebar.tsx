@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'rea
 import { Smartphone, Shirt, Dumbbell, Home, Sparkles, BookOpen, Gamepad2, Utensils, type LucideIcon } from 'lucide-react-native';
 import type { Category } from '@/types/catalog';
 import { Colors } from '@/constants/theme';
+import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 interface CategorySidebarProps {
   categories: Category[];
@@ -22,6 +23,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function CategorySidebar({ categories, selectedCategory, onSelectCategory }: CategorySidebarProps) {
+  const { scrollPaddingBottom } = useBottomSpacing();
   const allCategory: Category = {
     id: 'all',
     name: 'All',
@@ -35,7 +37,7 @@ export function CategorySidebar({ categories, selectedCategory, onSelectCategory
     <View style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={true}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollPaddingBottom }]}
         indicatorStyle="black"
       >
         {displayCategories.map((category) => {

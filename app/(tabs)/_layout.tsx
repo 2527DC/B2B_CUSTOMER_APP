@@ -6,9 +6,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/theme';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 export default function TabLayout() {
   const { isAuthenticated, isLoading, isOnboarded } = useAuth();
+  const { tabBarHeight, tabBottomInset } = useBottomSpacing();
   const activeColor = Colors.primary; // #4f7942
   const inactiveColor = Colors.textSecondary; // #64748b
   const { cartCount, cartItems } = useCart();
@@ -38,11 +40,12 @@ export default function TabLayout() {
           elevation: 0,
           backgroundColor: 'transparent',
           borderTopWidth: 0,
-          height: 85,
-          paddingTop: 10,
+          height: tabBarHeight,
+          paddingTop: 8,
+          paddingBottom: tabBottomInset,
         },
         tabBarBackground: () => (
-          <View style={styles.tabBarBackground}>
+          <View style={[styles.tabBarBackground, { height: tabBarHeight }]}>
             <View style={styles.tabBarContainer}>
               <LinearGradient
                 colors={[Colors.surface, Colors.background]}
@@ -162,7 +165,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 85,
     backgroundColor: 'transparent',
   },
   tabBarContainer: {
@@ -185,7 +187,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    marginBottom: 25,
+    top: -18,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,

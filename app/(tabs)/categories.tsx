@@ -7,6 +7,7 @@ import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';
 import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
+import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 const CATEGORIES_CACHE_KEY = '@dhatri_cached_categories_data';
 
@@ -48,6 +49,7 @@ const mapProduct = (item: any): Product => {
 };
 
 export default function CategoriesScreen() {
+  const { scrollPaddingBottom } = useBottomSpacing();
   const [categories, setCategories] = useState<ExtendedCategory[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -269,7 +271,7 @@ export default function CategoriesScreen() {
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => <ProductCard product={item} viewMode="horizontal" />}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.listContainer}
+              contentContainerStyle={[styles.listContainer, { paddingBottom: scrollPaddingBottom }]}
             />
           ) : (
             <FlatList
@@ -283,7 +285,7 @@ export default function CategoriesScreen() {
               )}
               numColumns={2}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.gridContainer}
+              contentContainerStyle={[styles.gridContainer, { paddingBottom: scrollPaddingBottom }]}
               columnWrapperStyle={styles.gridRow}
             />
           )}
@@ -400,11 +402,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748b',
   },
-  listContainer: {
-    paddingBottom: 100,
-  },
+  listContainer: {},
   gridContainer: {
-    paddingBottom: 100,
     paddingHorizontal: 6,
   },
   gridItem: {

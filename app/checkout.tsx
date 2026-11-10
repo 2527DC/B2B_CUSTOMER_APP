@@ -9,7 +9,6 @@ import {
   Alert,
   TextInput,
   Modal,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Store, CreditCard, ChevronRight, Plus, Check, Clock } from 'lucide-react-native';
@@ -21,6 +20,7 @@ import { URLs } from '@/config/urls';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/theme';
 import RazorpayCheckout, { RazorpayOptions, RazorpaySuccess } from '@/components/RazorpayCheckout';
+import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 type PaymentMethod = 'cod' | 'razorpay';
 
@@ -46,6 +46,7 @@ interface Address {
 export default function CheckoutScreen() {
   const router = useRouter();
   const { fetchCart } = useCart();
+  const { stickyFooterPaddingBottom } = useBottomSpacing();
 
   const [checkoutData, setCheckoutData] = useState<any>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -432,7 +433,7 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
@@ -688,7 +689,7 @@ export default function CheckoutScreen() {
       </ScrollView>
 
       {/* Place Order Footer */}
-      <View style={styles.footerPanel}>
+      <View style={[styles.footerPanel, { paddingBottom: stickyFooterPaddingBottom }]}>
         <View>
           <Text style={styles.footerTotalLabel}>Total Amount</Text>
           <Text style={styles.footerTotalPrice}>₹{grandTotal.toLocaleString('en-IN')}</Text>
@@ -1198,7 +1199,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
     paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',

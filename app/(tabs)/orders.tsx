@@ -30,6 +30,7 @@ import { Colors } from '@/constants/theme';
 import OrderCard from '@/components/orders/OrderCard';
 import { OfflineView } from '@/components';
 import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
+import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 // ─── Base URL and Asset Helper ──────────────────────────────────────────────
 const assetUrl = (path?: string): string => URLs.assetUrl(path);
@@ -191,6 +192,7 @@ const RETURN_STATUS_CHIPS: ReturnStatusChip[] = [
 export default function OrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { scrollPaddingBottom } = useBottomSpacing();
   const { tab, status: statusParam } = useLocalSearchParams<{ tab?: string; status?: string }>();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -751,7 +753,7 @@ export default function OrdersScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[styles.listContainer, { paddingBottom: scrollPaddingBottom }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -1091,7 +1093,6 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 110,
   },
   clearSearchBtn: {
     marginTop: 14,

@@ -205,6 +205,23 @@ export default function OrderDetailsScreen() {
     );
   };
 
+  const toggleSelectAll = () => {
+    const allSelected = returnItems.every((it) => it.isSelected);
+    setReturnItems((prev) =>
+      prev.map((item) => ({ ...item, isSelected: !allSelected }))
+    );
+  };
+
+  const setItemExactQty = (productSkuId: string, qty: number) => {
+    setReturnItems((prev) =>
+      prev.map((item) => {
+        if (item.productSkuId !== productSkuId) return item;
+        const newQty = Math.max(1, Math.min(item.maxQty, isNaN(qty) ? 1 : qty));
+        return { ...item, selectedQty: newQty };
+      })
+    );
+  };
+
   const updateItemQty = (productSkuId: string, delta: number) => {
     setReturnItems((prev) =>
       prev.map((item) => {
@@ -357,6 +374,7 @@ export default function OrderDetailsScreen() {
         reason_id: selectedReturnReasonId,
         additional_info: returnNote,
         items: selectedReturnItems.map((it) => ({
+          order_item_id: it.productSkuId,
           product_sku_id: it.productSkuId,
           return_qty: it.selectedQty,
           quantity: it.selectedQty,
@@ -946,7 +964,16 @@ export default function OrderDetailsScreen() {
               contentContainerStyle={{ paddingBottom: 10 }}
             >
               {/* Product items list */}
-              <Text style={styles.returnModalSectionLabel}>Items to Return</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, marginTop: 4 }}>
+                <Text style={[styles.returnModalSectionLabel, { marginBottom: 0 }]}>Items to Return</Text>
+                {returnItems.length > 1 && (
+                  <TouchableOpacity onPress={toggleSelectAll} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>
+                      {returnItems.every((it) => it.isSelected) ? 'Deselect All' : 'Select All'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               {returnItems.map((item) => {
                 const lineRefund = item.selectedQty * item.unitPrice;
                 return (
@@ -1015,14 +1042,21 @@ export default function OrderDetailsScreen() {
                             </TouchableOpacity>
 
                             <View style={styles.stepperValueContainer}>
-                              <Text
+                              <TextInput
                                 style={[
                                   styles.stepperValueText,
                                   !item.isSelected && styles.stepperValueTextDisabled,
+                                  { minWidth: 28, textAlign: 'center', padding: 0 }
                                 ]}
-                              >
-                                {item.selectedQty}
-                              </Text>
+                                keyboardType="number-pad"
+                                value={String(item.selectedQty)}
+                                editable={item.isSelected}
+                                selectTextOnFocus
+                                onChangeText={(val) => {
+                                  const num = parseInt(val.replace(/[^0-9]/g, ''), 10);
+                                  setItemExactQty(item.productSkuId, num);
+                                }}
+                              />
                             </View>
 
                             <TouchableOpacity

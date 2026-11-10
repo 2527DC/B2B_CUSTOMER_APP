@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingBag, Trash2, Plus, Minus, Check, Store, ArrowRight } from 'lucide-react-native';
@@ -19,8 +18,10 @@ import { URLs } from '@/config/urls';
 import { Colors } from '@/constants/theme';
 import QtyInput from '@/components/QtyInput';
 import { CartRecommendationsSection } from '@/components/CartRecommendationsSection';
+import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 export default function CartScreen() {
+  const { stickyFooterPaddingBottom } = useBottomSpacing();
   const {
     cartItems,
     cartMap,
@@ -63,7 +64,7 @@ export default function CartScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Shopping Cart</Text>
         {cartItems.length > 0 && (
@@ -217,7 +218,7 @@ export default function CartScreen() {
           </ScrollView>
 
           {/* Checkout Panel */}
-          <View style={styles.checkoutPanel}>
+          <View style={[styles.checkoutPanel, { paddingBottom: stickyFooterPaddingBottom }]}>
             {/* Summary Row — at top for immediate visibility */}
             <View style={styles.summaryRow}>
               <View>
@@ -491,7 +492,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     paddingTop: 14,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
     paddingHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },

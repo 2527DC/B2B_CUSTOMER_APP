@@ -14,6 +14,7 @@ import type { Brand, Product } from '@/types/catalog';
 import { Colors } from '@/constants/theme';
 import { fetchCustomerNotifications } from '@/lib/notifications';
 import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
+import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 const HOME_CACHE_KEY = '@dhatri_cached_home_data';
 
@@ -102,6 +103,7 @@ const toProduct = (item: any): Product => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { scrollPaddingBottom } = useBottomSpacing();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorInfo, setErrorInfo] = useState<FormattedError | null>(null);
@@ -419,7 +421,7 @@ export default function HomeScreen() {
               numColumns={2}
               columnWrapperStyle={styles.gridRow}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.listContent}
+              contentContainerStyle={[styles.listContent, { paddingBottom: scrollPaddingBottom }]}
               scrollEnabled={false}
             />
           )}
@@ -440,7 +442,7 @@ export default function HomeScreen() {
             numColumns={2}
             columnWrapperStyle={styles.gridRow}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: scrollPaddingBottom }]}
             scrollEnabled={false}
           />
         </>
@@ -489,7 +491,7 @@ const styles = StyleSheet.create({
     color: '#1e293b',
   },
   listContent: {
-    paddingBottom: 100,
+    paddingBottom: 24,
   },
   gridItem: {
     flex: 0.5,
