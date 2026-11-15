@@ -12,8 +12,8 @@ interface PickedAsset {
   mimeType: string;
 }
 
-// Final step of the post-OTP registration wizard. Document upload is optional — store
-// owners can upload their shop photo / license now or skip and start browsing immediately.
+// Final step of the post-OTP registration wizard. Document upload is mandatory — store
+// owners must upload their shop photo and/or business license to complete registration.
 export default function DocumentsScreen() {
   const { user, uploadDocument, submitOnboardingStep } = useAuth();
   const [shopImage, setShopImage] = useState<PickedAsset | null>(null);
@@ -44,21 +44,9 @@ export default function DocumentsScreen() {
     }
   };
 
-  const handleSkip = async () => {
-    setError(null);
-    setSubmitting(true);
-    try {
-      await submitOnboardingStep({ step: 'documents', skip: true });
-    } catch (err: any) {
-      setError(err.message || 'Failed to complete registration. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleSubmit = async () => {
-    if (!shopImage && !document) {
-      await handleSkip();
+    if (!shopImage && !document && !user?.shop_image_url && !user?.document_url) {
+      setError('Please upload at least your Shop Photo or Business Proof document to complete registration.');
       return;
     }
 
@@ -92,8 +80,8 @@ export default function DocumentsScreen() {
     <OnboardingScaffold
       step={3}
       totalSteps={3}
-      title="Verify Your Shop (Optional)"
-      subtitle="Upload your shop photo or business proof now, or skip to start exploring wholesale pricing immediately."
+      title="Upload Business Documents *"
+      subtitle="Upload your shop photo or business KYC proof (GST, Trade License, FSSAI) to complete registration."
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {user?.rejection_reason && (
@@ -107,16 +95,16 @@ export default function DocumentsScreen() {
 
         <UploadTile
           icon={<Camera size={22} color={Colors.primary} />}
-          label="Shop Photo (Optional)"
-          hint="A clear photo of your shop front or signboard"
+          label="Shop Front Photo *"
+          hint="Clear photo showing shop signboard or premises"
           asset={shopImage}
           onPress={() => pickImage(setShopImage)}
         />
 
         <UploadTile
           icon={<FileImage size={22} color={Colors.primary} />}
-          label="Shop / ID Document (Optional)"
-          hint="GST certificate, shop license, or an ID proof"
+          label="Business / KYC Document *"
+          hint="GST certificate, trade license, or business ID proof"
           asset={document}
           onPress={() => pickImage(setDocument)}
         />
@@ -128,13 +116,9 @@ export default function DocumentsScreen() {
             <ActivityIndicator color={Colors.textWhite} />
           ) : (
             <Text style={styles.submitText}>
-              {shopImage || document ? 'Submit Documents & Continue' : 'Continue'}
+              Submit Documents &amp; Complete Registration
             </Text>
           )}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={handleSkip} disabled={submitting} activeOpacity={0.7} style={styles.skipButton}>
-          <Text style={styles.skipButtonText}>Skip for now &amp; start shopping</Text>
         </TouchableOpacity>
       </ScrollView>
     </OnboardingScaffold>

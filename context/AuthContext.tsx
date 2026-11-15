@@ -54,6 +54,18 @@ export type OnboardingStepPayload =
 // Builds a normalized User from whatever shape the backend's `user` object comes back as
 // (login, register, and onboarding all return the same fields; this keeps them in sync).
 function normalizeUser(rawUser: any, fallbackPhone: string): User {
+  const approval = rawUser?.approval_status ?? 'NOT_REQUIRED';
+  let onboarding = rawUser?.onboarding_status ?? 'COMPLETED';
+
+  // If customer is already APPROVED or already has a store and warehouse configured,
+  // they are fully onboarded and must never be redirected to onboarding wizard steps.
+  if (
+    approval === 'APPROVED' ||
+    (rawUser?.warehouse_id != null && rawUser?.store_name && rawUser?.name && !rawUser?.name?.startsWith('Customer '))
+  ) {
+    onboarding = 'COMPLETED';
+  }
+
   return {
     id: Number(rawUser?.id ?? 1),
     name: rawUser?.name || `Customer ${fallbackPhone.slice(-4)}`,
@@ -67,8 +79,8 @@ function normalizeUser(rawUser: any, fallbackPhone: string): User {
     gst_number: rawUser?.gst_number ?? null,
     shop_image_url: rawUser?.shop_image_url ?? null,
     document_url: rawUser?.document_url ?? null,
-    onboarding_status: rawUser?.onboarding_status ?? 'COMPLETED',
-    approval_status: rawUser?.approval_status ?? 'NOT_REQUIRED',
+    onboarding_status: onboarding,
+    approval_status: approval,
     rejection_reason: rawUser?.rejection_reason ?? null,
     requires_documents: rawUser?.requires_documents ?? false,
   };

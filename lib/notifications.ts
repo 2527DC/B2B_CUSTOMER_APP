@@ -33,7 +33,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#059669',
-        sound: 'default',
         enableVibrate: true,
         showBadge: true,
       });
@@ -44,7 +43,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 500, 250, 500],
         lightColor: '#2563EB',
-        sound: 'default',
         enableVibrate: true,
         showBadge: true,
       });
@@ -93,7 +91,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         token = typeof deviceTokenData.data === 'string' ? deviceTokenData.data : JSON.stringify(deviceTokenData.data);
         console.log('✅ Registered Native Device Push Token:', token);
       } catch (deviceTokenErr) {
-        console.error('Failed to get device push token:', deviceTokenErr);
+        console.warn('Failed to get device push token (Play Services may be unavailable or offline):', deviceTokenErr);
       }
     }
 

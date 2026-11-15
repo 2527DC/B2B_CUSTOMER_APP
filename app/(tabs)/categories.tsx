@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CategorySidebar, ProductCard, OfflineView, OfflineBanner } from '@/components';
 import type { Category, Product } from '@/types/catalog';
@@ -18,6 +19,33 @@ interface ExtendedCategory extends Category {
 }
 
 const assetUrl = (path: string): string => URLs.assetUrl(path);
+
+const DEFAULT_CATEGORY_FALLBACKS: Record<string, string> = {
+  flour: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=80',
+  sugar: 'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?w=600&auto=format&fit=crop&q=80',
+  rice: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80',
+  dal: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80',
+  oils: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80',
+  spices: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80',
+  default: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80',
+};
+
+const getCategoryFallbackImage = (name: string): string => {
+  const lower = (name || '').toLowerCase();
+  if (lower.includes('flour') || lower.includes('atta') || lower.includes('maida') || lower.includes('sooji') || lower.includes('besan')) return DEFAULT_CATEGORY_FALLBACKS.flour;
+  if (lower.includes('sugar') || lower.includes('jaggery')) return DEFAULT_CATEGORY_FALLBACKS.sugar;
+  if (lower.includes('oil') || lower.includes('ghee')) return DEFAULT_CATEGORY_FALLBACKS.oils;
+  if (lower.includes('dal') || lower.includes('pulse') || lower.includes('lentil')) return DEFAULT_CATEGORY_FALLBACKS.dal;
+  if (lower.includes('rice')) return DEFAULT_CATEGORY_FALLBACKS.rice;
+  return DEFAULT_CATEGORY_FALLBACKS.default;
+};
+
+const resolveCategoryImage = (cat: any): string => {
+  if (cat.imageUrl && cat.imageUrl.trim() !== '') return assetUrl(cat.imageUrl);
+  if (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('/'))) return assetUrl(cat.icon);
+  if (cat.category_image?.image) return assetUrl(cat.category_image.image);
+  return getCategoryFallbackImage(cat.name || '');
+};
 
 const mapProduct = (item: any): Product => {
   const p = item.product;
@@ -49,13 +77,13 @@ const mapProduct = (item: any): Product => {
 };
 
 export default function CategoriesScreen() {
+  const insets = useSafeAreaInsets();
   const { scrollPaddingBottom } = useBottomSpacing();
   const [categories, setCategories] = useState<ExtendedCategory[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [errorInfo, setErrorInfo] = useState<FormattedError | null>(null);
   const [isOfflineCached, setIsOfflineCached] = useState(false);
 
@@ -113,7 +141,7 @@ export default function CategoriesScreen() {
         id: cat.id.toString(),
         name: cat.name,
         icon: getIconKey(cat.name),
-        image_url: cat.category_image?.image ? assetUrl(cat.category_image.image) : '',
+        image_url: resolveCategoryImage(cat),
         created_at: cat.created_at || '',
         rawProducts: cat.AllProducts || [],
       }));
@@ -193,9 +221,8 @@ export default function CategoriesScreen() {
   if (errorInfo && categories.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top + 6, 16) }]}>
           <Text style={styles.title}>Categories</Text>
-          <Text style={styles.subtitle}>Browse by category</Text>
         </View>
         <OfflineView
           onRetry={fetchCategories}
@@ -210,27 +237,8 @@ export default function CategoriesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <View>
-            <Text style={styles.title}>Categories</Text>
-            <Text style={styles.subtitle}>Browse by category</Text>
-          </View>
-          <View style={styles.viewToggle}>
-            <TouchableOpacity
-              style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
-              onPress={() => setViewMode('list')}
-            >
-              <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>List</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleBtn, viewMode === 'grid' && styles.toggleBtnActive]}
-              onPress={() => setViewMode('grid')}
-            >
-              <Text style={[styles.toggleText, viewMode === 'grid' && styles.toggleTextActive]}>Grid</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 6, 16) }]}>
+        <Text style={styles.title}>Categories</Text>
       </View>
 
       {isOfflineCached && (
@@ -264,15 +272,6 @@ export default function CategoriesScreen() {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No products found</Text>
             </View>
-          ) : viewMode === 'list' ? (
-            <FlatList
-              key="list-view"
-              data={products}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => <ProductCard product={item} viewMode="horizontal" />}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={[styles.listContainer, { paddingBottom: scrollPaddingBottom }]}
-            />
           ) : (
             <FlatList
               key="grid-view"
@@ -298,54 +297,38 @@ export default function CategoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#ffffff',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: '#ffffff',
   },
   header: {
+    backgroundColor: '#ffffff',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#1e293b',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 4,
+    color: '#0f172a',
+    letterSpacing: -0.4,
   },
   mainContent: {
     flex: 1,
     flexDirection: 'row',
-    marginTop: 10,
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 5,
   },
   productsContainer: {
     flex: 1,
   },
   productsHeader: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
@@ -353,7 +336,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
   productsTitle: {
     fontSize: 18,
@@ -365,34 +347,6 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontWeight: '500',
   },
-  viewToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 10,
-    padding: 3,
-  },
-  toggleBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  toggleBtnActive: {
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  toggleText: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  toggleTextActive: {
-    color: Colors.primary,
-    fontWeight: '600',
-  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -402,7 +356,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748b',
   },
-  listContainer: {},
   gridContainer: {
     paddingHorizontal: 6,
   },

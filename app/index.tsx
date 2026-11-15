@@ -29,6 +29,15 @@ export default function RootIndex() {
   const status = user?.onboarding_status ?? 'COMPLETED';
   const approval = user?.approval_status ?? 'NOT_REQUIRED';
 
+  if (approval === 'APPROVED') {
+    return <Redirect href="/(tabs)" />;
+  }
+  if (approval === 'PENDING') {
+    return <Redirect href="/onboarding/pending-approval" />;
+  }
+  if (approval === 'REJECTED') {
+    return <Redirect href="/onboarding/documents" />;
+  }
   if (status === 'PHONE_VERIFIED' && !user?.warehouse_id) {
     return <Redirect href="/onboarding/warehouse" />;
   }
@@ -37,12 +46,6 @@ export default function RootIndex() {
   }
   if (status === 'DETAILS_COMPLETED' && user?.requires_documents) {
     return <Redirect href="/onboarding/documents" />;
-  }
-  if (approval === 'REJECTED') {
-    return <Redirect href="/onboarding/documents" />;
-  }
-  if (approval === 'PENDING') {
-    return <Redirect href="/onboarding/pending-approval" />;
   }
 
   // 4. Fully authenticated and onboarded -> Dashboard tabs

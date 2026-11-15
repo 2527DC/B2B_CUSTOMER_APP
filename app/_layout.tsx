@@ -89,11 +89,20 @@ function RootLayoutNav() {
     const approval = user?.approval_status ?? 'NOT_REQUIRED';
 
     let targetPath: string | null = null;
-    if (status === 'PHONE_VERIFIED' && !user?.warehouse_id) targetPath = '/onboarding/warehouse';
-    else if (status === 'WAREHOUSE_SELECTED' && (!user?.name || user.name.startsWith('Customer '))) targetPath = '/onboarding/details';
-    else if (status === 'DETAILS_COMPLETED' && user?.requires_documents) targetPath = '/onboarding/documents';
-    else if (approval === 'REJECTED') targetPath = '/onboarding/documents';
-    else if (approval === 'PENDING') targetPath = '/onboarding/pending-approval';
+    if (approval === 'APPROVED') {
+      // Fully approved by admin: customer has complete access, never redirect to onboarding
+      targetPath = null;
+    } else if (approval === 'PENDING') {
+      targetPath = '/onboarding/pending-approval';
+    } else if (approval === 'REJECTED') {
+      targetPath = '/onboarding/documents';
+    } else if (status === 'PHONE_VERIFIED' && !user?.warehouse_id) {
+      targetPath = '/onboarding/warehouse';
+    } else if (status === 'WAREHOUSE_SELECTED' && (!user?.name || user.name.startsWith('Customer '))) {
+      targetPath = '/onboarding/details';
+    } else if (status === 'DETAILS_COMPLETED') {
+      targetPath = '/onboarding/documents';
+    }
 
     if (targetPath) {
       const currentPath = `/${segments.join('/')}`;

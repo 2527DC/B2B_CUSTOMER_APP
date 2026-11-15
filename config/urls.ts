@@ -214,6 +214,10 @@ export const URLs = {
     if (!path) return '';
     if (path.startsWith('http')) return path;
     const clean = path.startsWith('/') ? path.slice(1) : path;
+    // In Next.js, files under public/ (like uploads/...) are served directly from root
+    if (isNextJsBackend || clean.startsWith('uploads/')) {
+      return `${HOST}/${clean}`;
+    }
     return `${HOST}/public/${clean}`;
   },
 };

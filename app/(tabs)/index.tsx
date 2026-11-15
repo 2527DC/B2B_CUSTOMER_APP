@@ -2,11 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList,
   ActivityIndicator, ScrollView, RefreshControl,
-  TouchableOpacity,
+  TouchableOpacity, Image,
 } from 'react-native';
-import { CustomHeader, PromoSlider, BrandSection, ProductCard, OfflineView, OfflineBanner } from '@/components';
+import {
+  CustomHeader, PromoSlider, BrandSection,
+  ProductCard, OfflineView, OfflineBanner,
+  HomeCategorySections, type SubcategoryItem, type CategorySectionItem,
+} from '@/components';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { X, PackageOpen } from 'lucide-react-native';
+import { X, PackageOpen, ArrowLeft, ChevronRight, Package, LayoutGrid } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
@@ -15,54 +19,71 @@ import { Colors } from '@/constants/theme';
 import { fetchCustomerNotifications } from '@/lib/notifications';
 import { getFriendlyErrorMessage, FormattedError } from '@/lib/network';
 import { useBottomSpacing } from '@/hooks/useBottomSpacing';
+import { CATEGORY_IMAGE_OVERRIDES, CATEGORY_PARENT_MAP } from '@/config/categoryImages';
 
 const HOME_CACHE_KEY = '@dhatri_cached_home_data';
+const CATEGORIES_CACHE_KEY = '@dhatri_cached_home_categories_v2';
+
+// ─── Curated High-Quality Banners for Themes matching reference UI ────────────
+const THEME_BANNERS: Record<string, string> = {
+  flour: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=80',
+  sugar: 'https://images.unsplash.com/photo-1581441363689-1f3c3c414635?w=600&auto=format&fit=crop&q=80',
+  rice: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80',
+  dal: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80',
+  oils: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80',
+  spices: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80',
+  drinks: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80',
+  dairy: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80',
+  soaps: 'https://images.unsplash.com/photo-1608248597359-32432a537f1e?w=600&auto=format&fit=crop&q=80',
+  haircare: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=600&auto=format&fit=crop&q=80',
+  personal: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&auto=format&fit=crop&q=80',
+  grocery: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80',
+  snacks: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&auto=format&fit=crop&q=80',
+  cleaning: 'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=600&auto=format&fit=crop&q=80',
+  default: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80',
+};
+
+const getFallbackBanner = (name: string): string => {
+  const lower = name.toLowerCase();
+  if (lower.includes('flour') || lower.includes('atta') || lower.includes('maida') || lower.includes('wheat') || lower.includes('besan') || lower.includes('sooji') || lower.includes('rava')) return THEME_BANNERS.flour;
+  if (lower.includes('sugar') || lower.includes('jaggery') || lower.includes('sweet')) return THEME_BANNERS.sugar;
+  if (lower.includes('dal') || lower.includes('pulse') || lower.includes('lentil') || lower.includes('gram') || lower.includes('chana') || lower.includes('urad') || lower.includes('toor') || lower.includes('moong')) return THEME_BANNERS.dal;
+  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati')) return THEME_BANNERS.rice;
+  if (lower.includes('oil') || lower.includes('ghee')) return THEME_BANNERS.oils;
+  if (lower.includes('spice') || lower.includes('masala') || lower.includes('chilli') || lower.includes('turmeric') || lower.includes('pepper')) return THEME_BANNERS.spices;
+  if (lower.includes('juice') || lower.includes('drink') || lower.includes('beverage') || lower.includes('soda')) return THEME_BANNERS.drinks;
+  if (lower.includes('dairy') || lower.includes('milk') || lower.includes('butter')) return THEME_BANNERS.dairy;
+  if (lower.includes('soap') || lower.includes('hand') || lower.includes('face') || lower.includes('wash')) return THEME_BANNERS.soaps;
+  if (lower.includes('hair') || lower.includes('shampoo') || lower.includes('conditioner')) return THEME_BANNERS.haircare;
+  if (lower.includes('personal') || lower.includes('skin') || lower.includes('care') || lower.includes('oral') || lower.includes('dental')) return THEME_BANNERS.personal;
+  if (lower.includes('snack') || lower.includes('biscuit') || lower.includes('cookie') || lower.includes('namkeen')) return THEME_BANNERS.snacks;
+  if (lower.includes('clean') || lower.includes('detergent') || lower.includes('dish')) return THEME_BANNERS.cleaning;
+  if (lower.includes('grocery') || lower.includes('staple')) return THEME_BANNERS.grocery;
+  return THEME_BANNERS.default;
+};
 
 // ─── Raw API response types ──────────────────────────────────────────────────
 interface FeaturedBrand {
   id: number;
   name: string;
-  logo: string; // relative path e.g. "uploads/images/…/logo.png"
+  logo: string;
 }
 interface SliderItem {
   id: number;
-  slider_image: string; // relative path
-}
-interface ApiProduct {
-  id: number;
-  product_name: string;
-  thumbnail_image_source: string; // relative path
-  min_sell_price: number;
-  max_sell_price: number;
-  current_stock?: number;
-  mrp?: number;
-  brand_id?: number | string;
-  brandId?: number | string;
-}
-interface TopPick {
-  id: number;
-  product_name?: string;
-  min_sell_price?: number;
-  max_sell_price?: number;
-  brand_id?: number | string;
-  brandId?: number | string;
-  product: ApiProduct;
-  skus?: {
-    id: number;
-    selling_price: number;
-    mrp: number | null;
-  }[];
+  slider_image: string;
 }
 interface HomeResponse {
-  top_categories: unknown[];
+  top_categories?: unknown[];
   featured_brands: FeaturedBrand[];
   sliders: SliderItem[];
-  top_picks: TopPick[];
-  [key: string]: unknown; // allow logging all unknown keys
+  [key: string]: unknown;
 }
 
 // ─── Image URL helper ─────────────────────────────────────────────────────────
-const assetUrl = (path: string): string => URLs.assetUrl(path);
+const assetUrl = (path?: string): string => {
+  if (!path || path.trim() === '') return '';
+  return URLs.assetUrl(path);
+};
 
 // ─── Mapper helpers ───────────────────────────────────────────────────────────
 const toBrand = (fb: FeaturedBrand): Brand => ({
@@ -81,7 +102,7 @@ const toProduct = (item: any): Product => {
   const unitStr = typeof unitCreated === 'string' ? unitCreated : (unitCreated?.name || undefined);
 
   return {
-    id: (p?.id ?? item.id).toString(),
+    id: (p?.id ?? item.product_id ?? item.id).toString(),
     name: p?.product_name ?? item.product_name ?? '',
     price: sellingPrice,
     mrp: mrpVal > sellingPrice ? mrpVal : undefined,
@@ -101,6 +122,59 @@ const toProduct = (item: any): Product => {
   };
 };
 
+// ─── Multi-tier image resolver ────────────────────────────────────────────────
+const resolveCategoryImage = (cat: any): string => {
+  const directImage =
+    cat.imageUrl ||
+    cat.image ||
+    (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('/')) ? cat.icon : null) ||
+    cat.category_image?.image;
+
+  if (directImage && String(directImage).trim() !== '') {
+    return assetUrl(directImage);
+  }
+
+  const slugKey = String(cat.slug || '').toLowerCase().trim();
+  const idKey = String(cat.id || '').toLowerCase().trim();
+  const nameKey = String(cat.name || '').toLowerCase().trim();
+
+  if (CATEGORY_IMAGE_OVERRIDES[slugKey]) return CATEGORY_IMAGE_OVERRIDES[slugKey];
+  if (CATEGORY_IMAGE_OVERRIDES[idKey]) return CATEGORY_IMAGE_OVERRIDES[idKey];
+  if (CATEGORY_IMAGE_OVERRIDES[nameKey]) return CATEGORY_IMAGE_OVERRIDES[nameKey];
+
+  const firstProd = cat.AllProducts?.[0]?.product ?? cat.AllProducts?.[0];
+  if (firstProd?.thumbnail_image_source) {
+    const u = assetUrl(firstProd.thumbnail_image_source);
+    if (u) return u;
+  }
+
+  return getFallbackBanner(cat.name || '');
+};
+
+// ─── Category Drilldown Stack Item ───────────────────────────────────────────
+interface CategoryLevel {
+  id: string;
+  name: string;
+  isLeaf: boolean; // false = has subcategories, true = show products
+  subcategories: SubcategoryItem[];
+  products: Product[];
+}
+
+function DrillCardImage({ uri, name }: { uri?: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  const fallback = getFallbackBanner(name);
+  const activeUri = !failed && uri && uri.trim().length > 0 ? uri : fallback;
+
+  return (
+    <Image
+      source={{ uri: activeUri }}
+      style={styles.subcatCardImage}
+      resizeMode="cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { scrollPaddingBottom } = useBottomSpacing();
@@ -111,16 +185,21 @@ export default function HomeScreen() {
 
   const [featuredBrands, setFeaturedBrands] = useState<Brand[]>([]);
   const [sliderImages, setSliderImages] = useState<string[]>([]);
-  const [topPicks, setTopPicks] = useState<Product[]>([]);
+  const [categorySections, setCategorySections] = useState<CategorySectionItem[]>([]);
+  const [rawCategories, setRawCategories] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Brand selection & filtered products state
+  // Brand selection state
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [selectedBrandName, setSelectedBrandName] = useState<string | null>(null);
   const [brandProducts, setBrandProducts] = useState<Product[]>([]);
   const [brandProductsLoading, setBrandProductsLoading] = useState(false);
 
-  // Fetch unread notification count periodically or on screen focus
+  // Dynamic Multi-Level Category Drilldown Stack
+  const [categoryTrail, setCategoryTrail] = useState<CategoryLevel[]>([]);
+  const [categoryProductsLoading, setCategoryProductsLoading] = useState(false);
+
+  // Fetch unread notification count
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
@@ -130,8 +209,8 @@ export default function HomeScreen() {
           if (isMounted && typeof res.unreadCount === 'number') {
             setUnreadCount(res.unreadCount);
           }
-        } catch (err) {
-          // Silent catch if user is logged out or offline
+        } catch {
+          // Silent catch
         }
       };
 
@@ -145,27 +224,37 @@ export default function HomeScreen() {
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Immediately hydrate from cache so returning users see instant content even if offline
-    AsyncStorage.getItem(HOME_CACHE_KEY)
-      .then((cached) => {
-        if (!isMounted || !cached) return;
-        try {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed.sliderImages) && parsed.sliderImages.length > 0) {
-            setSliderImages(parsed.sliderImages);
+    // Hydrate from cache immediately for instant render
+    Promise.all([
+      AsyncStorage.getItem(HOME_CACHE_KEY),
+      AsyncStorage.getItem(CATEGORIES_CACHE_KEY),
+    ])
+      .then(([homeCached, catCached]) => {
+        if (!isMounted) return;
+        if (homeCached) {
+          try {
+            const parsed = JSON.parse(homeCached);
+            if (Array.isArray(parsed.sliderImages) && parsed.sliderImages.length > 0) {
+              setSliderImages(parsed.sliderImages);
+            }
+            if (Array.isArray(parsed.featuredBrands) && parsed.featuredBrands.length > 0) {
+              setFeaturedBrands(parsed.featuredBrands);
+            }
+          } catch (e) {
+            console.warn('[HomeScreen] Home cache parse error:', e);
           }
-          if (Array.isArray(parsed.featuredBrands) && parsed.featuredBrands.length > 0) {
-            setFeaturedBrands(parsed.featuredBrands);
+        }
+
+        if (catCached) {
+          try {
+            const parsedCats = JSON.parse(catCached);
+            if (Array.isArray(parsedCats) && parsedCats.length > 0) {
+              setCategorySections(parsedCats);
+              setLoading(false);
+            }
+          } catch (e) {
+            console.warn('[HomeScreen] Category cache parse error:', e);
           }
-          if (Array.isArray(parsed.topPicks) && parsed.topPicks.length > 0) {
-            setTopPicks(parsed.topPicks);
-          }
-          // If we had valid cached items, dismiss the blocking loader early
-          if (parsed.topPicks?.length || parsed.sliderImages?.length) {
-            setLoading(false);
-          }
-        } catch (e) {
-          console.warn('[HomeScreen] Cache parsing error:', e);
         }
       })
       .catch(() => {})
@@ -180,6 +269,93 @@ export default function HomeScreen() {
     };
   }, []);
 
+  // Normalizes raw categories by resolving parentId (from API or from CATEGORY_PARENT_MAP)
+  const normalizeCategories = (list: any[]) => {
+    return list.map((cat) => {
+      let resolvedParentId = cat.parentId != null ? String(cat.parentId) : null;
+
+      if (!resolvedParentId) {
+        const idKey = String(cat.id || '').toLowerCase().trim();
+        const slugKey = String(cat.slug || '').toLowerCase().trim();
+        const nameKey = String(cat.name || '').toLowerCase().trim();
+
+        const mappedParent =
+          CATEGORY_PARENT_MAP[idKey] ||
+          CATEGORY_PARENT_MAP[slugKey] ||
+          CATEGORY_PARENT_MAP[nameKey];
+
+        if (mappedParent) {
+          const parentMatch = list.find(
+            (p) =>
+              String(p.id).toLowerCase() === mappedParent.toLowerCase() ||
+              (p.slug && p.slug.toLowerCase() === mappedParent.toLowerCase()) ||
+              (p.name && p.name.toLowerCase() === mappedParent.toLowerCase())
+          );
+          if (parentMatch && String(parentMatch.id) !== String(cat.id)) {
+            resolvedParentId = String(parentMatch.id);
+          }
+        }
+      }
+
+      return {
+        ...cat,
+        parentId: resolvedParentId,
+      };
+    });
+  };
+
+  const buildCategorySections = (categoryList: any[]): CategorySectionItem[] => {
+    if (!Array.isArray(categoryList) || categoryList.length === 0) return [];
+
+    const normalizedList = normalizeCategories(categoryList);
+    const parentCats = normalizedList.filter((c) => c.parentId == null);
+    const sections: CategorySectionItem[] = [];
+
+    for (const parent of parentCats) {
+      const children = normalizedList.filter((c) => String(c.parentId) === String(parent.id));
+
+      const subcategories: SubcategoryItem[] = [];
+
+      // 1. Parent card in this row (e.g. "Rice")
+      subcategories.push({
+        id: String(parent.id),
+        name: parent.name,
+        image: resolveCategoryImage(parent),
+        categoryId: String(parent.id),
+        categoryName: parent.name,
+        productCount: parent.AllProducts?.length || 0,
+        products: (parent.AllProducts || []).map(toProduct),
+        isParent: true,
+      });
+
+      // 2. Child subcategories in the exact same row (e.g. "Dal", "Boild rice", "Brown")
+      children.forEach((ch) => {
+        subcategories.push({
+          id: String(ch.id),
+          name: ch.name,
+          image: resolveCategoryImage(ch),
+          categoryId: String(parent.id),
+          categoryName: parent.name,
+          productCount: ch.AllProducts?.length || 0,
+          products: (ch.AllProducts || []).map(toProduct),
+          isParent: false,
+        });
+      });
+
+      // Pure text heading with commas: e.g. "Rice, Dal, Boild rice, Brown"
+      const headingParts = [parent.name, ...children.map((ch) => ch.name)];
+      const sectionHeading = headingParts.join(', ');
+
+      sections.push({
+        id: String(parent.id),
+        name: sectionHeading,
+        subcategories,
+      });
+    }
+
+    return sections;
+  };
+
   const handleSelectBrand = async (brandId: string | null) => {
     if (!brandId || brandId === selectedBrand) {
       setSelectedBrand(null);
@@ -188,6 +364,8 @@ export default function HomeScreen() {
       return;
     }
 
+    setCategoryTrail([]);
+
     const brand = featuredBrands.find((b) => b.id === brandId);
     const bName = brand?.name || 'Selected Brand';
     setSelectedBrand(brandId);
@@ -195,88 +373,208 @@ export default function HomeScreen() {
     setBrandProductsLoading(true);
 
     try {
-      console.log(`[HomeScreen] Fetching products for brand ${brandId} (${bName})`);
       const response = await apiClient.get(`${URLs.ALL_PRODUCTS}?brandId=${brandId}`);
       const rawData = response.data;
       const rawList: any[] = Array.isArray(rawData) ? rawData : (rawData?.data || []);
       const mapped = rawList.map(toProduct);
-      console.log(`[HomeScreen] Loaded ${mapped.length} products for brand ${bName}`);
       setBrandProducts(mapped);
     } catch (err: any) {
       console.error('[HomeScreen] Error fetching brand products:', err?.message);
-      const matching = topPicks.filter(p => p.brand_id === brandId);
-      setBrandProducts(matching);
+      setBrandProducts([]);
     } finally {
       setBrandProductsLoading(false);
     }
   };
 
+  /**
+   * Recursive Category Navigation (Categories vs Products Router):
+   * - If category has children under it -> Display child subcategories!
+   * - If category has no children (leaf) -> Display products!
+   */
+  const handleCategoryPress = async (item: SubcategoryItem) => {
+    setSelectedBrand(null);
+    setSelectedBrandName(null);
+
+    const normalized = normalizeCategories(rawCategories);
+    const directChildren = normalized.filter(
+      (c) => String(c.parentId) === String(item.id)
+    );
+
+    const hasChildren = directChildren.length > 0;
+
+    if (hasChildren) {
+      // ── Level has subcategories: Show subcategories grid ──
+      const childCards: SubcategoryItem[] = directChildren.map((ch) => ({
+        id: String(ch.id),
+        name: ch.name,
+        image: resolveCategoryImage(ch),
+        categoryId: String(item.id),
+        categoryName: item.name,
+        productCount: ch.AllProducts?.length || 0,
+        products: (ch.AllProducts || []).map(toProduct),
+      }));
+
+      setCategoryTrail((prev) => [
+        ...prev,
+        {
+          id: String(item.id),
+          name: item.name,
+          isLeaf: false,
+          subcategories: childCards,
+          products: [],
+        },
+      ]);
+    } else {
+      // ── Leaf node: Load & show respected products listing ──
+      const initialProducts = item.products && item.products.length > 0 ? item.products : [];
+
+      setCategoryTrail((prev) => [
+        ...prev,
+        {
+          id: String(item.id),
+          name: item.name,
+          isLeaf: true,
+          subcategories: [],
+          products: initialProducts,
+        },
+      ]);
+
+      if (initialProducts.length === 0) {
+        setCategoryProductsLoading(true);
+        try {
+          const res = await apiClient.get(`${URLs.ALL_CATEGORY}/${item.id}`);
+          const rawProds = res.data?.data?.AllProducts ?? [];
+          const mapped = rawProds.map(toProduct);
+
+          setCategoryTrail((prev) => {
+            if (prev.length === 0) return prev;
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              ...updated[updated.length - 1],
+              products: mapped,
+            };
+            return updated;
+          });
+        } catch (e: any) {
+          console.error('[HomeScreen] Error fetching leaf products:', e?.message);
+        } finally {
+          setCategoryProductsLoading(false);
+        }
+      }
+    }
+  };
+
+  /**
+   * Browse all products directly under a parent category
+   */
+  const handleViewAllCategoryProducts = async (level: CategoryLevel) => {
+    setCategoryTrail((prev) => [
+      ...prev,
+      {
+        id: `${level.id}-all`,
+        name: `All ${level.name}`,
+        isLeaf: true,
+        subcategories: [],
+        products: [],
+      },
+    ]);
+
+    setCategoryProductsLoading(true);
+    try {
+      const res = await apiClient.get(`${URLs.ALL_CATEGORY}/${level.id}`);
+      const rawProds = res.data?.data?.AllProducts ?? [];
+      const mapped = rawProds.map(toProduct);
+
+      setCategoryTrail((prev) => {
+        if (prev.length === 0) return prev;
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          products: mapped,
+        };
+        return updated;
+      });
+    } catch (e: any) {
+      console.error('[HomeScreen] Error fetching all parent products:', e?.message);
+    } finally {
+      setCategoryProductsLoading(false);
+    }
+  };
+
+  const handleBackOneLevel = () => {
+    setCategoryTrail((prev) => prev.slice(0, prev.length - 1));
+  };
+
+  const handleResetToRoot = () => {
+    setCategoryTrail([]);
+  };
+
   const onRefresh = useCallback(() => {
     fetchHomeData(true);
     fetchCustomerNotifications(1)
-      .then(res => {
+      .then((res) => {
         if (typeof res.unreadCount === 'number') setUnreadCount(res.unreadCount);
       })
       .catch(() => {});
+
     if (selectedBrand) {
       handleSelectBrand(selectedBrand);
     }
-  }, [selectedBrand, featuredBrands]);
+  }, [selectedBrand]);
 
   const fetchHomeData = async (isPullRefresh = false) => {
     if (isPullRefresh) {
       setRefreshing(true);
     } else {
-      // Only show full loading spinner if we don't have any cached data displayed
-      setLoading(topPicks.length === 0 && sliderImages.length === 0);
+      setLoading(categorySections.length === 0 && sliderImages.length === 0);
     }
 
     try {
-      console.log('[HomeScreen] REQUEST →', URLs.HOME_PAGE);
+      const [homeRes, catRes] = await Promise.allSettled([
+        apiClient.get<HomeResponse>(URLs.HOME_PAGE),
+        apiClient.get(URLs.ALL_CATEGORY),
+      ]);
 
-      const { data, status, headers } = await apiClient.get<HomeResponse>(URLs.HOME_PAGE);
+      if (homeRes.status === 'fulfilled') {
+        const homeData = homeRes.value.data;
+        const slides = (homeData.sliders ?? [])
+          .map((s) => assetUrl(s.slider_image))
+          .filter((uri) => typeof uri === 'string' && uri.trim().length > 0);
+        setSliderImages(slides);
 
-      console.log('[HomeScreen] RESPONSE status:', status);
-      console.log('[HomeScreen] RESPONSE headers:', JSON.stringify(headers));
-      console.log('[HomeScreen] RESPONSE keys:', Object.keys(data));
+        const brands = (homeData.featured_brands ?? []).map(toBrand);
+        setFeaturedBrands(brands);
 
-      // ── Map sliders → absolute image URLs (only valid non-empty URLs) ───
-      const slides = (data.sliders ?? [])
-        .map(s => assetUrl(s.slider_image))
-        .filter(uri => typeof uri === 'string' && uri.trim().length > 0);
-      setSliderImages(slides);
+        AsyncStorage.setItem(
+          HOME_CACHE_KEY,
+          JSON.stringify({
+            sliderImages: slides,
+            featuredBrands: brands,
+            timestamp: Date.now(),
+          })
+        ).catch(() => {});
+      }
 
-      // ── Map brands ────────────────────────────────────────────────────────
-      const brands = (data.featured_brands ?? []).map(toBrand);
-      setFeaturedBrands(brands);
+      if (catRes.status === 'fulfilled') {
+        const categoryList = catRes.value.data?.data ?? [];
+        setRawCategories(categoryList);
 
-      // ── Map top picks ─────────────────────────────────────────────────────
-      const picks = (data.top_picks ?? [])
-        .filter(tp => tp?.product != null)
-        .map(toProduct);
-      setTopPicks(picks);
+        const builtSections = buildCategorySections(categoryList);
+        setCategorySections(builtSections);
+
+        AsyncStorage.setItem(
+          CATEGORIES_CACHE_KEY,
+          JSON.stringify(builtSections)
+        ).catch(() => {});
+      }
 
       setErrorInfo(null);
       setIsOfflineCached(false);
-
-      // Save to cache for offline resilience
-      AsyncStorage.setItem(
-        HOME_CACHE_KEY,
-        JSON.stringify({
-          sliderImages: slides,
-          featuredBrands: brands,
-          topPicks: picks,
-          timestamp: Date.now(),
-        })
-      ).catch(() => {});
-
     } catch (err: any) {
-      console.error('[HomeScreen] Fetch error:', err?.message, err?.response?.status, err?.response?.data);
+      console.error('[HomeScreen] Fetch error:', err?.message);
       const friendly = getFriendlyErrorMessage(err, 'Failed to load home data');
 
-      // If we already have items visible, do not blank out the user's screen!
-      // Instead, mark as offline cached so a non-blocking banner is shown.
-      if (topPicks.length > 0 || sliderImages.length > 0 || featuredBrands.length > 0) {
+      if (categorySections.length > 0 || sliderImages.length > 0 || featuredBrands.length > 0) {
         setIsOfflineCached(true);
         setErrorInfo(null);
       } else {
@@ -288,18 +586,18 @@ export default function HomeScreen() {
     }
   };
 
-  // 1. Initial full-screen loading (only if no cache exists)
-  if (loading && topPicks.length === 0 && sliderImages.length === 0) {
+  // Full-screen loading
+  if (loading && categorySections.length === 0 && sliderImages.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>Loading catalog...</Text>
       </View>
     );
   }
 
-  // 2. Full-screen Offline / Error state (only if no cache was available)
-  if (errorInfo && topPicks.length === 0 && sliderImages.length === 0) {
+  // Full-screen Offline / Error state
+  if (errorInfo && categorySections.length === 0 && sliderImages.length === 0) {
     return (
       <View style={styles.container}>
         <CustomHeader
@@ -318,9 +616,15 @@ export default function HomeScreen() {
     );
   }
 
+  const currentLevel = categoryTrail.length > 0 ? categoryTrail[categoryTrail.length - 1] : null;
+
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={[
+        styles.scrollContent,
+        { paddingBottom: Math.max(scrollPaddingBottom + 60, 150) },
+      ]}
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
@@ -338,7 +642,7 @@ export default function HomeScreen() {
         unreadCount={unreadCount}
       />
 
-      {/* Offline banner when viewing cached data */}
+      {/* Offline banner */}
       {isOfflineCached && (
         <OfflineBanner
           onRetry={() => fetchHomeData(true)}
@@ -347,15 +651,15 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* Promo Slider — only rendered when backend returns active slider images */}
-      {sliderImages.length > 0 && (
+      {/* Promo Slider (only on root home) */}
+      {!selectedBrand && categoryTrail.length === 0 && sliderImages.length > 0 && (
         <View style={styles.sliderWrapper}>
           <PromoSlider images={sliderImages} />
         </View>
       )}
 
-      {/* Featured Brands */}
-      {featuredBrands.length > 0 && (
+      {/* Featured Brands (only on root home) */}
+      {!selectedBrand && categoryTrail.length === 0 && featuredBrands.length > 0 && (
         <BrandSection
           brands={featuredBrands}
           selectedBrand={selectedBrand}
@@ -364,12 +668,12 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* Brand-Filtered Products OR Top Picks */}
+      {/* ── Brand Filtered Products ── */}
       {selectedBrand ? (
-        <View style={styles.brandProductsSection}>
-          <View style={styles.brandFilterHeader}>
+        <View style={styles.filteredSection}>
+          <View style={styles.filteredHeader}>
             <View style={{ flex: 1 }}>
-              <View style={styles.brandTitleRow}>
+              <View style={styles.filteredTitleRow}>
                 <Text style={styles.sectionTitle}>{selectedBrandName}</Text>
                 {!brandProductsLoading && (
                   <View style={styles.countBadge}>
@@ -377,7 +681,7 @@ export default function HomeScreen() {
                   </View>
                 )}
               </View>
-              <Text style={styles.brandFilterSubtitle}>Filtered by selected brand</Text>
+              <Text style={styles.filteredSubtitle}>Filtered by selected brand</Text>
             </View>
             <TouchableOpacity
               style={styles.clearFilterBtn}
@@ -390,23 +694,23 @@ export default function HomeScreen() {
           </View>
 
           {brandProductsLoading ? (
-            <View style={styles.brandLoadingContainer}>
+            <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={styles.brandLoadingText}>Loading {selectedBrandName} products...</Text>
+              <Text style={styles.loadingText}>Loading {selectedBrandName} products...</Text>
             </View>
           ) : brandProducts.length === 0 ? (
-            <View style={styles.emptyBrandContainer}>
+            <View style={styles.emptyContainer}>
               <PackageOpen size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
-              <Text style={styles.emptyBrandTitle}>No Products Found</Text>
-              <Text style={styles.emptyBrandSubtitle}>
+              <Text style={styles.emptyTitle}>No Products Found</Text>
+              <Text style={styles.emptySubtitle}>
                 No products are currently available under {selectedBrandName}.
               </Text>
               <TouchableOpacity
-                style={styles.showAllPicksBtn}
+                style={styles.showAllBtn}
                 onPress={() => handleSelectBrand(null)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.showAllPicksBtnText}>Show All Products</Text>
+                <Text style={styles.showAllBtnText}>Show All Categories</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -426,27 +730,173 @@ export default function HomeScreen() {
             />
           )}
         </View>
-      ) : topPicks.length > 0 ? (
-        <>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Top Picks</Text>
+      ) : currentLevel ? (
+        /* ── Dynamic Category Drilldown View (Categories or Products) ── */
+        <View style={styles.filteredSection}>
+          {/* Breadcrumb Navigation Bar */}
+          <View style={styles.breadcrumbBar}>
+            <View style={styles.breadcrumbPathRow}>
+              <TouchableOpacity onPress={handleResetToRoot} activeOpacity={0.7}>
+                <Text style={styles.breadcrumbRoot}>Home</Text>
+              </TouchableOpacity>
+              {categoryTrail.map((level, idx) => (
+                <View key={`crumb-${level.id}`} style={styles.breadcrumbSegment}>
+                  <ChevronRight size={12} color="#94a3b8" />
+                  <TouchableOpacity
+                    onPress={() => setCategoryTrail((prev) => prev.slice(0, idx + 1))}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.breadcrumbText,
+                        idx === categoryTrail.length - 1 && styles.breadcrumbActiveText,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {level.name}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.trailActionRow}>
+              <TouchableOpacity
+                style={styles.backLevelBtn}
+                onPress={handleBackOneLevel}
+                activeOpacity={0.75}
+              >
+                <ArrowLeft size={13} color={Colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.backLevelText}>Back</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.homeResetBtn}
+                onPress={handleResetToRoot}
+                activeOpacity={0.75}
+              >
+                <X size={13} color="#64748b" style={{ marginRight: 3 }} />
+                <Text style={styles.homeResetText}>All</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <FlatList
-            data={topPicks}
-            keyExtractor={(item, index) => `${item.id}-${index}`}
-            renderItem={({ item }) => (
-              <View style={styles.gridItem}>
-                <ProductCard product={item} viewMode="vertical" />
+
+          {/* Drilldown Content */}
+          {!currentLevel.isLeaf ? (
+            /* Condition A: Category HAS Subcategories -> Render Subcategories Grid */
+            <View style={styles.subcatContainer}>
+              <View style={styles.subcatHeader}>
+                <Text style={styles.subcatSectionTitle}>{currentLevel.name}</Text>
+                <Text style={styles.subcatSectionSubtitle}>
+                  Select a subcategory or browse all products below
+                </Text>
               </View>
-            )}
-            numColumns={2}
-            columnWrapperStyle={styles.gridRow}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.listContent, { paddingBottom: scrollPaddingBottom }]}
-            scrollEnabled={false}
-          />
-        </>
-      ) : null}
+
+              {/* View All Products under this parent */}
+              <TouchableOpacity
+                style={styles.allParentProductsBanner}
+                activeOpacity={0.82}
+                onPress={() => handleViewAllCategoryProducts(currentLevel)}
+              >
+                <View style={styles.allParentProductsLeft}>
+                  <View style={styles.allParentProductsIconWrap}>
+                    <LayoutGrid size={18} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.allParentProductsTitle}>
+                      View All {currentLevel.name} Products
+                    </Text>
+                    <Text style={styles.allParentProductsSub}>
+                      Browse complete catalog under {currentLevel.name}
+                    </Text>
+                  </View>
+                </View>
+                <ChevronRight size={18} color={Colors.primary} />
+              </TouchableOpacity>
+
+              <View style={styles.subcatGridWrap}>
+                {currentLevel.subcategories.map((subcat) => (
+                  <TouchableOpacity
+                    key={`drill-${subcat.id}`}
+                    style={styles.subcatCard}
+                    activeOpacity={0.82}
+                    onPress={() => handleCategoryPress(subcat)}
+                  >
+                    <View style={styles.subcatCardImageWrapper}>
+                      <DrillCardImage uri={subcat.image} name={subcat.name} />
+                    </View>
+                    <View style={styles.subcatCardLabelWrapper}>
+                      <Text style={styles.subcatCardTitle} numberOfLines={2}>
+                        {subcat.name}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ) : (
+            /* Condition B: Category has NO subcategories -> Render Respected Products Listing */
+            <View>
+              <View style={styles.filteredHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.filteredTitleRow}>
+                    <Text style={styles.sectionTitle}>{currentLevel.name}</Text>
+                    {!categoryProductsLoading && (
+                      <View style={styles.countBadge}>
+                        <Text style={styles.countBadgeText}>{currentLevel.products.length} items</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.filteredSubtitle}>Showing all products in {currentLevel.name}</Text>
+                </View>
+              </View>
+
+              {categoryProductsLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={Colors.primary} />
+                  <Text style={styles.loadingText}>Loading {currentLevel.name} products...</Text>
+                </View>
+              ) : currentLevel.products.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                  <PackageOpen size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
+                  <Text style={styles.emptyTitle}>No Products Found</Text>
+                  <Text style={styles.emptySubtitle}>
+                    No products are currently available in {currentLevel.name}.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.showAllBtn}
+                    onPress={handleResetToRoot}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.showAllBtnText}>Show All Categories</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <FlatList
+                  data={currentLevel.products}
+                  keyExtractor={(item, index) => `leaf-prod-${item.id}-${index}`}
+                  renderItem={({ item }) => (
+                    <View style={styles.gridItem}>
+                      <ProductCard product={item} viewMode="vertical" />
+                    </View>
+                  )}
+                  numColumns={2}
+                  columnWrapperStyle={styles.gridRow}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={[styles.listContent, { paddingBottom: scrollPaddingBottom }]}
+                  scrollEnabled={false}
+                />
+              )}
+            </View>
+          )}
+        </View>
+      ) : (
+        /* ── Root Home: Category Rows (Parent + Subcategories in each row) ── */
+        <HomeCategorySections
+          sections={categorySections}
+          onSelectSubcategory={handleCategoryPress}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -456,39 +906,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 48,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Colors.background,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 16,
+    fontSize: 14,
     color: '#64748b',
+    fontWeight: '500',
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
+  sliderWrapper: {
+    marginTop: 12,
+    marginBottom: 4,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1e293b',
+    color: '#0f172a',
+    letterSpacing: -0.3,
   },
   listContent: {
     paddingBottom: 24,
@@ -498,18 +939,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     marginBottom: 8,
   },
-  sliderWrapper: {
-    marginTop: 12,
-    marginBottom: 4,
-  },
   gridRow: {
     justifyContent: 'space-between',
     paddingHorizontal: 12,
   },
-  brandProductsSection: {
+  filteredSection: {
     marginTop: 4,
   },
-  brandFilterHeader: {
+  filteredHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -517,12 +954,12 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
-  brandTitleRow: {
+  filteredTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  brandFilterSubtitle: {
+  filteredSubtitle: {
     fontSize: 12,
     color: '#64748b',
     marginTop: 2,
@@ -553,18 +990,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
   },
-  brandLoadingContainer: {
-    paddingVertical: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandLoadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  emptyBrandContainer: {
+  emptyContainer: {
     backgroundColor: '#ffffff',
     marginHorizontal: 16,
     marginTop: 8,
@@ -577,28 +1003,212 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  emptyBrandTitle: {
+  emptyTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1e293b',
+    color: '#0f172a',
     marginBottom: 6,
   },
-  emptyBrandSubtitle: {
+  emptySubtitle: {
     fontSize: 13,
     color: '#64748b',
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 16,
   },
-  showAllPicksBtn: {
+  showAllBtn: {
     backgroundColor: Colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 12,
   },
-  showAllPicksBtnText: {
+  showAllBtnText: {
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '700',
+  },
+
+  // ─── Breadcrumb Navigation ──────────────────────────────────────────────────
+  breadcrumbBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  breadcrumbPathRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  breadcrumbRoot: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  breadcrumbSegment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  breadcrumbText: {
+    fontSize: 12.5,
+    fontWeight: '500',
+    color: '#64748b',
+    maxWidth: 100,
+  },
+  breadcrumbActiveText: {
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  trailActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 8,
+  },
+  backLevelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  backLevelText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  homeResetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  homeResetText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+
+  // ─── Subcategories Grid (When category has children) ───────────────────────
+  subcatContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  subcatHeader: {
+    marginBottom: 16,
+  },
+  subcatSectionTitle: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.3,
+  },
+  subcatSectionSubtitle: {
+    fontSize: 12.5,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  allParentProductsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: Colors.primary10 ? Colors.primary : '#22c55e',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  allParentProductsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+    gap: 12,
+  },
+  allParentProductsIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#ecfdf5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  allParentProductsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  allParentProductsSub: {
+    fontSize: 11.5,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  subcatGridWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  subcatCard: {
+    width: '48%',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 4,
+  },
+  subcatCardImageWrapper: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  subcatCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  subcatCardLabelWrapper: {
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  subcatCardTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
