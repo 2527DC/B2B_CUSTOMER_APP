@@ -11,13 +11,14 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Search, X, Tag } from 'lucide-react-native';
+import { ArrowLeft, Search, X, Tag, ChevronRight, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '@/lib/navigation';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import type { Brand } from '@/types/catalog';
 import { Colors } from '@/constants/theme';
+import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 const assetUrl = (path?: string): string => URLs.assetUrl(path);
 
@@ -31,6 +32,7 @@ interface ApiBrandItem {
 
 export default function AllBrandsScreen() {
   const router = useRouter();
+  const { scrollPaddingBottom } = useBottomSpacing();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandCounts, setBrandCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ export default function AllBrandsScreen() {
       setBrandCounts(counts);
       setBrands(mapped);
     } catch (err: any) {
-      console.error('[AllBrandsScreen] Error fetching all brands:', err);
+      console.warn('[AllBrandsScreen] Error fetching all brands:', err?.message || err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -96,31 +98,37 @@ export default function AllBrandsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      {/* Header */}
+      {/* Top Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => goBack()}
           style={styles.backButton}
           activeOpacity={0.7}
+          accessibilityLabel="Back"
         >
-          <ArrowLeft size={22} color="#1e293b" />
+          <ArrowLeft size={20} color="#0f172a" strokeWidth={2.4} />
         </TouchableOpacity>
+
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>All Brands</Text>
-          <Text style={styles.headerSubtitle}>
-            {loading ? 'Loading...' : `${brands.length} partner brands`}
-          </Text>
+          <View style={styles.partnerBadgeRow}>
+            <View style={styles.activeDot} />
+            <Text style={styles.headerSubtitle}>
+              {loading ? 'Loading...' : `${brands.length} partner brands`}
+            </Text>
+          </View>
         </View>
-        <View style={{ width: 36 }} />
+
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Search Bar */}
+      {/* Modern Search Bar */}
       <View style={styles.searchWrapper}>
         <View style={styles.searchContainer}>
-          <Search size={18} color="#94a3b8" style={{ marginRight: 8 }} />
+          <Search size={18} color={Colors.primary} style={{ marginRight: 10 }} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search brands by name..."
+            placeholder="Search 70+ wholesale brands..."
             placeholderTextColor="#94a3b8"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -128,25 +136,31 @@ export default function AllBrandsScreen() {
             autoCorrect={false}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
-              <X size={16} color="#94a3b8" />
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              activeOpacity={0.7}
+              style={styles.clearSearchBtn}
+            >
+              <X size={15} color="#64748b" />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Body */}
+      {/* Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading brands...</Text>
+          <Text style={styles.loadingText}>Loading brands directory...</Text>
         </View>
       ) : filteredBrands.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Tag size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
+          <View style={styles.emptyIconWrap}>
+            <Tag size={36} color="#94a3b8" />
+          </View>
           <Text style={styles.emptyTitle}>No Brands Found</Text>
           <Text style={styles.emptySubtitle}>
-            No brands matched "{searchQuery}". Try a different keyword.
+            No brands matched "{searchQuery}". Try searching for another brand or product name.
           </Text>
         </View>
       ) : (
@@ -155,7 +169,7 @@ export default function AllBrandsScreen() {
           keyExtractor={(item) => item.id}
           numColumns={2}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: scrollPaddingBottom + 20 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -171,9 +185,9 @@ export default function AllBrandsScreen() {
               <TouchableOpacity
                 style={styles.brandCard}
                 onPress={() => handleBrandPress(item)}
-                activeOpacity={0.75}
+                activeOpacity={0.85}
               >
-                {/* Logo or Initial fallback */}
+                {/* Elevated Image Showcase Box */}
                 <View style={styles.logoWrap}>
                   {item.logo_url && item.logo_url.trim() !== '' ? (
                     <Image
@@ -195,12 +209,15 @@ export default function AllBrandsScreen() {
                   {item.name}
                 </Text>
 
-                {/* Product Count if available */}
-                {typeof count === 'number' && count > 0 && (
-                  <View style={styles.countPill}>
-                    <Text style={styles.countPillText}>{count} items</Text>
+                {/* Card Action / Count Footer */}
+                <View style={styles.cardFooter}>
+                  <Text style={styles.cardFooterText}>
+                    {typeof count === 'number' && count > 0 ? `${count} items` : 'View Catalog'}
+                  </Text>
+                  <View style={styles.arrowCircle}>
+                    <ChevronRight size={11} color="#ffffff" strokeWidth={3} />
                   </View>
-                )}
+                </View>
               </TouchableOpacity>
             );
           }}
@@ -213,7 +230,7 @@ export default function AllBrandsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -223,101 +240,143 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: '#f1f5f9',
   },
   backButton: {
-    padding: 6,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitleWrap: {
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.3,
+  },
+  partnerBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
   },
   headerSubtitle: {
     fontSize: 12,
+    fontWeight: '600',
     color: '#64748b',
-    marginTop: 2,
   },
   searchWrapper: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 46,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: '#1e293b',
+    color: '#0f172a',
+    fontWeight: '500',
     height: '100%',
     padding: 0,
+  },
+  clearSearchBtn: {
+    padding: 4,
+    borderRadius: 10,
+    backgroundColor: '#e2e8f0',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f8fafc',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
     color: '#64748b',
+    fontWeight: '500',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    backgroundColor: '#f8fafc',
+  },
+  emptyIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#0f172a',
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 13,
     color: '#64748b',
     textAlign: 'center',
+    lineHeight: 19,
   },
   listContent: {
-    padding: 12,
-    paddingBottom: 40,
+    padding: 14,
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   brandCard: {
     flex: 0.485,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 14,
-    alignItems: 'center',
+    borderRadius: 20,
+    padding: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: '#e8edf2',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
   },
   logoWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 14,
+    width: '100%',
+    height: 116,
+    borderRadius: 16,
     backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 8,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
     overflow: 'hidden',
   },
   brandLogo: {
@@ -325,35 +384,48 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   initialFallback: {
-    width: '100%',
-    height: '100%',
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.primary10,
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
   },
   initialLetter: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: Colors.primary,
   },
   brandCardName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1e293b',
+    color: '#0f172a',
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 4,
+    minHeight: 36,
+    marginBottom: 6,
   },
-  countPill: {
-    backgroundColor: Colors.primary10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginTop: 4,
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f8fafc',
   },
-  countPillText: {
+  cardFooterText: {
     fontSize: 11,
-    color: Colors.primary,
     fontWeight: '600',
+    color: '#64748b',
+  },
+  arrowCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
