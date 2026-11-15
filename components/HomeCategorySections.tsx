@@ -7,7 +7,7 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import { ChevronRight, Sparkles } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import type { Product } from '@/types/catalog';
 import { Colors } from '@/constants/theme';
 
@@ -140,12 +140,6 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
                   {/* Category Image Container */}
                   <View style={styles.imageContainer}>
                     <CategoryCardImage uri={subcat.image} name={subcat.name} />
-                    {subcat.isParent ? (
-                      <View style={styles.parentBadge}>
-                        <Sparkles size={10} color="#ffffff" />
-                        <Text style={styles.parentBadgeText}>All</Text>
-                      </View>
-                    ) : null}
                   </View>
 
                   {/* Card Label & Action Footer */}
@@ -154,7 +148,11 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
                       {subcat.name}
                     </Text>
                     <View style={styles.cardFooter}>
-                      <Text style={styles.cardActionText}>Wholesale</Text>
+                      <Text style={styles.cardActionText}>
+                        {typeof subcat.productCount === 'number' && subcat.productCount > 0
+                          ? `${subcat.productCount} ${subcat.productCount === 1 ? 'item' : 'items'}`
+                          : 'Explore'}
+                      </Text>
                       <View style={styles.arrowCircle}>
                         <ChevronRight size={12} color="#ffffff" strokeWidth={3} />
                       </View>
@@ -237,24 +235,6 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: '100%',
-  },
-  parentBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  parentBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 0.2,
   },
   labelContainer: {
     flex: 1,
