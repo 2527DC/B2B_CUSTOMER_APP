@@ -80,12 +80,19 @@ apiClient.interceptors.response.use(
   },
   (error: AxiosError) => {
     const status = error.response?.status;
-    console.error('❌ [API Response Error]:', {
-      url: error.config?.url,
-      status,
-      message: error.message,
-      data: error.response?.data,
-    });
+    if (error.message === 'Network Error' || !status) {
+      console.warn('⚠️ [Network Connectivity Notice]:', {
+        url: error.config?.url,
+        message: 'Device lost internet connection or server unreachable',
+      });
+    } else {
+      console.error('❌ [API Response Error]:', {
+        url: error.config?.url,
+        status,
+        message: error.message,
+        data: error.response?.data,
+      });
+    }
     return Promise.reject(error);
   },
 );

@@ -904,7 +904,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#f8fafc',
   },
   scrollContent: {
     flexGrow: 1,
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: '#f8fafc',
   },
   loadingText: {
     marginTop: 12,

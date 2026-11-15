@@ -7,7 +7,7 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import { Package } from 'lucide-react-native';
+import { ChevronRight, Sparkles } from 'lucide-react-native';
 import type { Product } from '@/types/catalog';
 import { Colors } from '@/constants/theme';
 
@@ -49,7 +49,7 @@ const getCategoryPhotoFallback = (name?: string): string => {
 };
 
 /**
- * Robust Category Card Image with automatic error fallback
+ * Category Card Image with automatic fallback
  */
 function CategoryCardImage({ uri, name }: { uri?: string; name: string }) {
   const [loadFailed, setLoadFailed] = useState(false);
@@ -100,20 +100,31 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
           return null;
         }
 
+        // Parse section name: extract parent title and subcategory summary
+        const parts = (section.name || '').split(',').map((p) => p.trim()).filter(Boolean);
+        const mainTitle = parts[0] || 'Categories';
+        const subcatSummary = parts.slice(1).join(' • ');
+
         return (
           <View key={`sec-${section.id}`} style={styles.sectionContainer}>
-            {/* Category Section Header: ONLY Text (No Icons), separated by commas, truncated with ... */}
+            {/* Modern Section Header */}
             <View style={styles.headerRow}>
-              <Text
-                style={styles.sectionTitle}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {section.name}
-              </Text>
+              <View style={styles.titleColumn}>
+                <View style={styles.titleBadgeRow}>
+                  <View style={styles.titleAccentBar} />
+                  <Text style={styles.sectionTitle} numberOfLines={1}>
+                    {mainTitle}
+                  </Text>
+                </View>
+                {subcatSummary ? (
+                  <Text style={styles.sectionSubtitle} numberOfLines={1}>
+                    {subcatSummary}
+                  </Text>
+                ) : null}
+              </View>
             </View>
 
-            {/* Horizontal Cards: Parent and its Subcategories together in one row */}
+            {/* Horizontal Cards: Modern, elevated cards */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -123,19 +134,31 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
                 <TouchableOpacity
                   key={`sub-${subcat.id}`}
                   style={styles.card}
-                  activeOpacity={0.82}
+                  activeOpacity={0.85}
                   onPress={() => onSelectSubcategory(subcat)}
                 >
-                  {/* Category Image */}
+                  {/* Category Image Container */}
                   <View style={styles.imageContainer}>
                     <CategoryCardImage uri={subcat.image} name={subcat.name} />
+                    {subcat.isParent ? (
+                      <View style={styles.parentBadge}>
+                        <Sparkles size={10} color="#ffffff" />
+                        <Text style={styles.parentBadgeText}>All</Text>
+                      </View>
+                    ) : null}
                   </View>
 
-                  {/* Category / Subcategory Label */}
+                  {/* Card Label & Action Footer */}
                   <View style={styles.labelContainer}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
                       {subcat.name}
                     </Text>
+                    <View style={styles.cardFooter}>
+                      <Text style={styles.cardActionText}>Wholesale</Text>
+                      <View style={styles.arrowCircle}>
+                        <ChevronRight size={12} color="#ffffff" strokeWidth={3} />
+                      </View>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -149,72 +172,120 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
+    marginTop: 10,
     marginBottom: 36,
   },
   sectionContainer: {
     marginBottom: 26,
   },
   headerRow: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     marginBottom: 12,
   },
+  titleColumn: {
+    gap: 2,
+  },
+  titleBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  titleAccentBar: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
+  },
   sectionTitle: {
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#0f172a',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748b',
+    marginTop: 2,
+    paddingLeft: 12,
   },
   cardsScrollContent: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 14,
   },
   card: {
-    width: 168,
-    height: 184,
+    width: 156,
+    height: 196,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#e8edf2',
     overflow: 'hidden',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   imageContainer: {
     width: '100%',
-    height: 120,
-    backgroundColor: '#f8fafc',
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 130,
+    backgroundColor: '#f1f5f9',
+    position: 'relative',
     overflow: 'hidden',
   },
   cardImage: {
     width: '100%',
     height: '100%',
   },
-  imageFallback: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f1f5f9',
+  parentBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  parentBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.2,
   },
   labelContainer: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'space-between',
   },
   cardTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#0f172a',
-    textAlign: 'center',
-    lineHeight: 18,
+    letterSpacing: -0.2,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  cardActionText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  arrowCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

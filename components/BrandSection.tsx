@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import type { Brand } from '@/types/catalog';
 import { Colors } from '@/constants/theme';
 
@@ -14,9 +15,17 @@ export function BrandSection({ brands, selectedBrand, onSelectBrand, onViewAll }
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Top Brands</Text>
-        <TouchableOpacity onPress={onViewAll ? onViewAll : () => onSelectBrand(null)} activeOpacity={0.7}>
+        <View style={styles.titleBadgeRow}>
+          <View style={styles.titleAccentBar} />
+          <Text style={styles.title}>Top Brands</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.seeAllButton}
+          onPress={onViewAll ? onViewAll : () => onSelectBrand(null)}
+          activeOpacity={0.7}
+        >
           <Text style={styles.seeAll}>View All</Text>
+          <ChevronRight size={14} color={Colors.primary} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
       <ScrollView
@@ -31,9 +40,9 @@ export function BrandSection({ brands, selectedBrand, onSelectBrand, onViewAll }
               key={brand.id}
               style={[styles.brandItem, isSelected && styles.brandItemSelected]}
               onPress={() => onSelectBrand(isSelected ? null : brand.id)}
-              activeOpacity={0.75}
+              activeOpacity={0.82}
             >
-              {/* Square image card */}
+              {/* Elevated Logo Card */}
               <View style={[styles.logoCard, isSelected && styles.logoCardSelected]}>
                 {brand.logo_url && brand.logo_url.trim() !== '' ? (
                   <Image
@@ -50,7 +59,7 @@ export function BrandSection({ brands, selectedBrand, onSelectBrand, onViewAll }
                   </View>
                 )}
               </View>
-              {/* Brand name — small, full, centered */}
+              {/* Brand name */}
               <Text
                 style={[styles.brandName, isSelected && styles.brandNameSelected]}
                 numberOfLines={2}
@@ -68,7 +77,8 @@ export function BrandSection({ brands, selectedBrand, onSelectBrand, onViewAll }
 const styles = StyleSheet.create({
   container: {
     paddingLeft: 16,
-    marginBottom: 4,
+    marginTop: 12,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
@@ -77,16 +87,36 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingRight: 16,
   },
+  titleBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  titleAccentBar: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
+  },
   title: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: '800',
+    color: '#0f172a',
     letterSpacing: -0.4,
   },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: '#ecfdf5',
+  },
   seeAll: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   brandsContainer: {
     paddingRight: 16,
@@ -94,46 +124,49 @@ const styles = StyleSheet.create({
   },
   brandItem: {
     alignItems: 'center',
-    width: 100,
+    width: 96,
   },
   brandItemSelected: {
     transform: [{ scale: 1.04 }],
   },
   logoCard: {
-    width: 100,
-    height: 100,
-    borderRadius: 16,
+    width: 96,
+    height: 96,
+    borderRadius: 20,
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#e8edf2',
+    padding: 8,
     overflow: 'hidden',
   },
   logoCardSelected: {
     borderColor: Colors.primary,
+    borderWidth: 2,
     shadowColor: Colors.primary,
     shadowOpacity: 0.25,
   },
   brandLogo: {
     width: '100%',
     height: '100%',
+    borderRadius: 12,
   },
   brandName: {
-    marginTop: 7,
-    fontSize: 11,
-    color: '#475569',
-    fontWeight: '500',
+    marginTop: 8,
+    fontSize: 12,
+    color: '#1e293b',
+    fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 14,
+    lineHeight: 15,
   },
   brandNameSelected: {
     color: Colors.primary,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });
