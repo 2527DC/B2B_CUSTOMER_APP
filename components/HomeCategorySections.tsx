@@ -171,7 +171,7 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
 const styles = StyleSheet.create({
   container: {
     marginTop: 10,
-    marginBottom: 36,
+    marginBottom: 0,
   },
   sectionContainer: {
     marginBottom: 26,
@@ -256,9 +256,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   cardActionText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748b',
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   arrowCircle: {
     width: 20,

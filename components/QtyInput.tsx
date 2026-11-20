@@ -12,6 +12,8 @@ import {
   StyleProp,
   TextStyle,
   ScrollView,
+  Keyboard,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Minus, Plus, X, Check, AlertCircle } from 'lucide-react-native';
@@ -53,8 +55,25 @@ export default function QtyInput({
   productName,
 }: QtyInputProps) {
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const [modalVisible, setModalVisible] = useState(false);
   const [draft, setDraft] = useState(String(value));
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     setDraft(String(value));
@@ -151,7 +170,12 @@ export default function QtyInput({
           <View
             style={[
               styles.sheetContainer,
-              { paddingBottom: Math.max(insets.bottom, 20) },
+              {
+                paddingBottom:
+                  Platform.OS === 'android' && keyboardHeight > 0
+                    ? keyboardHeight + 8
+                    : Math.max(insets.bottom, 20),
+              },
             ]}
           >
             {/* Top Handle Pill */}
@@ -186,6 +210,12 @@ export default function QtyInput({
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.sheetScroll}
               keyboardShouldPersistTaps="handled"
+              style={{
+                maxHeight:
+                  keyboardHeight > 0
+                    ? screenHeight - keyboardHeight - (insets.top + 80)
+                    : screenHeight * 0.75,
+              }}
             >
               {/* Unit Price & Total Preview Box */}
               {(calculatedTotal !== undefined || keypadLabel) && (

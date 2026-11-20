@@ -55,7 +55,7 @@ export default function DetailsScreen() {
   return (
     <OnboardingScaffold
       step={2}
-      totalSteps={3}
+      totalSteps={user?.requires_documents ? 3 : 2}
       title="Tell Us About Your Store"
       subtitle="This helps us personalize pricing and delivery for your business."
     >

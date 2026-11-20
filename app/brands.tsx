@@ -10,15 +10,14 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Search, X, Tag, ChevronRight, Sparkles } from 'lucide-react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft, Search, X, Tag } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { goBack } from '@/lib/navigation';
 import apiClient from '@/config/api';
 import { URLs } from '@/config/urls';
 import type { Brand } from '@/types/catalog';
 import { Colors } from '@/constants/theme';
-import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 const assetUrl = (path?: string): string => URLs.assetUrl(path);
 
@@ -32,7 +31,7 @@ interface ApiBrandItem {
 
 export default function AllBrandsScreen() {
   const router = useRouter();
-  const { scrollPaddingBottom } = useBottomSpacing();
+  const insets = useSafeAreaInsets();
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandCounts, setBrandCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -169,7 +168,10 @@ export default function AllBrandsScreen() {
           keyExtractor={(item) => item.id}
           numColumns={2}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={[styles.listContent, { paddingBottom: scrollPaddingBottom + 20 }]}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom + 16, 28) },
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -183,40 +185,37 @@ export default function AllBrandsScreen() {
             const count = brandCounts[item.id];
             return (
               <TouchableOpacity
-                style={styles.brandCard}
+                style={styles.brandItem}
                 onPress={() => handleBrandPress(item)}
-                activeOpacity={0.85}
+                activeOpacity={0.88}
               >
-                {/* Elevated Image Showcase Box */}
-                <View style={styles.logoWrap}>
+                {/* Standalone Elevated Image Showcase Box */}
+                <View style={styles.brandImageTile}>
                   {item.logo_url && item.logo_url.trim() !== '' ? (
                     <Image
                       source={{ uri: item.logo_url }}
                       style={styles.brandLogo}
-                      resizeMode="contain"
+                      resizeMode="cover"
                     />
                   ) : (
                     <View style={styles.initialFallback}>
                       <Text style={styles.initialLetter}>
-                        {item.name ? item.name.substring(0, 2).toUpperCase() : 'B'}
+                        {item.name ? item.name.substring(0, 2).toUpperCase() : 'BR'}
                       </Text>
                     </View>
                   )}
                 </View>
 
-                {/* Brand Name */}
-                <Text style={styles.brandCardName} numberOfLines={2}>
-                  {item.name}
-                </Text>
-
-                {/* Card Action / Count Footer */}
-                <View style={styles.cardFooter}>
-                  <Text style={styles.cardFooterText}>
-                    {typeof count === 'number' && count > 0 ? `${count} items` : 'View Catalog'}
+                {/* Brand Name cleanly positioned below the tile */}
+                <View style={styles.brandMeta}>
+                  <Text style={styles.brandName} numberOfLines={2}>
+                    {item.name}
                   </Text>
-                  <View style={styles.arrowCircle}>
-                    <ChevronRight size={11} color="#ffffff" strokeWidth={3} />
-                  </View>
+                  {typeof count === 'number' && count > 0 && (
+                    <Text style={styles.productCount}>
+                      {count} {count === 1 ? 'product' : 'products'}
+                    </Text>
+                  )}
                 </View>
               </TouchableOpacity>
             );
@@ -230,7 +229,7 @@ export default function AllBrandsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -246,7 +245,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -310,7 +309,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   loadingText: {
     marginTop: 12,
@@ -323,7 +322,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   emptyIconWrap: {
     width: 72,
@@ -347,45 +346,44 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   listContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 20,
   },
-  brandCard: {
-    flex: 0.485,
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#e8edf2',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+  brandItem: {
+    flex: 0.48,
+    alignItems: 'center',
   },
-  logoWrap: {
+  brandImageTile: {
     width: '100%',
-    height: 164,
-    borderRadius: 14,
+    height: 170,
+    borderRadius: 18,
     backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 0,
-    marginBottom: 6,
+    paddingHorizontal: 1,
+    paddingVertical: 1,
     overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   brandLogo: {
     width: '100%',
     height: '100%',
+    borderRadius: 17,
   },
   initialFallback: {
-    width: 68,
-    height: 68,
-    borderRadius: 18,
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#ecfdf5',
@@ -393,38 +391,27 @@ const styles = StyleSheet.create({
     borderColor: '#a7f3d0',
   },
   initialLetter: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: Colors.primary,
   },
-  brandCardName: {
-    fontSize: 13.5,
+  brandMeta: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  brandName: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#0f172a',
     textAlign: 'center',
-    lineHeight: 17,
-    minHeight: 34,
-    marginBottom: 6,
+    lineHeight: 18,
   },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-  },
-  cardFooterText: {
-    fontSize: 11,
+  productCount: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
-  },
-  arrowCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    color: Colors.primary,
+    marginTop: 3,
   },
 });

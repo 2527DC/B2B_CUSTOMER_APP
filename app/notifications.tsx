@@ -7,8 +7,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { goBack } from '@/lib/navigation';
 import {
@@ -16,15 +17,18 @@ import {
   Bell,
   BellOff,
   CheckCheck,
-  ShoppingBag,
   Sparkles,
   Percent,
-  Gift,
-  Tag,
-  Clock,
   Package,
+  FileText,
+  Truck,
+  CheckCircle2,
+  PackageCheck,
+  XCircle,
+  ChevronRight,
 } from 'lucide-react-native';
 import { Colors } from '@/constants/theme';
+import { URLs } from '@/config/urls';
 import {
   fetchCustomerNotifications,
   markAllNotificationsAsRead,
@@ -34,8 +38,20 @@ import {
 
 type FilterTab = 'all' | 'orders' | 'products_offers';
 
+interface NotificationVisuals {
+  typeTag: string;
+  tagColor: string;
+  tagBg: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  iconBorder: string;
+  actionText?: string;
+  productImage?: string | null;
+}
+
 export default function NotificationsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +86,159 @@ export default function NotificationsScreen() {
     }
   };
 
-  // Determine category & theme styling based on notification content
+  // Determine dynamic event visuals for modern B2B clarity
+  const getNotificationVisuals = (item: NotificationItem): NotificationVisuals => {
+    const event = (item.eventKey || '').toLowerCase();
+    const title = (item.title || '').toLowerCase();
+    const body = (item.body || '').toLowerCase();
+    const data = item.data || {};
+
+    const textToMatch = `${event} ${title} ${body}`;
+
+    // 1. Tax Invoice / GST Billing
+    if (
+      textToMatch.includes('invoice') ||
+      textToMatch.includes('tax') ||
+      textToMatch.includes('bill') ||
+      textToMatch.includes('#bom') ||
+      textToMatch.includes('gst')
+    ) {
+      return {
+        typeTag: 'TAX INVOICE',
+        tagColor: '#7c3aed',
+        tagBg: '#f5f3ff',
+        icon: <FileText size={20} color="#7c3aed" strokeWidth={2.2} />,
+        iconBg: '#f5f3ff',
+        iconBorder: '#ddd6fe',
+        actionText: 'View Invoice ›',
+      };
+    }
+
+    // 2. Out for Delivery / Dispatch in-transit
+    if (
+      textToMatch.includes('out for delivery') ||
+      textToMatch.includes('dispatched') ||
+      textToMatch.includes('in transit') ||
+      textToMatch.includes('on the way')
+    ) {
+      return {
+        typeTag: 'IN TRANSIT',
+        tagColor: '#2563eb',
+        tagBg: '#eff6ff',
+        icon: <Truck size={20} color="#2563eb" strokeWidth={2.2} />,
+        iconBg: '#eff6ff',
+        iconBorder: '#bfdbfe',
+        actionText: 'Track Delivery ›',
+      };
+    }
+
+    // 3. Delivered
+    if (textToMatch.includes('delivered') || textToMatch.includes('delivered successfully')) {
+      return {
+        typeTag: 'DELIVERED',
+        tagColor: '#16a34a',
+        tagBg: '#dcfce7',
+        icon: <PackageCheck size={20} color="#16a34a" strokeWidth={2.2} />,
+        iconBg: '#f0fdf4',
+        iconBorder: '#bbf7d0',
+        actionText: 'View Order ›',
+      };
+    }
+
+    // 4. Confirmed / Received
+    if (
+      textToMatch.includes('confirmed') ||
+      textToMatch.includes('order received') ||
+      textToMatch.includes('order placed')
+    ) {
+      return {
+        typeTag: 'ORDER CONFIRMED',
+        tagColor: '#059669',
+        tagBg: '#ecfdf5',
+        icon: <CheckCircle2 size={20} color="#059669" strokeWidth={2.2} />,
+        iconBg: '#ecfdf5',
+        iconBorder: '#a7f3d0',
+        actionText: 'Track Order ›',
+      };
+    }
+
+    // 5. Cancelled / Rejected
+    if (textToMatch.includes('cancel') || textToMatch.includes('reject') || textToMatch.includes('failed')) {
+      return {
+        typeTag: 'ORDER CANCELLED',
+        tagColor: '#dc2626',
+        tagBg: '#fef2f2',
+        icon: <XCircle size={20} color="#dc2626" strokeWidth={2.2} />,
+        iconBg: '#fef2f2',
+        iconBorder: '#fecaca',
+        actionText: 'View Details ›',
+      };
+    }
+
+    // 6. Offers / Coupons / Discounts
+    if (
+      textToMatch.includes('coupon') ||
+      textToMatch.includes('offer') ||
+      textToMatch.includes('discount') ||
+      textToMatch.includes('deal') ||
+      textToMatch.includes('cashback')
+    ) {
+      return {
+        typeTag: 'SPECIAL DEAL',
+        tagColor: '#d97706',
+        tagBg: '#fef3c7',
+        icon: <Percent size={20} color="#d97706" strokeWidth={2.2} />,
+        iconBg: '#fffbeb',
+        iconBorder: '#fde68a',
+        actionText: 'Claim Offer ›',
+      };
+    }
+
+    // 7. Product Drops / Catalog launches
+    const productImg = data.thumbnail_image_source || data.image_url || data.product_image;
+    if (
+      textToMatch.includes('product') ||
+      textToMatch.includes('launch') ||
+      textToMatch.includes('new arrival') ||
+      textToMatch.includes('stock')
+    ) {
+      return {
+        typeTag: 'NEW IN STOCK',
+        tagColor: '#059669',
+        tagBg: '#ecfdf5',
+        icon: <Sparkles size={20} color="#059669" strokeWidth={2.2} />,
+        iconBg: '#ecfdf5',
+        iconBorder: '#a7f3d0',
+        productImage: productImg ? URLs.assetUrl(productImg) : null,
+        actionText: 'Explore Catalog ›',
+      };
+    }
+
+    // Default Order Update fallback
+    if (data.order_id || data.orderId || textToMatch.includes('order')) {
+      return {
+        typeTag: 'ORDER UPDATE',
+        tagColor: '#059669',
+        tagBg: '#ecfdf5',
+        icon: <Package size={20} color="#059669" strokeWidth={2.2} />,
+        iconBg: '#ecfdf5',
+        iconBorder: '#a7f3d0',
+        actionText: 'View Order ›',
+      };
+    }
+
+    // 8. General Notification
+    return {
+      typeTag: 'UPDATE',
+      tagColor: '#475569',
+      tagBg: '#f1f5f9',
+      icon: <Bell size={20} color="#475569" strokeWidth={2.2} />,
+      iconBg: '#f8fafc',
+      iconBorder: '#e2e8f0',
+      actionText: 'View Notice ›',
+    };
+  };
+
   const getNotificationCategory = (item: NotificationItem): 'order' | 'product' | 'offer' => {
     const event = (item.eventKey || '').toLowerCase();
     const title = (item.title || '').toLowerCase();
@@ -81,9 +249,11 @@ export default function NotificationsScreen() {
       event.includes('order') ||
       event.includes('delivery') ||
       event.includes('dispatch') ||
+      event.includes('invoice') ||
       data.order_id ||
       data.orderId ||
       title.includes('order') ||
+      title.includes('invoice') ||
       body.includes('order')
     ) {
       return 'order';
@@ -212,24 +382,7 @@ export default function NotificationsScreen() {
   );
 
   const renderNotificationItem = ({ item }: { item: NotificationItem }) => {
-    const category = getNotificationCategory(item);
-
-    // Style token determination
-    let icon = <ShoppingBag size={20} color="#2563EB" />;
-    let iconBg = '#EFF6FF'; // light blue
-
-    if (category === 'order') {
-      icon = <Package size={20} color="#059669" />;
-      iconBg = '#ECFDF5'; // light emerald
-    } else if (category === 'offer') {
-      icon = <Percent size={20} color="#D97706" />;
-      iconBg = '#FEF3C7'; // light amber
-    } else {
-      // product launch
-      icon = <Sparkles size={20} color="#059669" />;
-      iconBg = '#ECFDF5';
-    }
-
+    const visuals = getNotificationVisuals(item);
     const isUnread = !item.isRead;
 
     return (
@@ -239,38 +392,64 @@ export default function NotificationsScreen() {
           isUnread && styles.notificationCardUnread,
         ]}
         onPress={() => handleNotificationPress(item)}
-        activeOpacity={0.75}
+        activeOpacity={0.85}
       >
-        <View style={styles.cardHeaderRow}>
-          {/* Category Icon */}
-          <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
-            {icon}
+        {/* Card Top Row: Type Tag + Relative Time + Unread Dot */}
+        <View style={styles.cardTopRow}>
+          <View style={[styles.typeBadge, { backgroundColor: visuals.tagBg }]}>
+            <Text style={[styles.typeBadgeText, { color: visuals.tagColor }]}>
+              {visuals.typeTag}
+            </Text>
+          </View>
+
+          <View style={styles.timeWrap}>
+            <Text style={styles.timestampText}>{getRelativeTime(item.createdAt)}</Text>
+            {isUnread && <View style={styles.unreadDot} />}
+          </View>
+        </View>
+
+        {/* Card Body: Icon/Image + Content */}
+        <View style={styles.cardBodyRow}>
+          {/* Dynamic Modern Icon / Product Thumbnail */}
+          <View
+            style={[
+              styles.iconWrapper,
+              { backgroundColor: visuals.iconBg, borderColor: visuals.iconBorder },
+            ]}
+          >
+            {visuals.productImage ? (
+              <Image
+                source={{ uri: visuals.productImage }}
+                style={styles.productThumb}
+                resizeMode="cover"
+              />
+            ) : (
+              visuals.icon
+            )}
           </View>
 
           {/* Title & Body */}
           <View style={styles.contentWrapper}>
-            <View style={styles.titleRow}>
-              <Text
-                style={[
-                  styles.notificationTitle,
-                  isUnread && styles.notificationTitleUnread,
-                ]}
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-              {isUnread && <View style={styles.unreadDot} />}
-            </View>
+            <Text
+              style={[
+                styles.notificationTitle,
+                isUnread && styles.notificationTitleUnread,
+              ]}
+              numberOfLines={2}
+            >
+              {item.title}
+            </Text>
 
             <Text style={styles.notificationBody} numberOfLines={3}>
               {item.body}
             </Text>
 
-            {/* Relative Timestamp */}
-            <View style={styles.metaRow}>
-              <Clock size={12} color="#94a3b8" />
-              <Text style={styles.timestampText}>{getRelativeTime(item.createdAt)}</Text>
-            </View>
+            {/* Action hint link */}
+            {visuals.actionText && (
+              <View style={styles.actionRow}>
+                <Text style={styles.actionText}>{visuals.actionText}</Text>
+              </View>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -285,8 +464,9 @@ export default function NotificationsScreen() {
           onPress={() => goBack()}
           style={styles.backButton}
           activeOpacity={0.7}
+          accessibilityLabel="Back"
         >
-          <ArrowLeft size={22} color="#1e293b" />
+          <ArrowLeft size={20} color="#0f172a" strokeWidth={2.4} />
         </TouchableOpacity>
 
         <View style={styles.headerTitleWrap}>
@@ -306,10 +486,10 @@ export default function NotificationsScreen() {
           activeOpacity={0.7}
         >
           {markingAll ? (
-            <ActivityIndicator size="small" color="#059669" />
+            <ActivityIndicator size="small" color={Colors.primary} />
           ) : (
             <View style={styles.markAllInner}>
-              <CheckCheck size={16} color={unreadCount > 0 ? '#059669' : '#94a3b8'} />
+              <CheckCheck size={16} color={unreadCount > 0 ? Colors.primary : '#94a3b8'} strokeWidth={2.4} />
               <Text
                 style={[
                   styles.markAllText,
@@ -364,7 +544,7 @@ export default function NotificationsScreen() {
       {/* Main Notification List */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#059669" />
+          <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Fetching notifications...</Text>
         </View>
       ) : error ? (
@@ -387,14 +567,16 @@ export default function NotificationsScreen() {
           renderItem={renderNotificationItem}
           contentContainerStyle={[
             styles.listContent,
+            { paddingBottom: Math.max(insets.bottom + 16, 28) },
             filteredNotifications.length === 0 && styles.listContentEmpty,
           ]}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#059669']}
-              tintColor="#059669"
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
             />
           }
           onEndReached={handleLoadMore}
@@ -402,14 +584,14 @@ export default function NotificationsScreen() {
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.listFooterLoading}>
-                <ActivityIndicator size="small" color="#059669" />
+                <ActivityIndicator size="small" color={Colors.primary} />
               </View>
             ) : null
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                <Bell size={40} color="#059669" strokeWidth={1.5} />
+                <Bell size={40} color={Colors.primary} strokeWidth={1.5} />
               </View>
               <Text style={styles.emptyTitle}>No Notifications Yet</Text>
               <Text style={styles.emptySubtitle}>
@@ -430,7 +612,7 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -438,15 +620,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#f1f5f9',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#f8fafc',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -457,21 +639,20 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.3,
   },
   headerUnreadBadge: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: Colors.primary10,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
   },
   headerUnreadText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: '700',
+    color: Colors.primaryDark,
   },
   markAllButton: {
     paddingHorizontal: 10,
@@ -488,37 +669,41 @@ const styles = StyleSheet.create({
   },
   markAllText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: '700',
+    color: Colors.primary,
   },
   markAllTextDisabled: {
-    color: '#94A3B8',
+    color: '#94a3b8',
   },
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#f1f5f9',
   },
   tabButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   tabButtonActive: {
-    backgroundColor: '#059669', // Emerald brand
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   tabText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#64748b',
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: '#ffffff',
+    fontWeight: '700',
   },
   centerContainer: {
     flex: 1,
@@ -529,30 +714,31 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#64748B',
+    color: '#64748b',
+    fontWeight: '500',
   },
   errorTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#0f172a',
     marginTop: 16,
   },
   errorSubtitle: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#64748b',
     textAlign: 'center',
     marginTop: 6,
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#059669',
+    backgroundColor: Colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: '#ffffff',
+    fontWeight: '700',
     fontSize: 14,
   },
   listContent: {
@@ -567,74 +753,99 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   notificationCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
+    borderColor: '#e8edf2',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   notificationCardUnread: {
-    backgroundColor: '#ECFDF5', // Subtle Emerald highlight
-    borderColor: '#A7F3D0',
+    backgroundColor: '#ffffff',
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary,
+    borderColor: '#cbd5e1',
   },
-  cardHeaderRow: {
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  timeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  timestampText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+  },
+  unreadDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: Colors.primary,
+  },
+  cardBodyRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
   },
   iconWrapper: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  productThumb: {
+    width: '100%',
+    height: '100%',
   },
   contentWrapper: {
     flex: 1,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
   notificationTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-    flex: 1,
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#0f172a',
+    lineHeight: 19,
+    marginBottom: 3,
   },
   notificationTitleUnread: {
-    color: '#064E3B', // Deep emerald dark
-    fontWeight: '700',
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#059669',
-    marginLeft: 6,
+    color: '#0f172a',
+    fontWeight: '800',
   },
   notificationBody: {
     fontSize: 13,
     color: '#475569',
     lineHeight: 18,
-    marginBottom: 8,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  actionRow: {
+    marginTop: 8,
   },
-  timestampText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
+  actionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   emptyContainer: {
     flex: 1,
@@ -647,20 +858,20 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: Colors.primary10,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: '#0f172a',
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#64748b',
     textAlign: 'center',
     lineHeight: 20,
   },

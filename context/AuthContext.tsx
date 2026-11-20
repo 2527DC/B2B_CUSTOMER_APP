@@ -54,14 +54,21 @@ export type OnboardingStepPayload =
 // Builds a normalized User from whatever shape the backend's `user` object comes back as
 // (login, register, and onboarding all return the same fields; this keeps them in sync).
 function normalizeUser(rawUser: any, fallbackPhone: string): User {
-  const approval = rawUser?.approval_status ?? 'NOT_REQUIRED';
+  const requiresDocuments = rawUser?.requires_documents ?? false;
+  const approval = rawUser?.approval_status ?? (requiresDocuments ? 'PENDING' : 'NOT_REQUIRED');
   let onboarding = rawUser?.onboarding_status ?? 'COMPLETED';
 
-  // If customer is already APPROVED or already has a store and warehouse configured,
-  // they are fully onboarded and must never be redirected to onboarding wizard steps.
-  if (
-    approval === 'APPROVED' ||
-    (rawUser?.warehouse_id != null && rawUser?.store_name && rawUser?.name && !rawUser?.name?.startsWith('Customer '))
+  // A customer is fully onboarded (COMPLETED) only if:
+  // 1. They are already APPROVED by admin, OR
+  // 2. Documents/approval are NOT required AND they already configured a warehouse, store name, and contact name.
+  if (approval === 'APPROVED') {
+    onboarding = 'COMPLETED';
+  } else if (
+    !requiresDocuments &&
+    rawUser?.warehouse_id != null &&
+    rawUser?.store_name &&
+    rawUser?.name &&
+    !rawUser?.name?.startsWith('Customer ')
   ) {
     onboarding = 'COMPLETED';
   }
@@ -82,7 +89,7 @@ function normalizeUser(rawUser: any, fallbackPhone: string): User {
     onboarding_status: onboarding,
     approval_status: approval,
     rejection_reason: rawUser?.rejection_reason ?? null,
-    requires_documents: rawUser?.requires_documents ?? false,
+    requires_documents: requiresDocuments,
   };
 }
 
@@ -294,10 +301,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const rawUser = response.data.user || response.data.customer;
         const normalizedUser: User = normalizeUser(rawUser, cleanPhone);
 
-        // When logging in from login screen: existing users who already have a warehouse or account
-        // should never be redirected to the onboarding wizard
-        if (mode === 'login' && (normalizedUser.warehouse_id != null || normalizedUser.onboarding_status === 'PHONE_VERIFIED')) {
-          normalizedUser.onboarding_status = 'COMPLETED';
+        // When logging in from login screen: existing users who are already APPROVED
+        // or who do not require approval and are fully set up should not be redirected to onboarding wizard
+        if (mode === 'login') {
+          if (normalizedUser.approval_status === 'APPROVED') {
+            normalizedUser.onboarding_status = 'COMPLETED';
+          } else if (
+            !normalizedUser.requires_documents &&
+            normalizedUser.warehouse_id != null &&
+            normalizedUser.store_name
+          ) {
+            normalizedUser.onboarding_status = 'COMPLETED';
+          }
         }
 
         await persistSession(token, normalizedUser);

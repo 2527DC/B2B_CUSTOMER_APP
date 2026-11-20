@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ShoppingBag, Trash2, Plus, Minus, Check, Store, ArrowRight } from 'lucide-react-native';
+import { ShoppingBag, Trash2, Plus, Minus, Check, ArrowRight } from 'lucide-react-native';
 import { useCart, CartItem } from '@/context/CartContext';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,10 +21,9 @@ import { CartRecommendationsSection } from '@/components/CartRecommendationsSect
 import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 export default function CartScreen() {
-  const { stickyFooterPaddingBottom } = useBottomSpacing();
+  const { tabBarHeight } = useBottomSpacing();
   const {
     cartItems,
-    cartMap,
     cartSelectedCount,
     selectedTotal,
     isLoading,
@@ -32,16 +31,10 @@ export default function CartScreen() {
     updateQty,
     removeItem,
     selectUnselectItem,
-    selectUnselectSeller,
     selectUnselectAll,
   } = useCart();
 
   const router = useRouter();
-
-  // Helper to determine if all items in a seller's group are selected
-  const isSellerAllSelected = (sellerItems: CartItem[]) => {
-    return sellerItems.every((item) => item.is_select === 1);
-  };
 
   // Helper to determine if all items in the entire cart are selected
   const isAllSelected = () => {
@@ -65,12 +58,18 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Shopping Cart</Text>
+        <View>
+          <Text style={styles.headerTitle}>Shopping Cart</Text>
+          <Text style={styles.headerSub}>B2B Wholesale Orders</Text>
+        </View>
         {cartItems.length > 0 && (
-          <Text style={styles.headerSubtitle}>
-            {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}
-          </Text>
+          <View style={styles.itemCountBadge}>
+            <Text style={styles.itemCountText}>
+              {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}
+            </Text>
+          </View>
         )}
       </View>
 
@@ -102,127 +101,150 @@ export default function CartScreen() {
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchCart} />}
           >
-            {Object.keys(cartMap).map((sellerId) => {
-              const sellerItems = cartMap[sellerId];
-              const sellerName = sellerItems[0]?.seller?.seller_shop_name || `Seller #${sellerId}`;
-              const sellerSelected = isSellerAllSelected(sellerItems);
+            {/* Select All Bar */}
+            <View style={styles.selectAllHeader}>
+              <TouchableOpacity
+                onPress={() => selectUnselectAll(!isAllSelected())}
+                style={styles.selectAllBtn}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, isAllSelected() && styles.checkboxActive]}>
+                  {isAllSelected() && <Check size={14} color="#fff" strokeWidth={3} />}
+                </View>
+                <Text style={styles.selectAllText}>
+                  Select All ({cartItems.length} {cartItems.length === 1 ? 'item' : 'items'})
+                </Text>
+              </TouchableOpacity>
 
-              return (
-                <View key={sellerId} style={styles.sellerGroup}>
-                  {/* Seller Header */}
-                  <View style={styles.sellerHeader}>
+              {cartSelectedCount > 0 && (
+                <View style={styles.selectedCountBadge}>
+                  <Text style={styles.selectedCountBadgeText}>
+                    {cartSelectedCount} selected
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Cart Items List */}
+            <View style={styles.itemsList}>
+              {cartItems.map((item) => {
+                const productName = item.product?.product?.product_name || 'Product Details';
+                const skuName = (item.product?.sku as any)?.sku || 'Default';
+                const thumbSrc =
+                  (item.product?.product as any)?.thumbnail_image_source ||
+                  (item.product?.product as any)?.thumbnail_image_url;
+                const productImg = thumbSrc ? URLs.assetUrl(thumbSrc) : null;
+                const itemSelected = item.is_select === 1;
+                const lineTotal = item.price * item.qty;
+
+                return (
+                  <View key={item.id} style={styles.itemCard}>
+                    {/* Item Checkbox */}
                     <TouchableOpacity
-                      onPress={() => selectUnselectSeller(parseInt(sellerId), !sellerSelected)}
-                      style={[styles.checkbox, sellerSelected && styles.checkboxActive]}
+                      onPress={() => selectUnselectItem(item.id, !itemSelected)}
+                      style={[styles.checkbox, itemSelected && styles.checkboxActive]}
                       activeOpacity={0.7}
                     >
-                      {sellerSelected && <Check size={14} color="#fff" strokeWidth={3} />}
+                      {itemSelected && <Check size={14} color="#fff" strokeWidth={3} />}
                     </TouchableOpacity>
-                    <Store size={18} color="#475569" style={styles.storeIcon} />
-                    <Text style={styles.sellerName} numberOfLines={1}>
-                      {sellerName}
-                    </Text>
-                  </View>
 
-                  {/* Seller Items */}
-                  <View style={styles.itemsList}>
-                    {sellerItems.map((item) => {
-                      const productName = item.product?.product?.product_name || 'Product Details';
-                      // sku is an object from the API — extract the sku string field from it
-                      const skuName = (item.product?.sku as any)?.sku || 'Default';
-                      const thumbSrc =
-                        (item.product?.product as any)?.thumbnail_image_source ||
-                        (item.product?.product as any)?.thumbnail_image_url;
-                      const productImg = thumbSrc ? URLs.assetUrl(thumbSrc) : null;
-                      const itemSelected = item.is_select === 1;
+                    {/* Product Image */}
+                    <View style={styles.productImageWrapper}>
+                      {productImg ? (
+                        <Image source={{ uri: productImg }} style={styles.productImage} />
+                      ) : (
+                        <View style={styles.fallbackImage}>
+                          <ShoppingBag size={22} color="#94a3b8" />
+                        </View>
+                      )}
+                    </View>
 
-                      return (
-                        <View key={item.id} style={styles.itemCard}>
-                          {/* Item Checkbox */}
+                    {/* Product Details */}
+                    <View style={styles.productDetails}>
+                      <Text style={styles.productName} numberOfLines={2}>
+                        {productName}
+                      </Text>
+
+                      {skuName && skuName !== 'Default' && (
+                        <View style={styles.skuBadge}>
+                          <Text style={styles.skuBadgeText} numberOfLines={1}>
+                            SKU: {skuName}
+                          </Text>
+                        </View>
+                      )}
+
+                      <View style={styles.priceRow}>
+                        <Text style={styles.priceText}>
+                          ₹{item.price.toLocaleString('en-IN')}
+                          <Text style={styles.unitText}> / unit</Text>
+                        </Text>
+                        {item.qty > 1 && (
+                          <Text style={styles.lineTotalText}>
+                            Total: ₹{lineTotal.toLocaleString('en-IN')}
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Stepper & Actions Row */}
+                      <View style={styles.actionsRow}>
+                        <View style={styles.stepper}>
                           <TouchableOpacity
-                            onPress={() => selectUnselectItem(item.id, !itemSelected)}
-                            style={[styles.checkbox, itemSelected && styles.checkboxActive]}
+                            onPress={() => handleQtyChange(item, item.qty - 1)}
+                            disabled={item.qty <= 1}
+                            style={[styles.stepperBtn, item.qty <= 1 && styles.stepperBtnDisabled]}
                             activeOpacity={0.7}
                           >
-                            {itemSelected && <Check size={14} color="#fff" strokeWidth={3} />}
+                            <Minus
+                              size={14}
+                              color={item.qty <= 1 ? '#cbd5e1' : '#334155'}
+                              strokeWidth={2.5}
+                            />
                           </TouchableOpacity>
 
-                          {/* Product Image */}
-                          <View style={styles.productImageWrapper}>
-                            {productImg ? (
-                              <Image source={{ uri: productImg }} style={styles.productImage} />
-                            ) : (
-                              <View style={styles.fallbackImage}>
-                                <ShoppingBag size={20} color="#94a3b8" />
-                              </View>
-                            )}
-                          </View>
+                          <QtyInput
+                            value={item.qty}
+                            min={1}
+                            unitPrice={item.price}
+                            productName={productName}
+                            onCommit={(qty) => handleQtyChange(item, qty)}
+                            style={styles.stepperValue}
+                          />
 
-                          {/* Product Details */}
-                          <View style={styles.productDetails}>
-                            <Text style={styles.productName} numberOfLines={1}>
-                              {productName}
-                            </Text>
-                            <Text style={styles.skuName} numberOfLines={1}>
-                              SKU: {skuName}
-                            </Text>
-                            <Text style={styles.priceText}>
-                              ₹{item.price.toLocaleString('en-IN')}
-                            </Text>
-
-                            {/* Stepper & Actions Row */}
-                            <View style={styles.actionsRow}>
-                              <View style={styles.stepper}>
-                                <TouchableOpacity
-                                  onPress={() => handleQtyChange(item, item.qty - 1)}
-                                  disabled={item.qty <= 1}
-                                  style={[styles.stepperBtn, item.qty <= 1 && styles.stepperBtnDisabled]}
-                                >
-                                  <Minus size={14} color={item.qty <= 1 ? '#cbd5e1' : '#475569'} />
-                                </TouchableOpacity>
-                                <QtyInput
-                                  value={item.qty}
-                                  min={1}
-                                  unitPrice={item.price}
-                                  productName={productName}
-                                  onCommit={(qty) => handleQtyChange(item, qty)}
-                                  style={styles.stepperValue}
-                                />
-                                <TouchableOpacity
-                                  onPress={() => handleQtyChange(item, item.qty + 1)}
-                                  style={styles.stepperBtn}
-                                >
-                                  <Plus size={14} color="#475569" />
-                                </TouchableOpacity>
-                              </View>
-
-                              <TouchableOpacity
-                                onPress={() => removeItem(item.id)}
-                                style={styles.deleteBtn}
-                                activeOpacity={0.7}
-                              >
-                                <Trash2 size={16} color="#ef4444" />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
+                          <TouchableOpacity
+                            onPress={() => handleQtyChange(item, item.qty + 1)}
+                            style={styles.stepperBtn}
+                            activeOpacity={0.7}
+                          >
+                            <Plus size={14} color="#334155" strokeWidth={2.5} />
+                          </TouchableOpacity>
                         </View>
-                      );
-                    })}
+
+                        <TouchableOpacity
+                          onPress={() => removeItem(item.id)}
+                          style={styles.deleteBtn}
+                          activeOpacity={0.7}
+                          accessibilityLabel="Remove item"
+                        >
+                          <Trash2 size={16} color="#ef4444" strokeWidth={2} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   </View>
-                </View>
-              );
-            })}
+                );
+              })}
+            </View>
 
             {/* Quick Restock & Frequently Ordered Together */}
             <CartRecommendationsSection onItemAdded={fetchCart} />
           </ScrollView>
 
-          {/* Checkout Panel */}
-          <View style={[styles.checkoutPanel, { paddingBottom: stickyFooterPaddingBottom }]}>
-            {/* Summary Row — at top for immediate visibility */}
+          {/* Sticky Floating Checkout Dock — clear of bottom navigation tab bar */}
+          <View style={[styles.checkoutPanel, { marginBottom: tabBarHeight + 14 }]}>
             <View style={styles.summaryRow}>
-              <View>
-                <Text style={styles.totalLabel}>Selected Total</Text>
+              <View style={styles.totalInfo}>
+                <Text style={styles.totalLabel}>
+                  Selected Total ({cartSelectedCount} {cartSelectedCount === 1 ? 'item' : 'items'})
+                </Text>
                 <Text style={styles.totalPrice}>
                   ₹{selectedTotal.toLocaleString('en-IN')}
                 </Text>
@@ -235,29 +257,19 @@ export default function CartScreen() {
                 activeOpacity={0.9}
               >
                 <LinearGradient
-                  colors={cartSelectedCount === 0 ? ['#94a3b8', '#cbd5e1'] : [Colors.primaryDark, Colors.primary]}
+                  colors={
+                    cartSelectedCount === 0
+                      ? ['#94a3b8', '#cbd5e1']
+                      : [Colors.primaryDark, Colors.primary]
+                  }
                   style={styles.checkoutBtnGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.checkoutBtnText}>
-                    Checkout {cartSelectedCount > 0 ? `(${cartSelectedCount})` : ''}
-                  </Text>
-                  <ArrowRight size={16} color="#fff" style={{ marginLeft: 6 }} />
+                  <Text style={styles.checkoutBtnText}>Checkout</Text>
+                  <ArrowRight size={16} color="#fff" style={{ marginLeft: 6 }} strokeWidth={2.5} />
                 </LinearGradient>
               </TouchableOpacity>
-            </View>
-
-            {/* Select All row — below total */}
-            <View style={styles.selectAllRow}>
-              <TouchableOpacity
-                onPress={() => selectUnselectAll(!isAllSelected())}
-                style={[styles.checkbox, isAllSelected() && styles.checkboxActive]}
-                activeOpacity={0.7}
-              >
-                {isAllSelected() && <Check size={14} color="#fff" strokeWidth={3} />}
-              </TouchableOpacity>
-              <Text style={styles.selectAllText}>Select All ({cartItems.length} items)</Text>
             </View>
           </View>
         </View>
@@ -285,9 +297,9 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: '#fff',
+    paddingTop: 14,
+    paddingBottom: 14,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     flexDirection: 'row',
@@ -300,14 +312,22 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     letterSpacing: -0.5,
   },
-  headerSubtitle: {
-    fontSize: 13,
+  headerSub: {
+    fontSize: 12,
     color: '#64748b',
-    fontWeight: '600',
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  itemCountBadge: {
+    backgroundColor: Colors.primary10,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  itemCountText: {
+    fontSize: 12,
+    color: Colors.primaryDark,
+    fontWeight: '700',
   },
   container: {
     flex: 1,
@@ -317,46 +337,64 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 32,
-    gap: 16,
+    paddingTop: 14,
+    paddingBottom: 24,
   },
-  sellerGroup: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    overflow: 'hidden',
-  },
-  sellerHeader: {
+  selectAllHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  storeIcon: {
-    marginLeft: 12,
-    marginRight: 8,
+  selectAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  sellerName: {
-    fontSize: 14,
+  selectAllText: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#334155',
-    flex: 1,
+  },
+  selectedCountBadge: {
+    backgroundColor: Colors.primary10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  selectedCountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primaryDark,
   },
   itemsList: {
-    paddingVertical: 8,
+    gap: 12,
+    marginBottom: 8,
   },
   itemCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8fafc',
+    alignItems: 'flex-start',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   checkbox: {
     width: 22,
@@ -366,20 +404,21 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
+    marginTop: 2,
   },
   checkboxActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
   productImageWrapper: {
-    width: 72,
-    height: 72,
+    width: 76,
+    height: 76,
     borderRadius: 12,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#f1f5f9',
-    marginLeft: 12,
+    marginLeft: 10,
     overflow: 'hidden',
   },
   productImage: {
@@ -395,57 +434,97 @@ const styles = StyleSheet.create({
   productDetails: {
     flex: 1,
     marginLeft: 12,
-    gap: 4,
   },
   productName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: '700',
+    color: '#0f172a',
+    lineHeight: 19,
   },
-  skuName: {
-    fontSize: 12,
+  skuBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  skuBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: '#64748b',
-    fontWeight: '500',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   priceText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginTop: 2,
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.primaryDark,
+  },
+  unitText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  lineTotalText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 10,
   },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     padding: 3,
   },
   stepperBtn: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 6,
+    borderRadius: 7,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   stepperBtnDisabled: {
-    opacity: 0.5,
+    backgroundColor: 'transparent',
+    opacity: 0.4,
+    elevation: 0,
   },
   stepperValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#334155',
-    paddingHorizontal: 8,
+    color: '#0f172a',
+    paddingHorizontal: 6,
     textAlign: 'center',
-    minWidth: 44,
+    minWidth: 40,
   },
   deleteBtn: {
-    padding: 6,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyContainer: {
     flexGrow: 1,
@@ -488,41 +567,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   checkoutPanel: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingTop: 14,
-    paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 10,
-    gap: 12,
-  },
-  selectAllRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-  },
-  selectAllText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
-    marginLeft: 10,
+    backgroundColor: '#ffffff',
+    marginHorizontal: 16,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  totalInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
   totalLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748b',
     fontWeight: '600',
     textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   totalPrice: {
     fontSize: 20,
@@ -531,7 +603,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkoutBtn: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   checkoutBtnDisabled: {
@@ -541,11 +613,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingVertical: 13,
+    paddingHorizontal: 22,
   },
   checkoutBtnText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
   },

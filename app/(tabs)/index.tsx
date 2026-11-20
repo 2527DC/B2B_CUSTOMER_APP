@@ -623,7 +623,7 @@ export default function HomeScreen() {
       style={styles.container}
       contentContainerStyle={[
         styles.scrollContent,
-        { paddingBottom: Math.max(scrollPaddingBottom + 60, 150) },
+        { paddingBottom: scrollPaddingBottom },
       ]}
       showsVerticalScrollIndicator={false}
       refreshControl={

@@ -28,24 +28,25 @@ export default function RootIndex() {
   // 3. Logged in -> check onboarding / approval steps
   const status = user?.onboarding_status ?? 'COMPLETED';
   const approval = user?.approval_status ?? 'NOT_REQUIRED';
+  const requiresDocs = user?.requires_documents ?? false;
 
   if (approval === 'APPROVED') {
     return <Redirect href="/(tabs)" />;
   }
-  if (approval === 'PENDING') {
-    return <Redirect href="/onboarding/pending-approval" />;
-  }
   if (approval === 'REJECTED') {
     return <Redirect href="/onboarding/documents" />;
   }
-  if (status === 'PHONE_VERIFIED' && !user?.warehouse_id) {
+  if (status === 'PHONE_VERIFIED' || !user?.warehouse_id) {
     return <Redirect href="/onboarding/warehouse" />;
   }
-  if (status === 'WAREHOUSE_SELECTED' && (!user?.name || user.name.startsWith('Customer '))) {
+  if (status === 'WAREHOUSE_SELECTED' || (!user?.name || user.name.startsWith('Customer '))) {
     return <Redirect href="/onboarding/details" />;
   }
-  if (status === 'DETAILS_COMPLETED' && user?.requires_documents) {
+  if (status === 'DETAILS_COMPLETED' && requiresDocs) {
     return <Redirect href="/onboarding/documents" />;
+  }
+  if (approval === 'PENDING' || requiresDocs) {
+    return <Redirect href="/onboarding/pending-approval" />;
   }
 
   // 4. Fully authenticated and onboarded -> Dashboard tabs

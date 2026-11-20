@@ -50,21 +50,19 @@ const rupees = (value: number) => `₹${value.toLocaleString('en-IN', { maximumF
 
 /**
  * The price paid for one bag, then the MRP it is down from.
- * One Text so the parts share a baseline and never wrap apart; shrinks slightly on narrow cards.
+ * Clean, modern layout with neutral muted strikethrough MRP.
  */
 function PriceLine({ price, mrp, unit, size }: { price: number; mrp: number | null; unit: string; size: 'sm' | 'md' }) {
   return (
-    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-      <Text style={size === 'md' ? styles.priceMd : styles.priceSm}>{rupees(price)}</Text>
-      {unit ? <Text style={styles.unit}> / {unit}</Text> : null}
+    <View style={styles.priceRow}>
+      <View style={styles.priceMain}>
+        <Text style={size === 'md' ? styles.priceMd : styles.priceSm}>{rupees(price)}</Text>
+        {unit ? <Text style={styles.unit}>/{unit}</Text> : null}
+      </View>
       {mrp !== null ? (
-        <>
-          {/* Spacing outside the struck text so the line only crosses the price */}
-          <Text style={styles.unit}>{'  '}</Text>
-          <Text style={styles.mrp}>{rupees(mrp)}</Text>
-        </>
+        <Text style={styles.mrp}>{rupees(mrp)}</Text>
       ) : null}
-    </Text>
+    </View>
   );
 }
 
@@ -235,11 +233,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   name: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
-    color: Colors.text,
-    lineHeight: 19,
-    minHeight: 38, // always reserve two lines so prices align across a row
+    color: '#0f172a',
+    lineHeight: 18,
+    minHeight: 36, // always reserve two lines so prices align across a row
     letterSpacing: -0.1,
   },
   description: {
@@ -248,18 +246,29 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // The bag price is the strongest thing on the card, in the brand green
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  priceMain: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  // The bag price is the strongest thing on the card, in deep primary green
   priceSm: {
-    fontSize: 16,
+    fontSize: 16.5,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.primaryDark,
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
   },
   priceMd: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
-    color: Colors.primary,
+    color: Colors.primaryDark,
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
   },
@@ -267,14 +276,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: Colors.textSecondary,
+    marginLeft: 1,
   },
-  // The struck-off MRP and its line are red, after the price paid
+  // Clean, modern muted strikethrough MRP in neutral slate gray
   mrp: {
     fontSize: 12,
-    fontWeight: '600',
-    color: badge.dangerText,
+    fontWeight: '500',
+    color: '#94a3b8',
     textDecorationLine: 'line-through',
-    textDecorationColor: badge.dangerText,
+    textDecorationColor: '#94a3b8',
   },
 
   perKgTag: {
@@ -282,7 +292,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingVertical: 2.5,
     borderRadius: 6,
     backgroundColor: Colors.primary10,
   },
@@ -292,7 +302,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   perKgText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
     color: Colors.primaryDark,
     fontVariant: ['tabular-nums'],
@@ -305,15 +315,16 @@ const styles = StyleSheet.create({
 
   discountTag: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    backgroundColor: Colors.danger,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderBottomRightRadius: 10,
+    top: 8,
+    left: 8,
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 7,
+    paddingVertical: 3.5,
+    borderRadius: 7,
+    zIndex: 2,
   },
   discountTagText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
     color: Colors.textWhite,
     letterSpacing: 0.4,
@@ -322,16 +333,16 @@ const styles = StyleSheet.create({
   addPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    height: 30,
-    paddingHorizontal: 11,
-    borderRadius: 9,
-    backgroundColor: Colors.surface,
+    gap: 4,
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: Colors.primary,
-    shadowColor: Colors.text,
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -342,10 +353,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: Colors.primary,
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
   addPillTextInCart: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     color: Colors.textWhite,
   },
@@ -354,15 +365,15 @@ const styles = StyleSheet.create({
   verticalCard: {
     flex: 1,
     margin: 6,
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: '#e2e8f0',
     overflow: 'hidden',
-    shadowColor: Colors.text,
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 2,
   },
   verticalImageBox: {

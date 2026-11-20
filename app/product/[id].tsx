@@ -405,7 +405,13 @@ export default function ProductDetailsScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: inCartQty > 0 ? insets.bottom + 120 : insets.bottom + 85 },
+        ]}
+      >
         {/* Hero Image */}
         <View style={[styles.imageContainer, { marginTop: insets.top + 56 }]}>
           {heroUri ? (
@@ -585,7 +591,7 @@ export default function ProductDetailsScreen() {
                   })}
                 </ScrollView>
               </View>
-              <View style={styles.divider} />
+              {data.seller && <View style={styles.divider} />}
             </>
           )}
 
@@ -731,14 +737,14 @@ export default function ProductDetailsScreen() {
                       <TouchableOpacity
                         key={alt.id}
                         style={styles.linkedCard}
-                        activeOpacity={0.88}
+                        activeOpacity={0.9}
                         onPress={() => router.push(`/product/${alt.id}`)}
                       >
                         <View style={styles.linkedImgWrap}>
                           {imgSrc ? (
                             <Image source={{ uri: assetUrl(imgSrc) }} style={styles.linkedImg} resizeMode="contain" />
                           ) : (
-                            <Package size={26} color="#94a3b8" />
+                            <Package size={28} color="#94a3b8" />
                           )}
                           {discountPercent > 0 && (
                             <View style={styles.discountTag}>
@@ -750,46 +756,49 @@ export default function ProductDetailsScreen() {
                               <Text style={styles.savingsBadgeText}>⚡ ₹{diffPerKg.toFixed(1)}/kg cheaper</Text>
                             </View>
                           )}
-                        </View>
-
-                        <Text style={styles.linkedName} numberOfLines={2}>
-                          {alt.product_name}
-                        </Text>
-                        {alt.brand_name ? (
-                          <Text style={styles.linkedBrand} numberOfLines={1}>
-                            Brand: {alt.brand_name}
-                          </Text>
-                        ) : alt.pack_size ? (
-                          <Text style={styles.linkedBrand} numberOfLines={1}>
-                            {alt.pack_size}
-                          </Text>
-                        ) : null}
-
-                        <View style={styles.linkedPriceBlock}>
-                          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.linkedPriceLine}>
-                            <Text style={styles.linkedPrice}>₹{altPrice.toLocaleString('en-IN')}</Text>
-                            {altUnit ? <Text style={styles.linkedUnit}> / {altUnit}</Text> : null}
-                            {struck !== null ? (
-                              <>
-                                <Text style={styles.linkedUnit}>{'  '}</Text>
-                                <Text style={styles.linkedMrp}>₹{struck.toLocaleString('en-IN')}</Text>
-                              </>
-                            ) : null}
-                          </Text>
-                          <View style={styles.perKgSlot}>
-                            {altRate !== null && (
-                              <View style={styles.perKgTag}>
-                                <Text style={styles.perKgText}>
-                                  {formatRate(altRate)}
-                                  <Text style={styles.perKgUnit}> /kg</Text>
-                                </Text>
-                              </View>
-                            )}
+                          <View style={styles.listingAddPos}>
+                            <View style={styles.viewAltPill}>
+                              <Text style={styles.viewAltPillText}>View ›</Text>
+                            </View>
                           </View>
                         </View>
 
-                        <View style={styles.viewAltBtn}>
-                          <Text style={styles.viewAltBtnText}>View Alternative ›</Text>
+                        <View style={styles.linkedContent}>
+                          <Text style={styles.linkedName} numberOfLines={2}>
+                            {alt.product_name}
+                          </Text>
+                          {alt.brand_name ? (
+                            <Text style={styles.linkedBrand} numberOfLines={1}>
+                              Brand: {alt.brand_name}
+                            </Text>
+                          ) : alt.pack_size ? (
+                            <Text style={styles.linkedBrand} numberOfLines={1}>
+                              {alt.pack_size}
+                            </Text>
+                          ) : null}
+
+                          <View style={styles.linkedPriceBlock}>
+                            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.linkedPriceLine}>
+                              <Text style={styles.linkedPrice}>₹{altPrice.toLocaleString('en-IN')}</Text>
+                              {altUnit ? <Text style={styles.linkedUnit}> / {altUnit}</Text> : null}
+                              {struck !== null ? (
+                                <>
+                                  <Text style={styles.linkedUnit}>{'  '}</Text>
+                                  <Text style={styles.linkedMrp}>₹{struck.toLocaleString('en-IN')}</Text>
+                                </>
+                              ) : null}
+                            </Text>
+                            <View style={styles.perKgSlot}>
+                              {altRate !== null && (
+                                <View style={styles.perKgTag}>
+                                  <Text style={styles.perKgText}>
+                                    {formatRate(altRate)}
+                                    <Text style={styles.perKgUnit}> /kg</Text>
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
                         </View>
                       </TouchableOpacity>
                     );
@@ -826,21 +835,49 @@ export default function ProductDetailsScreen() {
                     const imgSrc = item.thumbnail_image_source;
 
                     return (
-                      <View key={item.id} style={styles.linkedCard}>
-                        <TouchableOpacity activeOpacity={0.88} onPress={() => router.push(`/product/${item.id}`)}>
-                          <View style={styles.linkedImgWrap}>
-                            {imgSrc ? (
-                              <Image source={{ uri: assetUrl(imgSrc) }} style={styles.linkedImg} resizeMode="contain" />
-                            ) : (
-                              <Package size={26} color="#94a3b8" />
-                            )}
-                            {discountPercent > 0 && (
-                              <View style={styles.discountTag}>
-                                <Text style={styles.discountTagText}>{discountPercent}% OFF</Text>
-                              </View>
-                            )}
+                      <TouchableOpacity
+                        key={item.id}
+                        style={styles.linkedCard}
+                        activeOpacity={0.9}
+                        onPress={() => router.push(`/product/${item.id}`)}
+                      >
+                        <View style={styles.linkedImgWrap}>
+                          {imgSrc ? (
+                            <Image source={{ uri: assetUrl(imgSrc) }} style={styles.linkedImg} resizeMode="contain" />
+                          ) : (
+                            <Package size={28} color="#94a3b8" />
+                          )}
+                          {discountPercent > 0 && (
+                            <View style={styles.discountTag}>
+                              <Text style={styles.discountTagText}>{discountPercent}% OFF</Text>
+                            </View>
+                          )}
+                          <View style={styles.listingAddPos}>
+                            <TouchableOpacity
+                              style={[styles.addPill, isAdded && styles.addPillInCart]}
+                              onPress={() => handleAddLinked(item)}
+                              disabled={isAdding || isAdded}
+                              activeOpacity={0.85}
+                              hitSlop={6}
+                            >
+                              {isAdding ? (
+                                <ActivityIndicator size="small" color={Colors.primary} />
+                              ) : isAdded ? (
+                                <>
+                                  <Check size={13} color={Colors.textWhite} strokeWidth={3} />
+                                  <Text style={styles.addPillTextInCart}>Added</Text>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus size={13} color={Colors.primary} strokeWidth={3} />
+                                  <Text style={styles.addPillText}>ADD</Text>
+                                </>
+                              )}
+                            </TouchableOpacity>
                           </View>
+                        </View>
 
+                        <View style={styles.linkedContent}>
                           <Text style={styles.linkedName} numberOfLines={2}>
                             {item.product_name}
                           </Text>
@@ -876,34 +913,13 @@ export default function ProductDetailsScreen() {
                               )}
                             </View>
                           </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.linkedAddBtn, isAdded && styles.linkedAddBtnSuccess]}
-                          onPress={() => handleAddLinked(item)}
-                          disabled={isAdding || isAdded}
-                          activeOpacity={0.85}
-                        >
-                          {isAdding ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
-                          ) : isAdded ? (
-                            <View style={styles.linkedBtnRow}>
-                              <Check size={12} color="#ffffff" strokeWidth={3} />
-                              <Text style={styles.linkedBtnText}>Added ✓</Text>
-                            </View>
-                          ) : (
-                            <View style={styles.linkedBtnRow}>
-                              <Plus size={12} color="#ffffff" strokeWidth={3} />
-                              <Text style={styles.linkedBtnText}>+ Add ({item.minimum_order_qty || 1} MOQ)</Text>
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      </View>
+                        </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
               </View>
-              <View style={styles.divider} />
+              {data.seller && <View style={styles.divider} />}
             </>
           )}
 
@@ -1026,7 +1042,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
 
-  scrollContent: { paddingBottom: 170 },
+  scrollContent: { paddingBottom: 85 },
 
   imageContainer: {
     width, height: width,           // square image area
@@ -1240,30 +1256,89 @@ const styles = StyleSheet.create({
   linkedSubtitle: { fontSize: 12, color: '#64748b', marginTop: -4, marginBottom: 8 },
   linkedScroll: { gap: 12, paddingVertical: 4 },
   linkedCard: {
-    width: 172,
+    width: 164,
     backgroundColor: '#ffffff',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 10,
-    justifyContent: 'space-between',
+    overflow: 'hidden',
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 2,
   },
   linkedImgWrap: {
     width: '100%',
-    height: 120,
+    height: 140,
     backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    overflow: 'hidden',
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    padding: 8,
   },
-  linkedImg: { width: '85%', height: '85%' },
+  linkedImg: { width: '88%', height: '88%' },
+  listingAddPos: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    zIndex: 3,
+  },
+  addPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 30,
+    paddingHorizontal: 11,
+    borderRadius: 9,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  addPillInCart: {
+    backgroundColor: Colors.primary,
+  },
+  addPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 0.4,
+  },
+  addPillTextInCart: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.textWhite,
+  },
+  viewAltPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  viewAltPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+  },
+  linkedContent: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
   discountTag: {
     position: 'absolute',
     top: 0,
@@ -1282,8 +1357,8 @@ const styles = StyleSheet.create({
   },
   savingsBadge: {
     position: 'absolute',
-    bottom: 6,
-    left: 6,
+    top: 6,
+    right: 6,
     backgroundColor: '#ecfdf5',
     borderColor: '#a7f3d0',
     borderWidth: 1,
@@ -1293,7 +1368,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   savingsBadgeText: { fontSize: 9, fontWeight: '700', color: '#047857' },
-  linkedName: { fontSize: 13, fontWeight: '700', color: '#1e293b', lineHeight: 18, minHeight: 36, marginTop: 8 },
+  linkedName: { fontSize: 13, fontWeight: '700', color: '#0f172a', lineHeight: 18, minHeight: 36 },
   linkedBrand: { fontSize: 11, fontWeight: '600', color: '#64748b', marginTop: 2 },
   linkedPriceBlock: {
     marginTop: 6,
@@ -1345,25 +1420,4 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  viewAltBtn: {
-    marginTop: 8,
-    paddingVertical: 8,
-    backgroundColor: '#f8fafc',
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  viewAltBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
-  linkedAddBtn: {
-    marginTop: 8,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  linkedAddBtnSuccess: { backgroundColor: Colors.success },
-  linkedBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  linkedBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
 });

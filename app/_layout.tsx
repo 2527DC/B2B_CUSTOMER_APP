@@ -87,21 +87,33 @@ function RootLayoutNav() {
     // rather than a dead-end screen; PENDING is the only state that shows the waiting screen.
     const status = user?.onboarding_status ?? 'COMPLETED';
     const approval = user?.approval_status ?? 'NOT_REQUIRED';
+    const requiresDocs = user?.requires_documents ?? false;
 
     let targetPath: string | null = null;
     if (approval === 'APPROVED') {
       // Fully approved by admin: customer has complete access, never redirect to onboarding
       targetPath = null;
     } else if (approval === 'PENDING') {
-      targetPath = '/onboarding/pending-approval';
+      // If customer has not yet uploaded required documents, guide them to complete documents step first
+      if (requiresDocs && status === 'DETAILS_COMPLETED') {
+        targetPath = '/onboarding/documents';
+      } else if (requiresDocs && (status === 'PHONE_VERIFIED' || !user?.warehouse_id)) {
+        targetPath = '/onboarding/warehouse';
+      } else if (requiresDocs && (status === 'WAREHOUSE_SELECTED' || (!user?.name || user.name.startsWith('Customer ')))) {
+        targetPath = '/onboarding/details';
+      } else {
+        targetPath = '/onboarding/pending-approval';
+      }
     } else if (approval === 'REJECTED') {
       targetPath = '/onboarding/documents';
-    } else if (status === 'PHONE_VERIFIED' && !user?.warehouse_id) {
+    } else if (status === 'PHONE_VERIFIED' || !user?.warehouse_id) {
       targetPath = '/onboarding/warehouse';
-    } else if (status === 'WAREHOUSE_SELECTED' && (!user?.name || user.name.startsWith('Customer '))) {
+    } else if (status === 'WAREHOUSE_SELECTED' || (!user?.name || user.name.startsWith('Customer '))) {
       targetPath = '/onboarding/details';
     } else if (status === 'DETAILS_COMPLETED') {
-      targetPath = '/onboarding/documents';
+      targetPath = requiresDocs ? '/onboarding/documents' : null;
+    } else if (requiresDocs) {
+      targetPath = '/onboarding/pending-approval';
     }
 
     if (targetPath) {

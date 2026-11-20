@@ -184,7 +184,6 @@ const RETURN_STATUS_CHIPS: ReturnStatusChip[] = [
   { id: 'REQUESTED', label: 'Requested', dotColor: '#f59e0b' },
   { id: 'DRIVER_ASSIGNED', label: 'Driver Assigned', dotColor: '#0284c7' },
   { id: 'PICKED_UP', label: 'Picked Up', dotColor: '#6366f1' },
-  { id: 'RECEIVED_AT_WAREHOUSE', label: 'At Warehouse', dotColor: '#8b5cf6' },
   { id: 'COMPLETED', label: 'Refunded', dotColor: '#10b981' },
   { id: 'REJECTED', label: 'Rejected', dotColor: '#ef4444' },
 ];
@@ -274,6 +273,9 @@ export default function OrdersScreen() {
         const st = (r.status || '').toUpperCase();
         if (selectedReturnStatus === 'COMPLETED') {
           return st === 'REFUNDED' || r.is_completed === 1 || r.is_refunded === 1;
+        }
+        if (selectedReturnStatus === 'PICKED_UP') {
+          return st === 'PICKED_UP' || st === 'RECEIVED_AT_WAREHOUSE' || st === 'REFUND_PENDING';
         }
         return st === selectedReturnStatus;
       });
