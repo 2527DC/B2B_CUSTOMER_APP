@@ -838,11 +838,11 @@ export default function OrderDetailsScreen() {
               <Text style={styles.cancelActionBtnText}>Cancel Order</Text>
             </TouchableOpacity>
           </View>
-        ) : !order.is_cancelled && !order.is_rto && order.status !== 'RTO_INITIATED' && order.status !== 'RTO_COMPLETED' && (order.order_status <= 2) ? (
+        ) : !order.is_cancelled && !order.is_rto && order.status !== 'RTO_INITIATED' && order.status !== 'RTO_COMPLETED' && (order.order_status <= 2) && (order.cancellation_window_minutes ?? 60) > 0 ? (
           <View style={styles.infoCardNotice}>
             <ShieldCheck size={16} color="#64748b" />
             <Text style={styles.infoCardNoticeText}>
-              The cancellation window of 60 minutes has elapsed. This order has been forwarded to the warehouse for fulfillment.
+              The cancellation window of {order.cancellation_window_minutes ?? 60} minutes has elapsed. This order has been forwarded to the warehouse for fulfillment.
             </Text>
           </View>
         ) : null}

@@ -5,7 +5,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '@/context/ThemeContext';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AuthProvider, useAuth, getOnboardingTargetPath } from '@/context/AuthContext';
 import { WishlistProvider } from '@/context/WishlistContext';
 import { CartProvider } from '@/context/CartContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -80,41 +80,8 @@ function RootLayoutNav() {
       return;
     }
 
-    // Authenticated: a phone+OTP registration creates the account immediately with defaults, so
-    // "resuming registration" is just this same check on the next login rather than a separate
-    // draft concept. Route to whichever wizard step isn't finished yet, or home once it is.
-    // A REJECTED review goes straight back to the documents step (with the reason shown inline)
-    // rather than a dead-end screen; PENDING is the only state that shows the waiting screen.
-    const status = user?.onboarding_status ?? 'COMPLETED';
-    const approval = user?.approval_status ?? 'NOT_REQUIRED';
-    const requiresDocs = user?.requires_documents ?? false;
-
-    let targetPath: string | null = null;
-    if (approval === 'APPROVED') {
-      // Fully approved by admin: customer has complete access, never redirect to onboarding
-      targetPath = null;
-    } else if (approval === 'PENDING') {
-      // If customer has not yet uploaded required documents, guide them to complete documents step first
-      if (requiresDocs && status === 'DETAILS_COMPLETED') {
-        targetPath = '/onboarding/documents';
-      } else if (requiresDocs && (status === 'PHONE_VERIFIED' || !user?.warehouse_id)) {
-        targetPath = '/onboarding/warehouse';
-      } else if (requiresDocs && (status === 'WAREHOUSE_SELECTED' || (!user?.name || user.name.startsWith('Customer ')))) {
-        targetPath = '/onboarding/details';
-      } else {
-        targetPath = '/onboarding/pending-approval';
-      }
-    } else if (approval === 'REJECTED') {
-      targetPath = '/onboarding/documents';
-    } else if (status === 'PHONE_VERIFIED' || !user?.warehouse_id) {
-      targetPath = '/onboarding/warehouse';
-    } else if (status === 'WAREHOUSE_SELECTED' || (!user?.name || user.name.startsWith('Customer '))) {
-      targetPath = '/onboarding/details';
-    } else if (status === 'DETAILS_COMPLETED') {
-      targetPath = requiresDocs ? '/onboarding/documents' : null;
-    } else if (requiresDocs) {
-      targetPath = '/onboarding/pending-approval';
-    }
+    // Authenticated: route to whichever wizard step isn't finished yet, or home once it is.
+    const targetPath = getOnboardingTargetPath(user);
 
     if (targetPath) {
       const currentPath = `/${segments.join('/')}`;

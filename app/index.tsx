@@ -1,6 +1,6 @@
 import React from 'react';
 import { Redirect } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, getOnboardingTargetPath } from '@/context/AuthContext';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/theme';
 
@@ -26,27 +26,9 @@ export default function RootIndex() {
   }
 
   // 3. Logged in -> check onboarding / approval steps
-  const status = user?.onboarding_status ?? 'COMPLETED';
-  const approval = user?.approval_status ?? 'NOT_REQUIRED';
-  const requiresDocs = user?.requires_documents ?? false;
-
-  if (approval === 'APPROVED') {
-    return <Redirect href="/(tabs)" />;
-  }
-  if (approval === 'REJECTED') {
-    return <Redirect href="/onboarding/documents" />;
-  }
-  if (status === 'PHONE_VERIFIED' || !user?.warehouse_id) {
-    return <Redirect href="/onboarding/warehouse" />;
-  }
-  if (status === 'WAREHOUSE_SELECTED' || (!user?.name || user.name.startsWith('Customer '))) {
-    return <Redirect href="/onboarding/details" />;
-  }
-  if (status === 'DETAILS_COMPLETED' && requiresDocs) {
-    return <Redirect href="/onboarding/documents" />;
-  }
-  if (approval === 'PENDING' || requiresDocs) {
-    return <Redirect href="/onboarding/pending-approval" />;
+  const targetPath = getOnboardingTargetPath(user);
+  if (targetPath) {
+    return <Redirect href={targetPath as any} />;
   }
 
   // 4. Fully authenticated and onboarded -> Dashboard tabs

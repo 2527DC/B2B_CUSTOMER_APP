@@ -35,13 +35,17 @@ export default function DetailsScreen() {
       setError('Please enter your name');
       return;
     }
+    if (!storeName.trim()) {
+      setError('Please enter your store or business name');
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
       await submitOnboardingStep({
         step: 'details',
         name: name.trim(),
-        storeName: storeName.trim() || undefined,
+        storeName: storeName.trim(),
         email: email.trim() || undefined,
         gstNumber: gstNumber.trim() || undefined,
       });
@@ -73,9 +77,12 @@ export default function DetailsScreen() {
           />
           <Field
             icon={<Store size={18} color={Colors.textMuted} />}
-            label="Store / Business Name"
+            label="Store / Business Name *"
             value={storeName}
-            onChangeText={setStoreName}
+            onChangeText={(t: string) => {
+              setStoreName(t);
+              if (error) setError(null);
+            }}
             placeholder="e.g. Sri Lakshmi Provision Store"
           />
           <Field

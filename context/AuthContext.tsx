@@ -51,25 +51,84 @@ export type OnboardingStepPayload =
   | { step: 'details'; name: string; storeName?: string; email?: string; gstNumber?: string }
   | { step: 'documents'; shopImageUrl?: string; documentUrl?: string; gstNumber?: string; skip?: boolean };
 
+export function hasDefaultCustomerName(name?: string | null): boolean {
+  if (!name || !name.trim()) return true;
+  return /^Customer \d+$/.test(name.trim());
+}
+
+/**
+ * Single source of truth for post-auth onboarding & approval routing.
+ * Returns null when the customer has completed onboarding and is cleared to access the app.
+ */
+export function getOnboardingTargetPath(user: User | null): string | null {
+  if (!user) return null;
+
+  const status = user.onboarding_status ?? 'COMPLETED';
+  const approval = user.approval_status ?? 'NOT_REQUIRED';
+  const requiresDocs = Boolean(user.requires_documents);
+
+  // Fully approved by admin: customer has complete access, never redirect to onboarding.
+  if (approval === 'APPROVED') {
+    return null;
+  }
+
+  // Always enforce missing profile steps first, even if approval_status is already PENDING.
+  if (status === 'PHONE_VERIFIED' || !user.warehouse_id) {
+    return '/onboarding/warehouse';
+  }
+
+  if (
+    status === 'WAREHOUSE_SELECTED' ||
+    hasDefaultCustomerName(user.name) ||
+    !user.store_name?.trim()
+  ) {
+    return '/onboarding/details';
+  }
+
+  if (approval === 'REJECTED') {
+    return '/onboarding/documents';
+  }
+
+  const hasSubmittedDocs = Boolean(user.shop_image_url || user.document_url);
+  if (requiresDocs && (status === 'DETAILS_COMPLETED' || !hasSubmittedDocs)) {
+    return '/onboarding/documents';
+  }
+
+  if (status === 'DETAILS_COMPLETED' && !requiresDocs) {
+    return null;
+  }
+
+  if (approval === 'PENDING' || requiresDocs) {
+    return '/onboarding/pending-approval';
+  }
+
+  return null;
+}
+
 // Builds a normalized User from whatever shape the backend's `user` object comes back as
 // (login, register, and onboarding all return the same fields; this keeps them in sync).
 function normalizeUser(rawUser: any, fallbackPhone: string): User {
   const requiresDocuments = rawUser?.requires_documents ?? false;
   const approval = rawUser?.approval_status ?? (requiresDocuments ? 'PENDING' : 'NOT_REQUIRED');
-  let onboarding = rawUser?.onboarding_status ?? 'COMPLETED';
+  const hasWarehouse = rawUser?.warehouse_id != null;
+  const hasName = Boolean(rawUser?.name && !hasDefaultCustomerName(rawUser.name));
+  const hasStore = Boolean(rawUser?.store_name?.trim());
+  const hasDocs = Boolean(rawUser?.shop_image_url || rawUser?.document_url);
+
+  let onboarding: OnboardingStatus = rawUser?.onboarding_status ?? 'COMPLETED';
 
   // A customer is fully onboarded (COMPLETED) only if:
   // 1. They are already APPROVED by admin, OR
   // 2. Documents/approval are NOT required AND they already configured a warehouse, store name, and contact name.
   if (approval === 'APPROVED') {
     onboarding = 'COMPLETED';
-  } else if (
-    !requiresDocuments &&
-    rawUser?.warehouse_id != null &&
-    rawUser?.store_name &&
-    rawUser?.name &&
-    !rawUser?.name?.startsWith('Customer ')
-  ) {
+  } else if (!hasWarehouse) {
+    onboarding = 'PHONE_VERIFIED';
+  } else if (!hasName || !hasStore) {
+    onboarding = 'WAREHOUSE_SELECTED';
+  } else if (requiresDocuments && !hasDocs) {
+    onboarding = 'DETAILS_COMPLETED';
+  } else if (!requiresDocuments) {
     onboarding = 'COMPLETED';
   }
 
@@ -167,8 +226,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (storedToken && storedUser) {
           setAuthToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          const normalizedCachedUser = normalizeUser(parsedUser, parsedUser?.phone || '');
+          setUser(normalizedCachedUser);
           setIsAuthenticated(true);
+
+          // Re-sync with server in background so stale cached onboarding/approval flags never trap the user
+          apiClient
+            .get(URLs.GET_USER)
+            .then((res) => {
+              const rawUser = res.data?.user;
+              if (rawUser) {
+                const freshUser = normalizeUser(rawUser, rawUser?.phone || normalizedCachedUser.phone || '');
+                return persistUserOnly(freshUser);
+              }
+            })
+            .catch(() => {});
         }
       } catch (error) {
         console.error('Failed to load auth session:', error);
@@ -300,20 +373,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const token = response.data.token;
         const rawUser = response.data.user || response.data.customer;
         const normalizedUser: User = normalizeUser(rawUser, cleanPhone);
-
-        // When logging in from login screen: existing users who are already APPROVED
-        // or who do not require approval and are fully set up should not be redirected to onboarding wizard
-        if (mode === 'login') {
-          if (normalizedUser.approval_status === 'APPROVED') {
-            normalizedUser.onboarding_status = 'COMPLETED';
-          } else if (
-            !normalizedUser.requires_documents &&
-            normalizedUser.warehouse_id != null &&
-            normalizedUser.store_name
-          ) {
-            normalizedUser.onboarding_status = 'COMPLETED';
-          }
-        }
 
         await persistSession(token, normalizedUser);
         setIsLoading(false);

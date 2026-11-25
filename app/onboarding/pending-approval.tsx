@@ -26,7 +26,7 @@ import {
   HelpCircle,
   Sparkles,
 } from 'lucide-react-native';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, hasDefaultCustomerName } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 
 export default function PendingApprovalScreen() {
@@ -58,6 +58,10 @@ export default function PendingApprovalScreen() {
   };
 
   const isRejected = user?.approval_status === 'REJECTED';
+  const hasStoreProfile = Boolean(user?.warehouse_id && user?.store_name?.trim() && !hasDefaultCustomerName(user?.name));
+  const hasDocs = Boolean(user?.shop_image_url || user?.document_url);
+  const displayStoreName = user?.store_name?.trim() || (!hasDefaultCustomerName(user?.name) ? user?.name : 'Pending store details');
+  const displayWarehouse = user?.warehouse?.name || (user?.warehouse_id ? `Warehouse #${user.warehouse_id}` : 'Not selected yet');
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
@@ -148,26 +152,40 @@ export default function PendingApprovalScreen() {
 
             {/* Step 2 */}
             <View style={styles.timelineItem}>
-              <View style={styles.timelineIconActive}>
-                <CheckCircle2 size={16} color="#ffffff" strokeWidth={2.5} />
+              <View style={hasStoreProfile ? styles.timelineIconActive : styles.timelineIconPending}>
+                {hasStoreProfile ? (
+                  <CheckCircle2 size={16} color={Colors.textWhite} strokeWidth={2.5} />
+                ) : (
+                  <Clock size={15} color="#b45309" strokeWidth={2.5} />
+                )}
               </View>
               <View style={styles.timelineContent}>
-                <Text style={styles.timelineStepTitle}>Store Profile</Text>
+                <Text style={[styles.timelineStepTitle, !hasStoreProfile && styles.timelineStepTitlePending]}>
+                  Store Profile
+                </Text>
                 <Text style={styles.timelineStepSubtitle}>
-                  {user?.store_name || user?.name || 'Store details registered'}
+                  {displayStoreName}
                 </Text>
               </View>
             </View>
-            <View style={styles.timelineConnectorActive} />
+            <View style={hasStoreProfile ? styles.timelineConnectorActive : styles.timelineConnectorPending} />
 
             {/* Step 3 */}
             <View style={styles.timelineItem}>
-              <View style={styles.timelineIconActive}>
-                <CheckCircle2 size={16} color="#ffffff" strokeWidth={2.5} />
+              <View style={hasDocs ? styles.timelineIconActive : styles.timelineIconPending}>
+                {hasDocs ? (
+                  <CheckCircle2 size={16} color={Colors.textWhite} strokeWidth={2.5} />
+                ) : (
+                  <Clock size={15} color="#b45309" strokeWidth={2.5} />
+                )}
               </View>
               <View style={styles.timelineContent}>
-                <Text style={styles.timelineStepTitle}>Documents Submitted</Text>
-                <Text style={styles.timelineStepSubtitle}>Shop & business documents uploaded</Text>
+                <Text style={[styles.timelineStepTitle, !hasDocs && styles.timelineStepTitlePending]}>
+                  {hasDocs ? 'Documents Submitted' : 'Documents Pending'}
+                </Text>
+                <Text style={styles.timelineStepSubtitle}>
+                  {hasDocs ? 'Shop & business documents uploaded' : 'Shop & business KYC upload required'}
+                </Text>
               </View>
             </View>
             <View style={styles.timelineConnectorPending} />
@@ -215,7 +233,7 @@ export default function PendingApprovalScreen() {
               </View>
               <View style={styles.summaryTextCol}>
                 <Text style={styles.summaryLabel}>Store / Business Name</Text>
-                <Text style={styles.summaryValue}>{user?.store_name || user?.name || 'Retail Store'}</Text>
+                <Text style={styles.summaryValue}>{displayStoreName}</Text>
               </View>
             </View>
 
@@ -240,7 +258,7 @@ export default function PendingApprovalScreen() {
               <View style={styles.summaryTextCol}>
                 <Text style={styles.summaryLabel}>Fulfilment Hub</Text>
                 <Text style={styles.summaryValue}>
-                  {user?.warehouse?.name || 'Dhatri Regional Hub'}
+                  {displayWarehouse}
                 </Text>
               </View>
             </View>

@@ -5,11 +5,11 @@ import { Home, LayoutGrid, ShoppingCart, Package, User } from 'lucide-react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/theme';
 import { useCart } from '@/context/CartContext';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, getOnboardingTargetPath } from '@/context/AuthContext';
 import { useBottomSpacing } from '@/hooks/useBottomSpacing';
 
 export default function TabLayout() {
-  const { isAuthenticated, isLoading, isOnboarded } = useAuth();
+  const { isAuthenticated, isLoading, isOnboarded, user } = useAuth();
   const { tabBarHeight, tabBottomInset } = useBottomSpacing();
   const activeColor = Colors.primary; // #4f7942
   const inactiveColor = Colors.textSecondary; // #64748b
@@ -26,6 +26,11 @@ export default function TabLayout() {
 
   if (!isAuthenticated) {
     return <Redirect href="/login" />;
+  }
+
+  const onboardingRedirect = getOnboardingTargetPath(user);
+  if (onboardingRedirect) {
+    return <Redirect href={onboardingRedirect as any} />;
   }
 
   return (

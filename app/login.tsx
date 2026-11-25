@@ -153,9 +153,7 @@ export default function LoginScreen() {
       } else {
         await login(phone.trim(), password.trim());
       }
-
-      // Successful login navigates directly to main app tabs
-      router.replace('/(tabs)');
+      // RootLayoutNav in app/_layout.tsx routes based on onboarding/approval state once user is set.
     } catch (error: any) {
       console.error('Login error details:', error);
       const errorMessage = error?.message || 'Login failed. Please check your credentials.';
