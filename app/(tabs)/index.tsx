@@ -157,30 +157,13 @@ const resolveCategoryImage = (cat: any): string => {
   return getFallbackBanner(cat.name || '');
 };
 
-// ─── Category Drilldown Stack Item ───────────────────────────────────────────
+// ─── Category Selection Stack Item ───────────────────────────────────────────
 interface CategoryLevel {
   id: string;
   name: string;
-  isLeaf: boolean; // false = has subcategories, true = show products
+  isLeaf: boolean;
   subcategories: SubcategoryItem[];
   products: Product[];
-}
-
-function DrillCardImage({ uri, name }: { uri?: string; name: string }) {
-  const [failed, setFailed] = useState(false);
-  const fallback = getFallbackBanner(name);
-  const isBrokenLocalUpload = typeof uri === 'string' && uri.includes('/uploads/');
-  const activeUri = !failed && uri && uri.trim().length > 0 && !isBrokenLocalUpload ? uri : fallback;
-
-  return (
-    <Image
-      key={activeUri}
-      source={{ uri: activeUri }}
-      style={styles.subcatCardImage}
-      resizeMode="contain"
-      onError={() => setFailed(true)}
-    />
-  );
 }
 
 export default function HomeScreen() {
@@ -395,115 +378,43 @@ export default function HomeScreen() {
   };
 
   /**
-   * Recursive Category Navigation (Categories vs Products Router):
-   * - If category has children under it -> Display child subcategories!
-   * - If category has no children (leaf) -> Display products!
+   * Direct Category Selection:
+   * Always loads & displays products for the selected category directly
+   * (never shows intermediate subcategory listing screen).
    */
   const handleCategoryPress = async (item: SubcategoryItem) => {
     setSelectedBrand(null);
     setSelectedBrandName(null);
 
-    const normalized = normalizeCategories(rawCategories);
-    const directChildren = normalized.filter(
-      (c) => String(c.parentId) === String(item.id)
-    );
+    const initialProducts = item.products && item.products.length > 0 ? item.products : [];
 
-    const hasChildren = directChildren.length > 0;
-
-    if (hasChildren) {
-      // ── Level has subcategories: Show subcategories grid ──
-      const childCards: SubcategoryItem[] = directChildren.map((ch) => ({
-        id: String(ch.id),
-        name: ch.name,
-        image: resolveCategoryImage(ch),
-        categoryId: String(item.id),
-        categoryName: item.name,
-        productCount: ch.AllProducts?.length || 0,
-        products: (ch.AllProducts || []).map(toProduct),
-      }));
-
-      setCategoryTrail((prev) => [
-        ...prev,
-        {
-          id: String(item.id),
-          name: item.name,
-          isLeaf: false,
-          subcategories: childCards,
-          products: [],
-        },
-      ]);
-    } else {
-      // ── Leaf node: Load & show respected products listing ──
-      const initialProducts = item.products && item.products.length > 0 ? item.products : [];
-
-      setCategoryTrail((prev) => [
-        ...prev,
-        {
-          id: String(item.id),
-          name: item.name,
-          isLeaf: true,
-          subcategories: [],
-          products: initialProducts,
-        },
-      ]);
-
-      if (initialProducts.length === 0) {
-        setCategoryProductsLoading(true);
-        try {
-          const res = await apiClient.get(`${URLs.ALL_CATEGORY}/${item.id}`);
-          const rawProds = res.data?.data?.AllProducts ?? [];
-          const mapped = rawProds.map(toProduct);
-
-          setCategoryTrail((prev) => {
-            if (prev.length === 0) return prev;
-            const updated = [...prev];
-            updated[updated.length - 1] = {
-              ...updated[updated.length - 1],
-              products: mapped,
-            };
-            return updated;
-          });
-        } catch (e: any) {
-          console.error('[HomeScreen] Error fetching leaf products:', e?.message);
-        } finally {
-          setCategoryProductsLoading(false);
-        }
-      }
-    }
-  };
-
-  /**
-   * Browse all products directly under a parent category
-   */
-  const handleViewAllCategoryProducts = async (level: CategoryLevel) => {
-    setCategoryTrail((prev) => [
-      ...prev,
+    setCategoryTrail([
       {
-        id: `${level.id}-all`,
-        name: `All ${level.name}`,
+        id: String(item.id),
+        name: item.name,
         isLeaf: true,
         subcategories: [],
-        products: [],
+        products: initialProducts,
       },
     ]);
 
     setCategoryProductsLoading(true);
     try {
-      const res = await apiClient.get(`${URLs.ALL_CATEGORY}/${level.id}`);
+      const res = await apiClient.get(`${URLs.ALL_CATEGORY}/${item.id}`);
       const rawProds = res.data?.data?.AllProducts ?? [];
       const mapped = rawProds.map(toProduct);
 
-      setCategoryTrail((prev) => {
-        if (prev.length === 0) return prev;
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          ...updated[updated.length - 1],
+      setCategoryTrail([
+        {
+          id: String(item.id),
+          name: item.name,
+          isLeaf: true,
+          subcategories: [],
           products: mapped,
-        };
-        return updated;
-      });
+        },
+      ]);
     } catch (e: any) {
-      console.error('[HomeScreen] Error fetching all parent products:', e?.message);
+      console.error('[HomeScreen] Error fetching category products:', e?.message);
     } finally {
       setCategoryProductsLoading(false);
     }
@@ -815,115 +726,59 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Drilldown Content */}
-          {!currentLevel.isLeaf ? (
-            /* Condition A: Category HAS Subcategories -> Render Subcategories Grid in Enclosed Card */
-            <View style={styles.subcatContainer}>
-              <View style={styles.subcatCardBox}>
-                <View style={styles.subcatHeader}>
-                  <Text style={styles.subcatSectionTitle}>{currentLevel.name}</Text>
-                  <Text style={styles.subcatSectionSubtitle}>
-                    Select a subcategory or browse all products below
-                  </Text>
-                </View>
-
-                {/* View All Products under this parent */}
-                <TouchableOpacity
-                  style={styles.allParentProductsBanner}
-                  activeOpacity={0.82}
-                  onPress={() => handleViewAllCategoryProducts(currentLevel)}
-                >
-                  <View style={styles.allParentProductsLeft}>
-                    <View style={styles.allParentProductsIconWrap}>
-                      <LayoutGrid size={16} color={Colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.allParentProductsTitle}>
-                        View All {currentLevel.name} Products
-                      </Text>
-                      <Text style={styles.allParentProductsSub}>
-                        Browse complete catalog under {currentLevel.name}
-                      </Text>
-                    </View>
-                  </View>
-                  <ChevronRight size={16} color={Colors.primary} />
-                </TouchableOpacity>
-
-                {/* 3-Column Grid matching Home Udaan Card */}
-                <View style={styles.subcatGridWrap}>
-                  {currentLevel.subcategories.map((subcat) => (
-                    <TouchableOpacity
-                      key={`drill-${subcat.id}`}
-                      style={styles.subcatTile}
-                      activeOpacity={0.82}
-                      onPress={() => handleCategoryPress(subcat)}
-                    >
-                      <View style={styles.subcatTileImageWrap}>
-                        <DrillCardImage uri={subcat.image} name={subcat.name} />
-                      </View>
-                      <Text style={styles.subcatTileTitle} numberOfLines={2}>
-                        {subcat.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </View>
-          ) : (
-            /* Condition B: Category has NO subcategories -> Render Respected Products Listing */
-            <View>
-              <View style={styles.filteredHeader}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.filteredTitleRow}>
-                    <Text style={styles.sectionTitle}>{currentLevel.name}</Text>
-                    {!categoryProductsLoading && (
-                      <View style={styles.countBadge}>
-                        <Text style={styles.countBadgeText}>{currentLevel.products.length} items</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.filteredSubtitle}>Showing all products in {currentLevel.name}</Text>
-                </View>
-              </View>
-
-              {categoryProductsLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={Colors.primary} />
-                  <Text style={styles.loadingText}>Loading {currentLevel.name} products...</Text>
-                </View>
-              ) : currentLevel.products.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <PackageOpen size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
-                  <Text style={styles.emptyTitle}>No Products Found</Text>
-                  <Text style={styles.emptySubtitle}>
-                    No products are currently available in {currentLevel.name}.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.showAllBtn}
-                    onPress={handleResetToRoot}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.showAllBtnText}>Show All Categories</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <FlatList
-                  data={currentLevel.products}
-                  keyExtractor={(item, index) => `leaf-prod-${item.id}-${index}`}
-                  renderItem={({ item }) => (
-                    <View style={styles.gridItem}>
-                      <ProductCard product={item} viewMode="vertical" />
+          {/* Direct Products Listing for Selected Category */}
+          <View>
+            <View style={styles.filteredHeader}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.filteredTitleRow}>
+                  <Text style={styles.sectionTitle}>{currentLevel.name}</Text>
+                  {!categoryProductsLoading && (
+                    <View style={styles.countBadge}>
+                      <Text style={styles.countBadgeText}>{currentLevel.products.length} items</Text>
                     </View>
                   )}
-                  numColumns={2}
-                  columnWrapperStyle={styles.gridRow}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={[styles.listContent, { paddingBottom: scrollPaddingBottom }]}
-                  scrollEnabled={false}
-                />
-              )}
+                </View>
+                <Text style={styles.filteredSubtitle}>Showing products in {currentLevel.name}</Text>
+              </View>
             </View>
-          )}
+
+            {categoryProductsLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.loadingText}>Loading {currentLevel.name} products...</Text>
+              </View>
+            ) : currentLevel.products.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <PackageOpen size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
+                <Text style={styles.emptyTitle}>No Products Found</Text>
+                <Text style={styles.emptySubtitle}>
+                  No products are currently available in {currentLevel.name}.
+                </Text>
+                <TouchableOpacity
+                  style={styles.showAllBtn}
+                  onPress={handleResetToRoot}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.showAllBtnText}>Show All Categories</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList
+                data={currentLevel.products}
+                keyExtractor={(item, index) => `leaf-prod-${item.id}-${index}`}
+                renderItem={({ item }) => (
+                  <View style={styles.gridItem}>
+                    <ProductCard product={item} viewMode="vertical" />
+                  </View>
+                )}
+                numColumns={2}
+                columnWrapperStyle={styles.gridRow}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[styles.listContent, { paddingBottom: scrollPaddingBottom }]}
+                scrollEnabled={false}
+              />
+            )}
+          </View>
         </View>
       ) : (
         /* ── Root Home: Category Rows (Parent + Subcategories in each row) ── */
@@ -1136,114 +991,5 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '600',
     color: '#64748b',
-  },
-
-  // ─── Subcategories Grid (When category has children) ───────────────────────
-  subcatContainer: {
-    paddingHorizontal: 12,
-    paddingTop: 4,
-    paddingBottom: 20,
-  },
-  subcatCardBox: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e8edf2',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  subcatHeader: {
-    marginBottom: 12,
-  },
-  subcatSectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.3,
-  },
-  subcatSectionSubtitle: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  allParentProductsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 14,
-  },
-  allParentProductsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-    gap: 10,
-  },
-  allParentProductsIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#dcfce7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  allParentProductsTitle: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#15803d',
-  },
-  allParentProductsSub: {
-    fontSize: 11,
-    color: '#166534',
-    marginTop: 1,
-  },
-  subcatGridWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  subcatTile: {
-    width: '30.8%',
-    alignItems: 'center',
-  },
-  subcatTileImageWrap: {
-    width: '100%',
-    aspectRatio: 1.15,
-    borderRadius: 14,
-    backgroundColor: '#F0F4F1',
-    borderWidth: 1,
-    borderColor: '#e0eae2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 6,
-    shadowColor: '#142918',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  subcatCardImage: {
-    width: '88%',
-    height: '88%',
-  },
-  subcatTileTitle: {
-    marginTop: 6,
-    fontSize: 12,
-    lineHeight: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-    textAlign: 'center',
   },
 });
