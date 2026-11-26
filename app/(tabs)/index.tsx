@@ -40,7 +40,7 @@ const THEME_BANNERS: Record<string, string> = {
   grocery: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80',
   snacks: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&auto=format&fit=crop&q=80',
   cleaning: 'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=600&auto=format&fit=crop&q=80',
-  default: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80',
+  default: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80',
 };
 
 const getFallbackBanner = (name: string): string => {
@@ -48,7 +48,7 @@ const getFallbackBanner = (name: string): string => {
   if (lower.includes('flour') || lower.includes('atta') || lower.includes('maida') || lower.includes('wheat') || lower.includes('besan') || lower.includes('sooji') || lower.includes('rava')) return THEME_BANNERS.flour;
   if (lower.includes('sugar') || lower.includes('jaggery') || lower.includes('sweet')) return THEME_BANNERS.sugar;
   if (lower.includes('dal') || lower.includes('pulse') || lower.includes('lentil') || lower.includes('gram') || lower.includes('chana') || lower.includes('urad') || lower.includes('toor') || lower.includes('moong')) return THEME_BANNERS.dal;
-  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati')) return THEME_BANNERS.rice;
+  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati') || lower.includes('brown') || lower.includes('boild') || lower.includes('boiled')) return THEME_BANNERS.rice;
   if (lower.includes('oil') || lower.includes('ghee')) return THEME_BANNERS.oils;
   if (lower.includes('spice') || lower.includes('masala') || lower.includes('chilli') || lower.includes('turmeric') || lower.includes('pepper')) return THEME_BANNERS.spices;
   if (lower.includes('juice') || lower.includes('drink') || lower.includes('beverage') || lower.includes('soda')) return THEME_BANNERS.drinks;
@@ -59,7 +59,7 @@ const getFallbackBanner = (name: string): string => {
   if (lower.includes('snack') || lower.includes('biscuit') || lower.includes('cookie') || lower.includes('namkeen')) return THEME_BANNERS.snacks;
   if (lower.includes('clean') || lower.includes('detergent') || lower.includes('dish')) return THEME_BANNERS.cleaning;
   if (lower.includes('grocery') || lower.includes('staple')) return THEME_BANNERS.grocery;
-  return THEME_BANNERS.default;
+  return THEME_BANNERS.rice;
 };
 
 // ─── Raw API response types ──────────────────────────────────────────────────
@@ -124,13 +124,20 @@ const toProduct = (item: any): Product => {
 
 // ─── Multi-tier image resolver ────────────────────────────────────────────────
 const resolveCategoryImage = (cat: any): string => {
+  // 1. Prefer real product thumbnail from S3 if available
+  const firstProd = cat.AllProducts?.[0]?.product ?? cat.AllProducts?.[0];
+  const prodThumb = firstProd?.thumbnail_image_source;
+  if (prodThumb && (prodThumb.startsWith('http') || prodThumb.startsWith('//')) && !prodThumb.includes('/uploads/')) {
+    return prodThumb;
+  }
+
   const directImage =
     cat.imageUrl ||
     cat.image ||
     (cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('/')) ? cat.icon : null) ||
     cat.category_image?.image;
 
-  if (directImage && String(directImage).trim() !== '') {
+  if (directImage && String(directImage).trim() !== '' && !String(directImage).includes('/uploads/')) {
     return assetUrl(directImage);
   }
 
@@ -142,10 +149,9 @@ const resolveCategoryImage = (cat: any): string => {
   if (CATEGORY_IMAGE_OVERRIDES[idKey]) return CATEGORY_IMAGE_OVERRIDES[idKey];
   if (CATEGORY_IMAGE_OVERRIDES[nameKey]) return CATEGORY_IMAGE_OVERRIDES[nameKey];
 
-  const firstProd = cat.AllProducts?.[0]?.product ?? cat.AllProducts?.[0];
   if (firstProd?.thumbnail_image_source) {
     const u = assetUrl(firstProd.thumbnail_image_source);
-    if (u) return u;
+    if (u && !u.includes('/uploads/')) return u;
   }
 
   return getFallbackBanner(cat.name || '');
@@ -163,13 +169,15 @@ interface CategoryLevel {
 function DrillCardImage({ uri, name }: { uri?: string; name: string }) {
   const [failed, setFailed] = useState(false);
   const fallback = getFallbackBanner(name);
-  const activeUri = !failed && uri && uri.trim().length > 0 ? uri : fallback;
+  const isBrokenLocalUpload = typeof uri === 'string' && uri.includes('/uploads/');
+  const activeUri = !failed && uri && uri.trim().length > 0 && !isBrokenLocalUpload ? uri : fallback;
 
   return (
     <Image
+      key={activeUri}
       source={{ uri: activeUri }}
       style={styles.subcatCardImage}
-      resizeMode="cover"
+      resizeMode="contain"
       onError={() => setFailed(true)}
     />
   );
@@ -783,55 +791,56 @@ export default function HomeScreen() {
 
           {/* Drilldown Content */}
           {!currentLevel.isLeaf ? (
-            /* Condition A: Category HAS Subcategories -> Render Subcategories Grid */
+            /* Condition A: Category HAS Subcategories -> Render Subcategories Grid in Enclosed Card */
             <View style={styles.subcatContainer}>
-              <View style={styles.subcatHeader}>
-                <Text style={styles.subcatSectionTitle}>{currentLevel.name}</Text>
-                <Text style={styles.subcatSectionSubtitle}>
-                  Select a subcategory or browse all products below
-                </Text>
-              </View>
-
-              {/* View All Products under this parent */}
-              <TouchableOpacity
-                style={styles.allParentProductsBanner}
-                activeOpacity={0.82}
-                onPress={() => handleViewAllCategoryProducts(currentLevel)}
-              >
-                <View style={styles.allParentProductsLeft}>
-                  <View style={styles.allParentProductsIconWrap}>
-                    <LayoutGrid size={18} color={Colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.allParentProductsTitle}>
-                      View All {currentLevel.name} Products
-                    </Text>
-                    <Text style={styles.allParentProductsSub}>
-                      Browse complete catalog under {currentLevel.name}
-                    </Text>
-                  </View>
+              <View style={styles.subcatCardBox}>
+                <View style={styles.subcatHeader}>
+                  <Text style={styles.subcatSectionTitle}>{currentLevel.name}</Text>
+                  <Text style={styles.subcatSectionSubtitle}>
+                    Select a subcategory or browse all products below
+                  </Text>
                 </View>
-                <ChevronRight size={18} color={Colors.primary} />
-              </TouchableOpacity>
 
-              <View style={styles.subcatGridWrap}>
-                {currentLevel.subcategories.map((subcat) => (
-                  <TouchableOpacity
-                    key={`drill-${subcat.id}`}
-                    style={styles.subcatCard}
-                    activeOpacity={0.82}
-                    onPress={() => handleCategoryPress(subcat)}
-                  >
-                    <View style={styles.subcatCardImageWrapper}>
-                      <DrillCardImage uri={subcat.image} name={subcat.name} />
+                {/* View All Products under this parent */}
+                <TouchableOpacity
+                  style={styles.allParentProductsBanner}
+                  activeOpacity={0.82}
+                  onPress={() => handleViewAllCategoryProducts(currentLevel)}
+                >
+                  <View style={styles.allParentProductsLeft}>
+                    <View style={styles.allParentProductsIconWrap}>
+                      <LayoutGrid size={16} color={Colors.primary} />
                     </View>
-                    <View style={styles.subcatCardLabelWrapper}>
-                      <Text style={styles.subcatCardTitle} numberOfLines={2}>
-                        {subcat.name}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.allParentProductsTitle}>
+                        View All {currentLevel.name} Products
+                      </Text>
+                      <Text style={styles.allParentProductsSub}>
+                        Browse complete catalog under {currentLevel.name}
                       </Text>
                     </View>
-                  </TouchableOpacity>
-                ))}
+                  </View>
+                  <ChevronRight size={16} color={Colors.primary} />
+                </TouchableOpacity>
+
+                {/* 3-Column Grid matching Home Udaan Card */}
+                <View style={styles.subcatGridWrap}>
+                  {currentLevel.subcategories.map((subcat) => (
+                    <TouchableOpacity
+                      key={`drill-${subcat.id}`}
+                      style={styles.subcatTile}
+                      activeOpacity={0.82}
+                      onPress={() => handleCategoryPress(subcat)}
+                    >
+                      <View style={styles.subcatTileImageWrap}>
+                        <DrillCardImage uri={subcat.image} name={subcat.name} />
+                      </View>
+                      <Text style={styles.subcatTileTitle} numberOfLines={2}>
+                        {subcat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </View>
           ) : (
@@ -904,7 +913,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f1f5f9',
   },
   scrollContent: {
     flexGrow: 1,
@@ -1105,21 +1114,35 @@ const styles = StyleSheet.create({
 
   // ─── Subcategories Grid (When category has children) ───────────────────────
   subcatContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    paddingBottom: 20,
+  },
+  subcatCardBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e8edf2',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   subcatHeader: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   subcatSectionTitle: {
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: '800',
     color: '#0f172a',
     letterSpacing: -0.3,
   },
   subcatSectionSubtitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     color: '#64748b',
     marginTop: 2,
   },
@@ -1127,88 +1150,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: Colors.primary10 ? Colors.primary : '#22c55e',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 16,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 14,
   },
   allParentProductsLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 10,
-    gap: 12,
+    marginRight: 8,
+    gap: 10,
   },
   allParentProductsIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#ecfdf5',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#dcfce7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   allParentProductsTitle: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#15803d',
   },
   allParentProductsSub: {
-    fontSize: 11.5,
-    color: '#64748b',
+    fontSize: 11,
+    color: '#166534',
     marginTop: 1,
   },
   subcatGridWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
   },
-  subcatCard: {
-    width: '48%',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-    marginBottom: 4,
+  subcatTile: {
+    width: '30.8%',
+    alignItems: 'center',
   },
-  subcatCardImageWrapper: {
+  subcatTileImageWrap: {
     width: '100%',
-    height: 120,
-    backgroundColor: '#f8fafc',
+    aspectRatio: 1.15,
+    borderRadius: 14,
+    backgroundColor: '#F0F4F1',
+    borderWidth: 1,
+    borderColor: '#e0eae2',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    padding: 6,
+    shadowColor: '#142918',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   subcatCardImage: {
-    width: '100%',
-    height: '100%',
+    width: '88%',
+    height: '88%',
   },
-  subcatCardLabelWrapper: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-  },
-  subcatCardTitle: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#0f172a',
+  subcatTileTitle: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '600',
+    color: '#1e293b',
     textAlign: 'center',
-    lineHeight: 18,
   },
 });

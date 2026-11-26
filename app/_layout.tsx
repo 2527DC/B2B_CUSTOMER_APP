@@ -85,8 +85,27 @@ function RootLayoutNav() {
 
     if (targetPath) {
       const currentPath = `/${segments.join('/')}`;
-      if (currentPath !== targetPath) {
+      if (!inOnboardingGroup) {
+        // Incoming from outside onboarding (e.g. login or cold start): redirect to required step
         router.replace(targetPath as any);
+      } else {
+        // User is currently inside the onboarding group. Allow backward navigation to previous steps.
+        const stepRank: Record<string, number> = {
+          '/onboarding/warehouse': 1,
+          '/onboarding/details': 2,
+          '/onboarding/documents': 3,
+          '/onboarding/pending-approval': 4,
+        };
+        const currentRank = stepRank[currentPath] || 0;
+        const targetRank = stepRank[targetPath] || 0;
+
+        if (targetPath === '/onboarding/pending-approval' && currentPath !== '/onboarding/pending-approval') {
+          router.replace('/onboarding/pending-approval');
+        } else if (currentRank > targetRank) {
+          // Attempted to skip ahead to an uncompleted future step; redirect back to target
+          router.replace(targetPath as any);
+        }
+        // If currentRank <= targetRank, user is allowed to navigate and edit previous steps freely.
       }
     } else if (inAuthGroup || inOnboardingGroup) {
       // Registration/onboarding is fully done: leave the wizard and land on the home tabs.

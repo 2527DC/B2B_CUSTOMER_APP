@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, FileImage, AlertTriangle } from 'lucide-react-native';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, getOnboardingTargetPath } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 import OnboardingScaffold from '@/components/OnboardingScaffold';
 
@@ -10,11 +11,13 @@ interface PickedAsset {
   uri: string;
   fileName: string;
   mimeType: string;
+  base64?: string | null;
 }
 
 // Final step of the post-OTP registration wizard. Document upload is mandatory — store
 // owners must upload their shop photo and/or business license to complete registration.
 export default function DocumentsScreen() {
+  const router = useRouter();
   const { user, uploadDocument, submitOnboardingStep } = useAuth();
   const [shopImage, setShopImage] = useState<PickedAsset | null>(null);
   const [document, setDocument] = useState<PickedAsset | null>(null);
@@ -30,7 +33,13 @@ export default function DocumentsScreen() {
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.7,
+        quality: 0.6,
+        base64: true,
+      });
+      console.log('📸 ImagePicker result:', {
+        canceled: result.canceled,
+        assetsCount: result.assets?.length,
+        uri: result.assets?.[0]?.uri,
       });
       if (result.canceled || !result.assets?.length) return;
       const asset = result.assets[0];
@@ -38,6 +47,7 @@ export default function DocumentsScreen() {
         uri: asset.uri,
         fileName: asset.fileName || `photo-${Date.now()}.jpg`,
         mimeType: asset.mimeType || 'image/jpeg',
+        base64: asset.base64,
       });
     } catch (err) {
       Alert.alert('Error', 'Could not open the photo library. Please try again.');
@@ -57,18 +67,34 @@ export default function DocumentsScreen() {
       let documentUrl: string | undefined;
 
       if (shopImage) {
-        shopImageUrl = await uploadDocument(shopImage.uri, shopImage.fileName, shopImage.mimeType);
+        shopImageUrl = await uploadDocument(
+          shopImage.uri,
+          shopImage.fileName,
+          shopImage.mimeType,
+          shopImage.base64
+        );
       }
       if (document) {
-        documentUrl = await uploadDocument(document.uri, document.fileName, document.mimeType);
+        documentUrl = await uploadDocument(
+          document.uri,
+          document.fileName,
+          document.mimeType,
+          document.base64
+        );
       }
 
-      await submitOnboardingStep({
+      const updatedUser = await submitOnboardingStep({
         step: 'documents',
         shopImageUrl,
         documentUrl,
         skip: false,
       });
+      const target = getOnboardingTargetPath(updatedUser);
+      if (target) {
+        router.replace(target as any);
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to submit your documents. Please try again.');
     } finally {
@@ -82,6 +108,7 @@ export default function DocumentsScreen() {
       totalSteps={3}
       title="Upload Business Documents *"
       subtitle="Upload your shop photo or business KYC proof (GST, Trade License, FSSAI) to complete registration."
+      onBack={() => router.replace('/onboarding/details')}
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {user?.rejection_reason && (

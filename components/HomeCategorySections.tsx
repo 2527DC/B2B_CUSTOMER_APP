@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Image,
   TouchableOpacity,
 } from 'react-native';
@@ -26,7 +25,7 @@ const DEFAULT_CATEGORY_FALLBACKS: Record<string, string> = {
   grocery: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80',
   snacks: 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&auto=format&fit=crop&q=80',
   cleaning: 'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=600&auto=format&fit=crop&q=80',
-  default: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&auto=format&fit=crop&q=80',
+  default: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80',
 };
 
 const getCategoryPhotoFallback = (name?: string): string => {
@@ -34,7 +33,7 @@ const getCategoryPhotoFallback = (name?: string): string => {
   if (lower.includes('flour') || lower.includes('atta') || lower.includes('maida') || lower.includes('wheat') || lower.includes('besan') || lower.includes('sooji') || lower.includes('rava')) return DEFAULT_CATEGORY_FALLBACKS.flour;
   if (lower.includes('sugar') || lower.includes('jaggery') || lower.includes('sweet')) return DEFAULT_CATEGORY_FALLBACKS.sugar;
   if (lower.includes('dal') || lower.includes('pulse') || lower.includes('lentil') || lower.includes('gram') || lower.includes('chana') || lower.includes('urad') || lower.includes('toor') || lower.includes('moong')) return DEFAULT_CATEGORY_FALLBACKS.dal;
-  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati')) return DEFAULT_CATEGORY_FALLBACKS.rice;
+  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati') || lower.includes('brown') || lower.includes('boild') || lower.includes('boiled')) return DEFAULT_CATEGORY_FALLBACKS.rice;
   if (lower.includes('oil') || lower.includes('ghee')) return DEFAULT_CATEGORY_FALLBACKS.oils;
   if (lower.includes('spice') || lower.includes('masala') || lower.includes('chilli') || lower.includes('turmeric') || lower.includes('pepper')) return DEFAULT_CATEGORY_FALLBACKS.spices;
   if (lower.includes('juice') || lower.includes('drink') || lower.includes('beverage') || lower.includes('soda')) return DEFAULT_CATEGORY_FALLBACKS.drinks;
@@ -45,22 +44,45 @@ const getCategoryPhotoFallback = (name?: string): string => {
   if (lower.includes('snack') || lower.includes('biscuit') || lower.includes('cookie') || lower.includes('namkeen')) return DEFAULT_CATEGORY_FALLBACKS.snacks;
   if (lower.includes('clean') || lower.includes('detergent') || lower.includes('dish')) return DEFAULT_CATEGORY_FALLBACKS.cleaning;
   if (lower.includes('grocery') || lower.includes('staple')) return DEFAULT_CATEGORY_FALLBACKS.grocery;
-  return DEFAULT_CATEGORY_FALLBACKS.default;
+  return DEFAULT_CATEGORY_FALLBACKS.rice;
+};
+
+// Light greyish-green (soft sage) background matching Dhatri's brand aesthetic
+const THEME_TINT = '#F0F4F1';
+
+const getTintForCategory = (_name?: string, _index: number = 0): string => {
+  return THEME_TINT;
 };
 
 /**
- * Category Card Image with automatic fallback
+ * Format section title like Udaan:
+ * "Cereals, Atta & Dals" or "Oil, Sugar & Salt"
+ */
+function formatSectionTitle(rawName: string): string {
+  const parts = (rawName || '').split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return 'Categories';
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} & ${parts[1]}`;
+  if (parts.length === 3) return `${parts[0]}, ${parts[1]} & ${parts[2]}`;
+  // 4+ items: display first 2 and 3rd with &
+  return `${parts[0]}, ${parts[1]} & ${parts[2]}`;
+}
+
+/**
+ * Category Card Image with automatic fallback and contain fit
  */
 function CategoryCardImage({ uri, name }: { uri?: string; name: string }) {
   const [loadFailed, setLoadFailed] = useState(false);
   const fallback = getCategoryPhotoFallback(name);
-  const activeUri = !loadFailed && uri && uri.trim().length > 0 ? uri : fallback;
+  const isBrokenLocalUpload = typeof uri === 'string' && uri.includes('/uploads/');
+  const activeUri = !loadFailed && uri && uri.trim().length > 0 && !isBrokenLocalUpload ? uri : fallback;
 
   return (
     <Image
+      key={activeUri}
       source={{ uri: activeUri }}
       style={styles.cardImage}
-      resizeMode="cover"
+      resizeMode="contain"
       onError={() => setLoadFailed(true)}
     />
   );
@@ -100,67 +122,51 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
           return null;
         }
 
-        // Parse section name: extract parent title and subcategory summary
-        const parts = (section.name || '').split(',').map((p) => p.trim()).filter(Boolean);
-        const mainTitle = parts[0] || 'Categories';
-        const subcatSummary = parts.slice(1).join(' • ');
+        const sectionHeading = formatSectionTitle(section.name);
 
         return (
-          <View key={`sec-${section.id}`} style={styles.sectionContainer}>
-            {/* Modern Section Header */}
+          <View key={`sec-${section.id}`} style={styles.sectionCard}>
+            {/* Header: Section Title (e.g. "Cereals, Atta & Dals") */}
             <View style={styles.headerRow}>
-              <View style={styles.titleColumn}>
-                <View style={styles.titleBadgeRow}>
-                  <View style={styles.titleAccentBar} />
-                  <Text style={styles.sectionTitle} numberOfLines={1}>
-                    {mainTitle}
-                  </Text>
-                </View>
-                {subcatSummary ? (
-                  <Text style={styles.sectionSubtitle} numberOfLines={1}>
-                    {subcatSummary}
-                  </Text>
-                ) : null}
-              </View>
+              <Text style={styles.sectionTitle} numberOfLines={1}>
+                {sectionHeading}
+              </Text>
+              {section.subcategories.length > 3 ? (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => onSelectSubcategory(section.subcategories[0])}
+                  style={styles.viewAllRow}
+                >
+                  <Text style={styles.viewAllText}>View All</Text>
+                  <ChevronRight size={13} color={Colors.primary} strokeWidth={2.5} />
+                </TouchableOpacity>
+              ) : null}
             </View>
 
-            {/* Horizontal Cards: Modern, elevated cards */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.cardsScrollContent}
-            >
-              {section.subcategories.map((subcat) => (
-                <TouchableOpacity
-                  key={`sub-${subcat.id}`}
-                  style={styles.card}
-                  activeOpacity={0.85}
-                  onPress={() => onSelectSubcategory(subcat)}
-                >
-                  {/* Category Image Container */}
-                  <View style={styles.imageContainer}>
-                    <CategoryCardImage uri={subcat.image} name={subcat.name} />
-                  </View>
+            {/* 3-Column Grid of Categories/Subcategories */}
+            <View style={styles.gridContainer}>
+              {section.subcategories.map((subcat, idx) => {
+                const tintBg = getTintForCategory(subcat.name, idx);
+                return (
+                  <TouchableOpacity
+                    key={`sub-${subcat.id}`}
+                    style={styles.gridItem}
+                    activeOpacity={0.82}
+                    onPress={() => onSelectSubcategory(subcat)}
+                  >
+                    {/* Pastel / Warm Rounded Image Container */}
+                    <View style={[styles.tileImageContainer, { backgroundColor: tintBg }]}>
+                      <CategoryCardImage uri={subcat.image} name={subcat.name} />
+                    </View>
 
-                  {/* Card Label & Action Footer */}
-                  <View style={styles.labelContainer}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
+                    {/* Subcategory Label */}
+                    <Text style={styles.tileLabel} numberOfLines={2}>
                       {subcat.name}
                     </Text>
-                    <View style={styles.cardFooter}>
-                      <Text style={styles.cardActionText}>
-                        {typeof subcat.productCount === 'number' && subcat.productCount > 0
-                          ? `${subcat.productCount} ${subcat.productCount === 1 ? 'item' : 'items'}`
-                          : 'Explore'}
-                      </Text>
-                      <View style={styles.arrowCircle}>
-                        <ChevronRight size={12} color="#ffffff" strokeWidth={3} />
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         );
       })}
@@ -170,102 +176,85 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 10,
-    marginBottom: 0,
+    marginTop: 8,
+    marginBottom: 16,
+    gap: 12,
   },
-  sectionContainer: {
-    marginBottom: 18,
-  },
-  headerRow: {
-    paddingHorizontal: 12,
-    marginBottom: 8,
-  },
-  titleColumn: {
-    gap: 2,
-  },
-  titleBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  titleAccentBar: {
-    width: 4,
-    height: 18,
-    borderRadius: 2,
-    backgroundColor: Colors.primary,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.4,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#64748b',
-    marginTop: 2,
-    paddingLeft: 12,
-  },
-  cardsScrollContent: {
-    paddingHorizontal: 12,
-    gap: 10,
-  },
-  card: {
-    width: 156,
-    height: 196,
+  sectionCard: {
+    marginHorizontal: 12,
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 14,
     borderWidth: 1,
     borderColor: '#e8edf2',
-    overflow: 'hidden',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  imageContainer: {
-    width: '100%',
-    height: 130,
-    backgroundColor: '#f1f5f9',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-  },
-  labelContainer: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  headerRow: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
-    letterSpacing: -0.2,
+  sectionTitle: {
+    fontSize: 16.5,
+    fontWeight: '800',
+    color: '#1e293b',
+    letterSpacing: -0.3,
+    flex: 1,
   },
-  cardFooter: {
+  viewAllRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
+    gap: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
   },
-  cardActionText: {
-    fontSize: 11.5,
+  viewAllText: {
+    fontSize: 12,
     fontWeight: '700',
     color: Colors.primary,
   },
-  arrowCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.primary,
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  gridItem: {
+    width: '30.8%',
+    alignItems: 'center',
+  },
+  tileImageContainer: {
+    width: '100%',
+    aspectRatio: 1.15,
+    borderRadius: 14,
+    backgroundColor: THEME_TINT,
+    borderWidth: 1,
+    borderColor: '#e0eae2',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 6,
+    shadowColor: '#142918',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardImage: {
+    width: '88%',
+    height: '88%',
+  },
+  tileLabel: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+    textAlign: 'center',
   },
 });

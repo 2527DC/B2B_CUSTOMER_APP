@@ -50,6 +50,12 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${_authToken}`;
       }
 
+      // If sending React Native FormData, delete Content-Type so native OkHttp/XHR sets
+      // 'multipart/form-data; boundary=...' automatically with proper boundaries.
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
+      }
+
       const fullUrl = config.url?.startsWith('http')
         ? config.url
         : `${config.baseURL ?? ''}${config.url ?? ''}`;

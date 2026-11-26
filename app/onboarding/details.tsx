@@ -11,14 +11,16 @@ import {
   Platform,
   KeyboardTypeOptions,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Store, User as UserIcon, Mail, FileText } from 'lucide-react-native';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, getOnboardingTargetPath } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 import OnboardingScaffold from '@/components/OnboardingScaffold';
 
 // Step 2 of the post-OTP registration wizard: the customer's name, store name, email and GST
 // number (GST always optional, regardless of whether document verification is required).
 export default function DetailsScreen() {
+  const router = useRouter();
   const { user, submitOnboardingStep } = useAuth();
   // The backend defaults a brand-new customer's name to "Customer 1234" — don't prefill that.
   const prefillName = user?.name && !/^Customer \d{4}$/.test(user.name) ? user.name : '';
@@ -42,13 +44,19 @@ export default function DetailsScreen() {
     setError(null);
     setSaving(true);
     try {
-      await submitOnboardingStep({
+      const updatedUser = await submitOnboardingStep({
         step: 'details',
         name: name.trim(),
         storeName: storeName.trim(),
         email: email.trim() || undefined,
         gstNumber: gstNumber.trim() || undefined,
       });
+      const target = getOnboardingTargetPath(updatedUser);
+      if (target) {
+        router.replace(target as any);
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to save your details. Please try again.');
     } finally {
@@ -62,6 +70,7 @@ export default function DetailsScreen() {
       totalSteps={user?.requires_documents ? 3 : 2}
       title="Tell Us About Your Store"
       subtitle="This helps us personalize pricing and delivery for your business."
+      onBack={() => router.replace('/onboarding/warehouse')}
     >
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>

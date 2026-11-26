@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Search, MapPin, Check } from 'lucide-react-native';
 import { useAuth, WarehouseOption } from '@/context/AuthContext';
 import { Colors } from '@/constants/theme';
 import OnboardingScaffold from '@/components/OnboardingScaffold';
 
 // Step 1 of the post-OTP registration wizard: search + select the warehouse that will fulfil
-// this customer's orders. Selecting one submits immediately; app/_layout.tsx advances to the
-// next step (details) once AuthContext's user state updates — no manual navigation here.
+// this customer's orders. Selecting one submits and advances to Step 2 (details).
 export default function WarehouseSelectionScreen() {
-  const { user, fetchWarehouses, submitOnboardingStep } = useAuth();
+  const router = useRouter();
+  const { user, fetchWarehouses, submitOnboardingStep, logout } = useAuth();
   const [search, setSearch] = useState('');
   const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -46,10 +47,22 @@ export default function WarehouseSelectionScreen() {
     setSelectingId(warehouse.id);
     try {
       await submitOnboardingStep({ step: 'warehouse', warehouseId: warehouse.id });
+      router.replace('/onboarding/details');
     } catch (err: any) {
       setError(err.message || 'Failed to select warehouse. Please try again.');
       setSelectingId(null);
     }
+  };
+
+  const handleBackToLogin = () => {
+    Alert.alert(
+      'Exit Registration?',
+      'Do you want to go back and sign in with a different phone number?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout & Return', style: 'destructive', onPress: logout },
+      ]
+    );
   };
 
   return (
@@ -58,6 +71,7 @@ export default function WarehouseSelectionScreen() {
       totalSteps={user?.requires_documents ? 3 : 2}
       title="Select Your Warehouse"
       subtitle="Search by area, city or pincode to find the warehouse that will fulfil your orders."
+      onBack={handleBackToLogin}
     >
       <View style={styles.searchBox}>
         <Search size={18} color={Colors.textMuted} />
@@ -84,18 +98,30 @@ export default function WarehouseSelectionScreen() {
           ListEmptyComponent={<Text style={styles.emptyText}>No warehouses found. Try a different search.</Text>}
           renderItem={({ item }) => {
             const isSelecting = selectingId === item.id;
+            const isSelected = item.id === user?.warehouse_id;
             return (
               <TouchableOpacity
                 onPress={() => handleSelect(item)}
                 disabled={selectingId !== null}
                 activeOpacity={0.7}
-                style={[styles.card, isSelecting && styles.cardSelecting]}
+                style={[
+                  styles.card,
+                  isSelected && styles.cardSelected,
+                  isSelecting && styles.cardSelecting,
+                ]}
               >
-                <View style={styles.cardIcon}>
-                  <MapPin size={18} color={Colors.primary} />
+                <View style={[styles.cardIcon, isSelected && styles.cardIconSelected]}>
+                  <MapPin size={18} color={isSelected ? Colors.primary : Colors.textMuted} />
                 </View>
                 <View style={styles.cardTextWrap}>
-                  <Text style={styles.cardTitle}>{item.name}</Text>
+                  <View style={styles.titleRow}>
+                    <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>{item.name}</Text>
+                    {isSelected && (
+                      <View style={styles.selectedBadge}>
+                        <Text style={styles.selectedBadgeText}>Selected</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.cardSubtitle} numberOfLines={2}>
                     {[item.address, item.city, item.state, item.pincode].filter(Boolean).join(', ')}
                   </Text>
@@ -103,12 +129,22 @@ export default function WarehouseSelectionScreen() {
                 {isSelecting ? (
                   <ActivityIndicator size="small" color={Colors.primary} />
                 ) : (
-                  <Check size={18} color={Colors.border} />
+                  <Check size={18} color={isSelected ? Colors.primary : Colors.border} />
                 )}
               </TouchableOpacity>
             );
           }}
         />
+      )}
+
+      {user?.warehouse_id && (
+        <TouchableOpacity
+          onPress={() => router.replace('/onboarding/details')}
+          activeOpacity={0.85}
+          style={styles.continueExistingButton}
+        >
+          <Text style={styles.continueExistingText}>Continue with Selected Warehouse →</Text>
+        </TouchableOpacity>
       )}
     </OnboardingScaffold>
   );
@@ -162,21 +198,48 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     backgroundColor: Colors.primary10,
   },
+  cardSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: '#F0F7F1',
+    borderWidth: 1.5,
+  },
   cardIcon: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: Colors.primary10,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardIconSelected: {
+    backgroundColor: Colors.primary10,
+  },
   cardTextWrap: {
     flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: Colors.text,
+  },
+  cardTitleSelected: {
+    color: Colors.primary,
+  },
+  selectedBadge: {
+    backgroundColor: Colors.primary10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  selectedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   cardSubtitle: {
     fontSize: 12,
@@ -187,5 +250,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.danger,
     marginBottom: 10,
+  },
+  continueExistingButton: {
+    marginTop: 10,
+    marginBottom: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueExistingText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.textWhite,
   },
 });

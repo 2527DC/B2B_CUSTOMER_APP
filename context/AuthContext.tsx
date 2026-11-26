@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import apiClient, { setAuthToken } from '../config/api';
@@ -187,7 +188,12 @@ interface AuthContextType {
   logout: () => void;
   submitOnboardingStep: (payload: OnboardingStepPayload) => Promise<User>;
   fetchWarehouses: (search?: string) => Promise<WarehouseOption[]>;
-  uploadDocument: (fileUri: string, fileName: string, mimeType: string) => Promise<string>;
+  uploadDocument: (
+    fileUri: string,
+    fileName: string,
+    mimeType: string,
+    base64Data?: string | null
+  ) => Promise<string>;
   refreshUser: () => Promise<User | null>;
   updateProfile: (payload: {
     name: string;
@@ -472,17 +478,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Uploads a picked image (shop photo / ID document) and returns its URL for use in
   // submitOnboardingStep({ step: 'documents', ... }).
-  const uploadDocument = async (fileUri: string, fileName: string, mimeType: string): Promise<string> => {
+  // Supports base64 payload when available (fast & robust on Android) and FormData fallback.
+  const uploadDocument = async (
+    fileUri: string,
+    fileName: string,
+    mimeType: string,
+    base64Data?: string | null
+  ): Promise<string> => {
     try {
+      const cleanFileName = fileName || `doc-${Date.now()}.jpg`;
+      const cleanType = mimeType || 'image/jpeg';
+
+      // 1. Direct JSON base64 upload if available (bypasses Android multipart quirks & boundary issues)
+      if (base64Data) {
+        const response = await apiClient.post(
+          URLs.UPLOAD_DOCUMENT,
+          {
+            base64: base64Data,
+            fileName: cleanFileName,
+            mimeType: cleanType,
+          },
+          {
+            timeout: 60000,
+          }
+        );
+        return response.data.url;
+      }
+
+      // 2. React Native FormData upload (native OkHttp multipart with automatic boundary)
+      const cleanUri =
+        Platform.OS === 'android' && !fileUri.startsWith('file://') && !fileUri.startsWith('content://')
+          ? `file://${fileUri}`
+          : fileUri;
+
       const formData = new FormData();
       formData.append('file', {
-        uri: fileUri,
-        name: fileName,
-        type: mimeType,
+        uri: cleanUri,
+        name: cleanFileName,
+        type: cleanType,
       } as any);
 
       const response = await apiClient.post(URLs.UPLOAD_DOCUMENT, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          Accept: 'application/json',
+        },
+        transformRequest: [(data) => data],
+        timeout: 60000,
       });
       return response.data.url;
     } catch (error: any) {
