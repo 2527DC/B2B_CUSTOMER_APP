@@ -174,11 +174,11 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   sectionContainer: {
-    marginBottom: 26,
+    marginBottom: 18,
   },
   headerRow: {
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    paddingHorizontal: 12,
+    marginBottom: 8,
   },
   titleColumn: {
     gap: 2,
@@ -208,8 +208,8 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
   },
   cardsScrollContent: {
-    paddingHorizontal: 16,
-    gap: 14,
+    paddingHorizontal: 12,
+    gap: 10,
   },
   card: {
     width: 156,

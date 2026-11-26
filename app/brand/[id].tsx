@@ -639,16 +639,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   gridContainer: {
-    padding: 10,
+    paddingHorizontal: 8,
+    paddingTop: 8,
     paddingBottom: 40,
   },
   gridRow: {
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    justifyContent: 'flex-start',
   },
   gridItem: {
     flex: 0.5,
-    paddingHorizontal: 4,
+    maxWidth: '50%',
+    padding: 4,
   },
   listContainer: {
     padding: 12,

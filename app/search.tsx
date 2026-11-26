@@ -333,14 +333,15 @@ const styles = StyleSheet.create({
   },
   resultsList: {
     paddingBottom: 40,
+    paddingTop: 4,
   },
   gridRow: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 8,
   },
   gridItem: {
     flex: 0.5,
-    paddingHorizontal: 4,
-    marginBottom: 8,
+    maxWidth: '50%',
+    padding: 4,
   },
 });

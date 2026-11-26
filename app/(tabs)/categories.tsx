@@ -357,12 +357,15 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   gridContainer: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
+    paddingTop: 6,
   },
   gridItem: {
-    flex: 1,
+    flex: 0.5,
+    maxWidth: '50%',
+    padding: 3,
   },
   gridRow: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
 });

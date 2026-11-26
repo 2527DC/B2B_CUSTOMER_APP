@@ -936,23 +936,23 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     flex: 0.5,
-    paddingHorizontal: 4,
-    marginBottom: 8,
+    maxWidth: '50%',
+    padding: 4,
   },
   gridRow: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 8,
   },
   filteredSection: {
-    marginTop: 4,
+    marginTop: 2,
   },
   filteredHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   filteredTitleRow: {
     flexDirection: 'row',

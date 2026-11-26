@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { List, Grid3X3 } from 'lucide-react-native';
 import type { Product } from '@/types/catalog';
@@ -46,7 +46,11 @@ export function ProductGrid({ products, viewMode, title = 'Products', headerRigh
         key="vertical-grid"
         data={products}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ProductCard product={item} viewMode="vertical" />}
+        renderItem={({ item }) => (
+          <View style={styles.gridItem}>
+            <ProductCard product={item} viewMode="vertical" />
+          </View>
+        )}
         numColumns={2}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.verticalList}
@@ -94,10 +98,16 @@ const styles = StyleSheet.create({
   },
   verticalList: {
     paddingBottom: 100,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
+    paddingTop: 4,
+  },
+  gridItem: {
+    flex: 0.5,
+    maxWidth: '50%',
+    padding: 4,
   },
   row: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
 });
 

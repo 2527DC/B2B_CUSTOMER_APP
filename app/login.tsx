@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, fetchSmsEnabled, STATIC_DEV_OTP } from '@/context/AuthContext';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import { WEBSITE_URL } from '@/config/urls';
@@ -32,11 +32,27 @@ export default function LoginScreen() {
   const [otp, setOtp] = useState('');
 
   const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
+  const [smsEnabled, setSmsEnabled] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
 
   const [errors, setErrors] = useState<{ phone?: string; password?: string; otp?: string }>({});
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchSmsEnabled().then((enabled) => {
+      if (!active) return;
+      setSmsEnabled(enabled);
+      if (enabled) {
+        setOtp((prev) => (prev === STATIC_DEV_OTP ? '' : prev));
+        setOtpSent(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Color theme - imported from central theme
   const PRIMARY_COLOR = Colors.primary;
@@ -245,8 +261,8 @@ export default function LoginScreen() {
               ]}
               onPress={() => {
                 setLoginMode('otp');
-                setOtpSent(false);
-                setOtp('');
+                setOtpSent(!smsEnabled);
+                setOtp(smsEnabled ? '' : STATIC_DEV_OTP);
                 setErrors({});
               }}
               activeOpacity={0.8}
@@ -295,7 +311,7 @@ export default function LoginScreen() {
               />
             ) : (
               <View>
-                {!otpSent ? (
+                {smsEnabled && !otpSent ? (
                   <Button
                     title={loading ? 'Sending OTP...' : 'Send Verification OTP'}
                     onPress={handleSendOtp}
@@ -312,28 +328,34 @@ export default function LoginScreen() {
                         setOtp(text);
                         if (errors.otp) setErrors((prev) => ({ ...prev, otp: '' }));
                       }}
-                      placeholder="Enter 4 or 6 digit code (use 1234)"
+                      placeholder={smsEnabled ? 'Enter 6 digit SMS code' : `Static OTP: ${STATIC_DEV_OTP}`}
                       keyboardType="numeric"
                       error={errors.otp}
                       editable={!loading}
                       maxLength={6}
                       backgroundColor={WHITE_COLOR}
                     />
-                    <TouchableOpacity
-                      onPress={handleSendOtp}
-                      disabled={loading}
-                      style={styles.resendContainer}
-                    >
-                      <Text style={[styles.resendText, { color: DARK_GREEN }]}>
-                        Didn't receive code? Resend
+                    {!smsEnabled ? (
+                      <Text style={styles.staticOtpHint}>
+                        Static OTP mode active — use {STATIC_DEV_OTP} (SMS not configured yet)
                       </Text>
-                    </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={handleSendOtp}
+                        disabled={loading}
+                        style={styles.resendContainer}
+                      >
+                        <Text style={[styles.resendText, { color: DARK_GREEN }]}>
+                          Didn&apos;t receive code? Resend
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </>
                 )}
               </View>
             )}
 
-            {(loginMode === 'password' || otpSent) && (
+            {(loginMode === 'password' || !smsEnabled || otpSent) && (
               <Button
                 title={loading ? 'Logging in...' : 'Login'}
                 onPress={handleLogin}
@@ -460,6 +482,13 @@ const styles = StyleSheet.create({
   resendText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  staticOtpHint: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.warning,
+    marginTop: -6,
+    marginBottom: 8,
   },
   loadingContainer: {
     alignItems: 'center',

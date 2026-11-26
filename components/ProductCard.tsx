@@ -4,10 +4,8 @@ import { Check, Package, Plus } from 'lucide-react-native';
 import type { Product } from '@/types/catalog';
 import { useRouter } from 'expo-router';
 import { useCart } from '@/context/CartContext';
-import { Colors, getComponentTheme } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { formatRate, pricePerKg } from '@/lib/perKg';
-
-const badge = getComponentTheme(Colors).badge;
 
 interface ProductCardProps {
   product: Product;
@@ -85,7 +83,7 @@ function AddPill({ count, onPress }: { count: number; onPress: () => void }) {
       style={[styles.addPill, inCart && styles.addPillInCart]}
       onPress={onPress}
       activeOpacity={0.85}
-      hitSlop={6}
+      hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={inCart ? `${count} in cart. Open product` : 'Add to cart'}
     >
@@ -214,8 +212,11 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
         </Text>
         <View style={styles.verticalPrice}>
           <PriceLine price={priceVal} mrp={struck} unit={unitSuffix} size="sm" />
-          {/* The slot keeps its height without a rate, so prices line up across a row */}
-          <View style={styles.perKgSlot}>{perKg !== null && <PerKgTag perKg={perKg} />}</View>
+          {perKg !== null && (
+            <View style={styles.perKgWrap}>
+              <PerKgTag perKg={perKg} />
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -233,11 +234,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   name: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#0f172a',
-    lineHeight: 18,
-    minHeight: 36, // always reserve two lines so prices align across a row
+    color: Colors.text,
+    lineHeight: 17,
+    minHeight: 34, // always reserve two compact lines so prices align across a row
     letterSpacing: -0.1,
   },
   description: {
@@ -250,8 +251,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
+    gap: 5,
+    marginTop: 2,
   },
   priceMain: {
     flexDirection: 'row',
@@ -259,104 +260,102 @@ const styles = StyleSheet.create({
   },
   // The bag price is the strongest thing on the card, in deep primary green
   priceSm: {
-    fontSize: 16.5,
+    fontSize: 15.5,
     fontWeight: '800',
     color: Colors.primaryDark,
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
   },
   priceMd: {
-    fontSize: 18,
+    fontSize: 17.5,
     fontWeight: '800',
     color: Colors.primaryDark,
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
   },
   unit: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
     color: Colors.textSecondary,
     marginLeft: 1,
   },
   // Clean, modern muted strikethrough MRP in neutral slate gray
   mrp: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
-    color: '#94a3b8',
+    color: Colors.textMuted,
     textDecorationLine: 'line-through',
-    textDecorationColor: '#94a3b8',
+    textDecorationColor: Colors.textMuted,
   },
 
   perKgTag: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
     backgroundColor: Colors.primary10,
   },
-  perKgSlot: {
-    minHeight: 21,
-    marginTop: 5,
-    justifyContent: 'center',
+  perKgWrap: {
+    marginTop: 4,
   },
   perKgText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
     color: Colors.primaryDark,
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.1,
   },
   perKgUnit: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
   },
 
   discountTag: {
     position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: '#ef4444',
-    paddingHorizontal: 7,
-    paddingVertical: 3.5,
-    borderRadius: 7,
+    top: 6,
+    left: 6,
+    backgroundColor: Colors.danger,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    borderRadius: 5,
     zIndex: 2,
   },
   discountTagText: {
     fontSize: 9.5,
     fontWeight: '800',
     color: Colors.textWhite,
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
 
   addPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
+    gap: 3,
+    height: 30,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
     borderColor: Colors.primary,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 2,
   },
   addPillInCart: {
     backgroundColor: Colors.primary,
   },
   addPillText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
     color: Colors.primary,
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   addPillTextInCart: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
     color: Colors.textWhite,
   },
@@ -364,37 +363,35 @@ const styles = StyleSheet.create({
   /* ── Grid card ── */
   verticalCard: {
     flex: 1,
-    margin: 6,
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: Colors.border,
     overflow: 'hidden',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: Colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 1,
   },
   verticalImageBox: {
-    height: 160,
-    padding: 12,
+    height: 128,
+    padding: 6,
     backgroundColor: Colors.background,
   },
   verticalAdd: {
     position: 'absolute',
-    right: 8,
-    bottom: 8,
+    right: 6,
+    bottom: 6,
   },
   verticalContent: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 12,
-    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 10,
+    gap: 4,
   },
   verticalPrice: {
-    marginTop: 8,
+    marginTop: 2,
   },
 
   /* ── List card ── */

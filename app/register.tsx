@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Smartphone, KeyRound, RotateCcw } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, fetchSmsEnabled, STATIC_DEV_OTP } from '@/context/AuthContext';
 import { Link } from 'expo-router';
 import { Colors } from '@/constants/theme';
 import { WEBSITE_URL } from '@/config/urls';
@@ -31,12 +31,30 @@ const logo = require('@/assets/images/logo.jpeg');
 export default function RegisterScreen() {
   const { sendOtp, loginWithOtp } = useAuth();
   const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [otp, setOtp] = useState(STATIC_DEV_OTP);
   const [otpSent, setOtpSent] = useState(false);
-  const [devHint, setDevHint] = useState<string | null>(null);
+  const [devHint, setDevHint] = useState<string | null>(
+    `Static OTP mode — use ${STATIC_DEV_OTP} (SMS not configured yet)`
+  );
   const [error, setError] = useState<string | null>(null);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifying, setVerifying] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchSmsEnabled().then((enabled) => {
+      if (!active) return;
+      setSmsEnabled(enabled);
+      if (enabled) {
+        setOtp('');
+        setDevHint(null);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLogoPress = async () => {
     try {
@@ -74,6 +92,10 @@ export default function RegisterScreen() {
 
   const handleVerify = async () => {
     const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      setError('Please enter a valid 10-digit mobile number');
+      return;
+    }
     if (!otp.trim() || otp.trim().length < 4) {
       setError('Please enter the OTP sent to your phone');
       return;
@@ -115,7 +137,7 @@ export default function RegisterScreen() {
           <View style={styles.formContainer}>
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>Phone Number</Text>
-              <View style={[styles.inputContainer, otpSent && styles.inputDisabled]}>
+              <View style={[styles.inputContainer, smsEnabled && otpSent && styles.inputDisabled]}>
                 <Smartphone size={20} color={Colors.textMuted} style={styles.inputIcon} />
                 <TextInput
                   value={phone}
@@ -127,13 +149,13 @@ export default function RegisterScreen() {
                   placeholderTextColor={Colors.textMuted}
                   keyboardType="phone-pad"
                   maxLength={10}
-                  editable={!otpSent}
+                  editable={!smsEnabled || !otpSent}
                   style={styles.input}
                 />
               </View>
             </View>
 
-            {otpSent && (
+            {(!smsEnabled || otpSent) && (
               <View style={styles.inputWrapper}>
                 <Text style={styles.label}>Verification Code (OTP)</Text>
                 <View style={styles.inputContainer}>
@@ -144,7 +166,7 @@ export default function RegisterScreen() {
                       setOtp(text);
                       if (error) setError(null);
                     }}
-                    placeholder="6-digit code"
+                    placeholder={smsEnabled ? '6-digit code' : `Static OTP: ${STATIC_DEV_OTP}`}
                     placeholderTextColor={Colors.textMuted}
                     keyboardType="numeric"
                     maxLength={6}
@@ -152,17 +174,19 @@ export default function RegisterScreen() {
                   />
                 </View>
                 {devHint && <Text style={styles.devHint}>{devHint}</Text>}
-                <TouchableOpacity onPress={handleSendOtp} activeOpacity={0.7} style={styles.resendRow} disabled={sendingOtp}>
-                  <RotateCcw size={13} color={Colors.primary} />
-                  <Text style={styles.resendText}>Didn't receive it? Resend OTP</Text>
-                </TouchableOpacity>
+                {smsEnabled && (
+                  <TouchableOpacity onPress={handleSendOtp} activeOpacity={0.7} style={styles.resendRow} disabled={sendingOtp}>
+                    <RotateCcw size={13} color={Colors.primary} />
+                    <Text style={styles.resendText}>Didn&apos;t receive it? Resend OTP</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
             {error && <Text style={styles.errorText}>{error}</Text>}
 
             <TouchableOpacity
-              onPress={otpSent ? handleVerify : handleSendOtp}
+              onPress={!smsEnabled || otpSent ? handleVerify : handleSendOtp}
               disabled={sendingOtp || verifying}
               activeOpacity={0.9}
               style={styles.submitButton}
@@ -176,7 +200,7 @@ export default function RegisterScreen() {
                 {sendingOtp || verifying ? (
                   <ActivityIndicator size="small" color={Colors.textWhite} />
                 ) : (
-                  <Text style={styles.submitText}>{otpSent ? 'Verify & Continue' : 'Send OTP'}</Text>
+                  <Text style={styles.submitText}>{!smsEnabled || otpSent ? 'Verify & Continue' : 'Send OTP'}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>

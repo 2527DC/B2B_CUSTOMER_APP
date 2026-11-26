@@ -51,6 +51,28 @@ export type OnboardingStepPayload =
   | { step: 'details'; name: string; storeName?: string; email?: string; gstNumber?: string }
   | { step: 'documents'; shopImageUrl?: string; documentUrl?: string; gstNumber?: string; skip?: boolean };
 
+export const STATIC_DEV_OTP = '1234';
+
+/**
+ * Checks whether an SMS provider is active on the backend.
+ * Defaults to false (static OTP 1234 mode) if config cannot be loaded.
+ */
+export async function fetchSmsEnabled(): Promise<boolean> {
+  try {
+    const res = await apiClient.get(URLs.APP_CONFIG, { timeout: 6000 });
+    return res.data?.smsEnabled === true;
+  } catch {
+    return false;
+  }
+}
+
+function extractAuthErrorMessage(error: any, fallback: string): string {
+  if (error?.message === 'Network Error' || !error?.response) {
+    return 'Cannot reach server. Please check your internet connection and try again.';
+  }
+  return error?.response?.data?.error || error?.response?.data?.message || fallback;
+}
+
 export function hasDefaultCustomerName(name?: string | null): boolean {
   if (!name || !name.trim()) return true;
   return /^Customer \d+$/.test(name.trim());
@@ -351,9 +373,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         expiresInMinutes: response.data?.expiresInMinutes,
       };
     } catch (error: any) {
-      console.error('Send OTP error:', error?.response?.data || error.message);
-      const msg = error?.response?.data?.error || error?.response?.data?.message || 'Failed to send OTP.';
-      throw new Error(msg);
+      console.warn('Send OTP notice:', error?.response?.data || error.message);
+      throw new Error(extractAuthErrorMessage(error, 'Failed to send OTP.'));
     }
   };
 
@@ -381,10 +402,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       return false;
     } catch (error: any) {
-      console.error('Login with OTP error:', error?.response?.data || error.message);
+      console.warn('Login with OTP notice:', error?.response?.data || error.message);
       setIsLoading(false);
-      const msg = error?.response?.data?.error || error?.response?.data?.message || 'OTP verification failed.';
-      throw new Error(msg);
+      throw new Error(extractAuthErrorMessage(error, 'OTP verification failed.'));
     }
   };
 
