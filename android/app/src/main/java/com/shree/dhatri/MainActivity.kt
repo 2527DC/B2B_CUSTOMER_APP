@@ -1,4 +1,4 @@
-package com.dhatri.store
+package com.shree.dhatri
 
 import android.os.Build
 import android.os.Bundle

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList,
   ActivityIndicator, ScrollView, RefreshControl,
-  TouchableOpacity, Image,
+  TouchableOpacity, Image, BackHandler,
 } from 'react-native';
 import {
   CustomHeader, PromoSlider, BrandSection,
@@ -515,7 +515,33 @@ export default function HomeScreen() {
 
   const handleResetToRoot = () => {
     setCategoryTrail([]);
+    setSelectedBrand(null);
+    setSelectedBrandName(null);
   };
+
+  // Handle Android hardware back button inside HomeScreen
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (categoryTrail.length > 1) {
+          handleBackOneLevel();
+          return true;
+        }
+        if (categoryTrail.length === 1) {
+          handleResetToRoot();
+          return true;
+        }
+        if (selectedBrand) {
+          handleSelectBrand(null);
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [categoryTrail.length, selectedBrand])
+  );
 
   const onRefresh = useCallback(() => {
     fetchHomeData(true);

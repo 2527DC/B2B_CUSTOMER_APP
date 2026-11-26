@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, BackHandler, Platform, ToastAndroid } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider, useAuth, getOnboardingTargetPath } from '@/context/AuthContext';
@@ -22,6 +22,30 @@ function RootLayoutNav() {
   const { isOnboarded, isAuthenticated, isLoading, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const lastBackPressRef = useRef(0);
+
+  // Root level back handler for Android to prevent accidental app exits
+  useEffect(() => {
+    const onHardwareBack = () => {
+      const inTabs = segments[0] === '(tabs)';
+      if (inTabs && !router.canGoBack()) {
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+        lastBackPressRef.current = now;
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+        }
+        return true;
+      }
+      return false;
+    };
+
+    const sub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => sub.remove();
+  }, [segments, router]);
 
   useEffect(() => {
     // 1. Initialize push notifications and get permission/token

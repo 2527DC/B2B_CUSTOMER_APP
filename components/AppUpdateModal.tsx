@@ -24,7 +24,7 @@ export interface AppVersionInfo {
   app_store_url?: string;
 }
 
-const APP_PACKAGE_ID = 'com.dhatri.store';
+const APP_PACKAGE_ID = 'com.shree.dhatri';
 const APP_STORE_ID = '6777317003';
 
 /**

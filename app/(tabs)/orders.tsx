@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
+  BackHandler,
 } from 'react-native';
 import {
   Package,
@@ -21,7 +22,7 @@ import {
   X,
   RefreshCw,
 } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/config/api';
@@ -226,6 +227,26 @@ export default function OrdersScreen() {
   // Search and return filter states
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Handle Android hardware back press: clear search or switch back to orders before tab navigation
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (searchQuery.trim().length > 0) {
+          setSearchQuery('');
+          return true;
+        }
+        if (activeTab === 'returns') {
+          setActiveTab('orders');
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [searchQuery, activeTab])
+  );
   const [selectedReturnStatus, setSelectedReturnStatus] = useState<string>('ALL');
   
   const [loading, setLoading] = useState(false);

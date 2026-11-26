@@ -34,7 +34,7 @@
               "client_id": "342595200795-u0ljpolhvr3p612eb5dks1t4s4a0b62h.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.dhatri.store"
+                "bundle_id": "com.shree.dhatri"
               }
             }
           ]
@@ -45,7 +45,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:342595200795:android:44be7b566c7db96b4355be",
         "android_client_info": {
-          "package_name": "com.dhatri.store"
+          "package_name": "com.shree.dhatri"
         }
       },
       "oauth_client": [
@@ -53,7 +53,7 @@
           "client_id": "342595200795-v99j3g69cjjliialap1r6thullg1j71f.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.dhatri.store",
+            "package_name": "com.shree.dhatri",
             "certificate_hash": "9cafb0ff120e372a6e455efa948df346ea72293e"
           }
         },
@@ -78,7 +78,7 @@
               "client_id": "342595200795-u0ljpolhvr3p612eb5dks1t4s4a0b62h.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.dhatri.store"
+                "bundle_id": "com.shree.dhatri"
               }
             }
           ]

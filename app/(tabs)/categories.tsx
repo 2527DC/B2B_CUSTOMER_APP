@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CategorySidebar, ProductCard, OfflineView, OfflineBanner } from '@/components';
 import type { Category, Product } from '@/types/catalog';
@@ -86,6 +87,22 @@ export default function CategoriesScreen() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [errorInfo, setErrorInfo] = useState<FormattedError | null>(null);
   const [isOfflineCached, setIsOfflineCached] = useState(false);
+
+  // Handle Android hardware back press: deselect category before bubbling to tab history
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (selectedCategory !== null) {
+          setSelectedCategory(null);
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [selectedCategory])
+  );
 
   useEffect(() => {
     let isMounted = true;

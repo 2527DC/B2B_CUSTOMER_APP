@@ -28,7 +28,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>dhatristore</string>
-				<string>com.dhatri.store</string>
+				<string>com.shree.dhatri</string>
 			</array>
 		</dict>
 		<dict>

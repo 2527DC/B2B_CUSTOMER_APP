@@ -376,7 +376,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.dhatri.store;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shree.dhatri;
 				PRODUCT_NAME = Dhatri;
 				SWIFT_OBJC_BRIDGING_HEADER = "Dhatri/Dhatri-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -408,7 +408,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.dhatri.store;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shree.dhatri;
 				PRODUCT_NAME = Dhatri;
 				SWIFT_OBJC_BRIDGING_HEADER = "Dhatri/Dhatri-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
