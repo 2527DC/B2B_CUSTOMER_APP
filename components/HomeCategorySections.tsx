@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import type { Product } from '@/types/catalog';
@@ -143,14 +144,18 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
               ) : null}
             </View>
 
-            {/* 3-Column Grid of Categories/Subcategories */}
-            <View style={styles.gridContainer}>
+            {/* Single Horizontal Slidable Row for Categories/Subcategories */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.scrollListContainer}
+            >
               {section.subcategories.map((subcat, idx) => {
                 const tintBg = getTintForCategory(subcat.name, idx);
                 return (
                   <TouchableOpacity
                     key={`sub-${subcat.id}`}
-                    style={styles.gridItem}
+                    style={styles.horizontalItem}
                     activeOpacity={0.82}
                     onPress={() => onSelectSubcategory(subcat)}
                   >
@@ -166,7 +171,7 @@ export function HomeCategorySections({ sections, onSelectSubcategory }: HomeCate
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         );
       })}
@@ -220,17 +225,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
   },
-  gridContainer: {
+  scrollListContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
+    paddingRight: 8,
   },
-  gridItem: {
-    width: '30.8%',
+  horizontalItem: {
+    width: 96,
     alignItems: 'center',
   },
   tileImageContainer: {
-    width: '100%',
+    width: 96,
     aspectRatio: 1.15,
     borderRadius: 14,
     backgroundColor: THEME_TINT,
