@@ -33,8 +33,8 @@ const getCategoryPhotoFallback = (name?: string): string => {
   const lower = (name || '').toLowerCase();
   if (lower.includes('flour') || lower.includes('atta') || lower.includes('maida') || lower.includes('wheat') || lower.includes('besan') || lower.includes('sooji') || lower.includes('rava')) return DEFAULT_CATEGORY_FALLBACKS.flour;
   if (lower.includes('sugar') || lower.includes('jaggery') || lower.includes('sweet')) return DEFAULT_CATEGORY_FALLBACKS.sugar;
-  if (lower.includes('dal') || lower.includes('pulse') || lower.includes('lentil') || lower.includes('gram') || lower.includes('chana') || lower.includes('urad') || lower.includes('toor') || lower.includes('moong')) return DEFAULT_CATEGORY_FALLBACKS.dal;
-  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati') || lower.includes('brown') || lower.includes('boild') || lower.includes('boiled')) return DEFAULT_CATEGORY_FALLBACKS.rice;
+  if (lower.includes('dal') || lower.includes('pulse') || lower.includes('lentil') || lower.includes('gram') || lower.includes('chana') || lower.includes('urad') || lower.includes('toor') || lower.includes('moong') || lower.includes('masoor')) return DEFAULT_CATEGORY_FALLBACKS.dal;
+  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati') || lower.includes('brown') || lower.includes('boild') || lower.includes('boiled') || lower.includes('masoori') || lower.includes('kolam')) return DEFAULT_CATEGORY_FALLBACKS.rice;
   if (lower.includes('oil') || lower.includes('ghee')) return DEFAULT_CATEGORY_FALLBACKS.oils;
   if (lower.includes('spice') || lower.includes('masala') || lower.includes('chilli') || lower.includes('turmeric') || lower.includes('pepper')) return DEFAULT_CATEGORY_FALLBACKS.spices;
   if (lower.includes('juice') || lower.includes('drink') || lower.includes('beverage') || lower.includes('soda')) return DEFAULT_CATEGORY_FALLBACKS.drinks;
@@ -183,28 +183,22 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 8,
     marginBottom: 16,
-    gap: 12,
+    gap: 8,
   },
   sectionCard: {
-    marginHorizontal: 12,
     backgroundColor: '#ffffff',
-    borderRadius: 18,
-    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 16,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: '#e8edf2',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 16.5,
@@ -228,7 +222,7 @@ const styles = StyleSheet.create({
   scrollListContainer: {
     flexDirection: 'row',
     gap: 14,
-    paddingRight: 10,
+    paddingHorizontal: 16,
   },
   horizontalItem: {
     width: 140,

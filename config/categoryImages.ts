@@ -19,10 +19,7 @@ export const CATEGORY_IMAGE_OVERRIDES: Record<string, string> = {
 // ─── 2. Category Parent-Child Mapping ─────────────────────────────────────────
 // Format: 'subcategory' (id/slug/name): 'parent category' (id/slug/name)
 export const CATEGORY_PARENT_MAP: Record<string, string> = {
-  // Dal / Dals is a subcategory of Rice -> placed in Rice's row!
-  'dal': 'rice',
-  'dals': 'rice',
-  '4': '3', // Dals (id 4) -> Rice (id 3)
+  // Manual overrides if remote DB doesn't have parentId set
 };
 
 /**

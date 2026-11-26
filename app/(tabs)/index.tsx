@@ -47,8 +47,8 @@ const getFallbackBanner = (name: string): string => {
   const lower = name.toLowerCase();
   if (lower.includes('flour') || lower.includes('atta') || lower.includes('maida') || lower.includes('wheat') || lower.includes('besan') || lower.includes('sooji') || lower.includes('rava')) return THEME_BANNERS.flour;
   if (lower.includes('sugar') || lower.includes('jaggery') || lower.includes('sweet')) return THEME_BANNERS.sugar;
-  if (lower.includes('dal') || lower.includes('pulse') || lower.includes('lentil') || lower.includes('gram') || lower.includes('chana') || lower.includes('urad') || lower.includes('toor') || lower.includes('moong')) return THEME_BANNERS.dal;
-  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati') || lower.includes('brown') || lower.includes('boild') || lower.includes('boiled')) return THEME_BANNERS.rice;
+  if (lower.includes('dal') || lower.includes('pulse') || lower.includes('lentil') || lower.includes('gram') || lower.includes('chana') || lower.includes('urad') || lower.includes('toor') || lower.includes('moong') || lower.includes('masoor')) return THEME_BANNERS.dal;
+  if (lower.includes('rice') || lower.includes('paddy') || lower.includes('basmati') || lower.includes('brown') || lower.includes('boild') || lower.includes('boiled') || lower.includes('masoori') || lower.includes('kolam')) return THEME_BANNERS.rice;
   if (lower.includes('oil') || lower.includes('ghee')) return THEME_BANNERS.oils;
   if (lower.includes('spice') || lower.includes('masala') || lower.includes('chilli') || lower.includes('turmeric') || lower.includes('pepper')) return THEME_BANNERS.spices;
   if (lower.includes('juice') || lower.includes('drink') || lower.includes('beverage') || lower.includes('soda')) return THEME_BANNERS.drinks;
