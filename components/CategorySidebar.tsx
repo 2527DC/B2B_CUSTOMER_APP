@@ -1,82 +1,84 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Smartphone, Shirt, Dumbbell, Home, Sparkles, BookOpen, Gamepad2, Utensils, type LucideIcon } from 'lucide-react-native';
-import type { Category } from '@/types/catalog';
+import { Home } from 'lucide-react-native';
 import { Colors } from '@/constants/theme';
 import { useBottomSpacing } from '@/hooks/useBottomSpacing';
+import { getCategoryPhotoFallback } from '@/components/CategoryShelves';
 
-interface CategorySidebarProps {
-  categories: Category[];
-  selectedCategory: string | null;
-  onSelectCategory: (categoryId: string | null) => void;
+export interface ParentSidebarItem {
+  id: string;
+  name: string;
+  image?: string;
+  icon?: string;
+  count?: number;
 }
 
-const iconMap: Record<string, LucideIcon> = {
-  'Smartphone': Smartphone,
-  'Shirt': Shirt,
-  'Dumbbell': Dumbbell,
-  'Home': Home,
-  'Sparkles': Sparkles,
-  'BookOpen': BookOpen,
-  'Gamepad2': Gamepad2,
-  'Utensils': Utensils,
-};
+interface CategorySidebarProps {
+  categories: ParentSidebarItem[];
+  selectedCategory: string | null;
+  onSelectCategory: (categoryId: string) => void;
+}
 
 export function CategorySidebar({ categories, selectedCategory, onSelectCategory }: CategorySidebarProps) {
   const { scrollPaddingBottom } = useBottomSpacing();
-  const allCategory: Category = {
-    id: 'all',
-    name: 'All',
-    icon: 'All',
-    created_at: '',
-  };
-
-  const displayCategories = [allCategory, ...categories];
 
   return (
     <View style={styles.container}>
       <ScrollView
-        showsVerticalScrollIndicator={true}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollPaddingBottom }]}
-        indicatorStyle="black"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollPaddingBottom + 20 }]}
       >
-        {displayCategories.map((category) => {
-          const IconComponent = category.id === 'all' ? Home : iconMap[category.icon] || Home;
-          const isSelected = selectedCategory === category.id || (category.id === 'all' && selectedCategory === null);
+        {categories.map((category) => {
+          const isSelected = selectedCategory === category.id;
+          const fallbackUri = getCategoryPhotoFallback(category.name);
+          const activeUri = category.image && category.image.trim().length > 0 && !category.image.includes('/uploads/')
+            ? category.image
+            : fallbackUri;
 
           return (
             <TouchableOpacity
-              key={category.id}
+              key={`side-cat-${category.id}`}
               style={[
                 styles.categoryItem,
                 isSelected && styles.categoryItemSelected,
               ]}
-              onPress={() => onSelectCategory(category.id === 'all' ? null : category.id)}
-              activeOpacity={0.7}
+              onPress={() => onSelectCategory(category.id)}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={`${category.name} parent category`}
             >
-              <View style={[
-                styles.iconContainer,
-                isSelected && styles.iconContainerSelected,
-                { overflow: 'hidden' }
-              ]}>
-                {category.id !== 'all' && (category as any).image_url ? (
+              {isSelected && <View style={styles.activeLeftStrip} />}
+
+              {/* Elevated Pastel Image Container */}
+              <View
+                style={[
+                  styles.imageBox,
+                  isSelected && styles.imageBoxSelected,
+                ]}
+              >
+                {activeUri ? (
                   <Image
-                    source={{ uri: (category as any).image_url }}
-                    style={{ width: '100%', height: '100%' }}
+                    source={{ uri: activeUri }}
+                    style={styles.categoryImage}
                     resizeMode="cover"
                   />
                 ) : (
-                  <IconComponent
+                  <Home
                     size={22}
-                    color={isSelected ? '#ffffff' : Colors.textSecondary}
-                    strokeWidth={2.5}
+                    color={isSelected ? Colors.primaryDark : Colors.textSecondary}
+                    strokeWidth={2.2}
                   />
                 )}
               </View>
-              <Text style={[
-                styles.categoryName,
-                isSelected && styles.categoryNameSelected,
-              ]} numberOfLines={2}>
+
+              <Text
+                style={[
+                  styles.categoryName,
+                  isSelected && styles.categoryNameSelected,
+                ]}
+                numberOfLines={2}
+              >
                 {category.name}
               </Text>
             </TouchableOpacity>
@@ -89,47 +91,75 @@ export function CategorySidebar({ categories, selectedCategory, onSelectCategory
 
 const styles = StyleSheet.create({
   container: {
-    width: 85,
+    width: 90,
     backgroundColor: '#ffffff',
     borderRightWidth: 1,
     borderRightColor: Colors.border,
     height: '100%',
   },
   scrollContent: {
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   categoryItem: {
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 6,
+    position: 'relative',
+    marginHorizontal: 4,
+    borderRadius: 14,
     marginBottom: 4,
-    marginHorizontal: 6,
-    borderRadius: 12,
   },
   categoryItemSelected: {
     backgroundColor: Colors.primary10,
   },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  iconContainerSelected: {
+  activeLeftStrip: {
+    position: 'absolute',
+    left: -4,
+    top: 14,
+    bottom: 14,
+    width: 4,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
     backgroundColor: Colors.primary,
   },
+  imageBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#F0F4F1',
+    borderWidth: 1.5,
+    borderColor: '#e2ebe4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#142918',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  imageBoxSelected: {
+    borderColor: Colors.primary,
+    borderWidth: 2,
+    backgroundColor: '#ffffff',
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.25,
+    elevation: 4,
+  },
+  categoryImage: {
+    width: '100%',
+    height: '100%',
+  },
   categoryName: {
-    fontSize: 11,
+    marginTop: 6,
+    fontSize: 11.5,
     color: Colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: '600',
     textAlign: 'center',
     lineHeight: 14,
   },
   categoryNameSelected: {
     color: Colors.primaryDark,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

@@ -14,3 +14,4 @@ export { CartRecommendationsSection } from './CartRecommendationsSection';
 export { OfflineView } from './OfflineView';
 export { OfflineBanner } from './OfflineBanner';
 export { HomeCategorySections, type SubcategoryItem, type CategorySectionItem } from './HomeCategorySections';
+export { CategoryShelves, type ParentCategoryItem, type SubcategoryShelfItem } from './CategoryShelves';

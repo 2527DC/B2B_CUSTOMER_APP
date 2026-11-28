@@ -83,7 +83,7 @@ function CategoryCardImage({ uri, name }: { uri?: string; name: string }) {
       key={activeUri}
       source={{ uri: activeUri }}
       style={styles.cardImage}
-      resizeMode="contain"
+      resizeMode="cover"
       onError={() => setLoadFailed(true)}
     />
   );
@@ -186,12 +186,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionCard: {
-    backgroundColor: '#ffffff',
-    paddingTop: 16,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#e8edf2',
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   headerRow: {
     flexDirection: 'row',
@@ -237,7 +233,6 @@ const styles = StyleSheet.create({
     borderColor: '#e0eae2',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
     shadowColor: '#142918',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
@@ -245,8 +240,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardImage: {
-    width: '90%',
-    height: '90%',
+    width: '100%',
+    height: '100%',
+    borderRadius: 15,
   },
   tileLabel: {
     marginTop: 8,
