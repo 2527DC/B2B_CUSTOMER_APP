@@ -65,12 +65,12 @@ function PriceLine({ price, mrp, unit, size }: { price: number; mrp: number | nu
 }
 
 /** What one bag's price comes to per kg, the figure buyers compare across 26, 30 and 50 kg bags. */
-function PerKgTag({ perKg }: { perKg: number }) {
+function PerKgTag({ perKg, compact }: { perKg: number; compact?: boolean }) {
   return (
-    <View style={styles.perKgTag}>
-      <Text style={styles.perKgText}>
+    <View style={[styles.perKgTag, compact && styles.perKgTagCompact]}>
+      <Text style={[styles.perKgText, compact && styles.perKgTextCompact]}>
         {formatRate(perKg)}
-        <Text style={styles.perKgUnit}> /kg</Text>
+        <Text style={styles.perKgUnit}>/kg</Text>
       </Text>
     </View>
   );
@@ -139,7 +139,16 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
   const hasDiscount = mrpVal > priceVal;
   const discountPercent = hasDiscount ? Math.round(((mrpVal - priceVal) / mrpVal) * 100) : 0;
   const struck = hasDiscount ? mrpVal : null;
-  const perKg = pricePerKg(priceVal, product.pack_kg);
+  // If product.pack_kg is not directly present, try to extract weight from unit_value, pack_size or product name
+  let effectivePackKg = product.pack_kg;
+  if (!effectivePackKg || effectivePackKg <= 0) {
+    const combinedWeightStr = `${product.unit_value || ''} ${product.pack_size || ''} ${product.name || ''}`;
+    const match = combinedWeightStr.match(/(\d+(?:\.\d+)?)\s*(?:kg|kilo)/i);
+    if (match) {
+      effectivePackKg = Number(match[1]);
+    }
+  }
+  const perKg = pricePerKg(priceVal, effectivePackKg);
 
   // Read as one sentence by screen readers instead of a string of separate numbers
   const a11yLabel = [
@@ -214,7 +223,7 @@ export function ProductCard({ product, viewMode }: ProductCardProps) {
           <PriceLine price={priceVal} mrp={struck} unit={unitSuffix} size="sm" />
           {perKg !== null && (
             <View style={styles.perKgWrap}>
-              <PerKgTag perKg={perKg} />
+              <PerKgTag perKg={perKg} compact />
             </View>
           )}
         </View>
@@ -279,37 +288,49 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginLeft: 1,
   },
-  // Clean, modern muted strikethrough MRP in neutral slate gray
+  // Clean, modern red strikethrough MRP
   mrp: {
     fontSize: 11.5,
-    fontWeight: '500',
-    color: Colors.textMuted,
+    fontWeight: '600',
+    color: '#DC2626', // Vibrant crimson red for strike-through discount comparison
     textDecorationLine: 'line-through',
-    textDecorationColor: Colors.textMuted,
+    textDecorationColor: '#DC2626',
+    letterSpacing: -0.2,
   },
 
   perKgTag: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    backgroundColor: '#E8F5E9', // Light emerald tint
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  perKgTagCompact: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
     borderRadius: 5,
-    backgroundColor: Colors.primary10,
   },
   perKgWrap: {
     marginTop: 4,
   },
   perKgText: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '800',
     color: Colors.primaryDark,
     fontVariant: ['tabular-nums'],
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
+  },
+  perKgTextCompact: {
+    fontSize: 10.5,
   },
   perKgUnit: {
-    fontSize: 10.5,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.primary,
   },
 
   discountTag: {

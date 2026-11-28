@@ -68,6 +68,14 @@ const mapProduct = (item: any): Product => {
     item.skus?.[0]?.unit_name;
   const unitStr = typeof unitCreated === 'string' ? unitCreated : (unitCreated?.name || undefined);
 
+  const rawPackKg = item.pack_kg ?? item.skus?.[0]?.pack_kg ?? p?.pack_kg ?? p?.skus?.[0]?.pack_kg;
+  let packKg = typeof rawPackKg === 'number' && rawPackKg > 0 ? rawPackKg : undefined;
+  if (!packKg) {
+    const combinedStr = `${item.unit_value || ''} ${item.product_name || p?.product_name || ''} ${item.skus?.[0]?.weight || ''}`;
+    const m = combinedStr.match(/(\d+(?:\.\d+)?)\s*(?:kg|kilo)/i);
+    if (m) packKg = Number(m[1]);
+  }
+
   return {
     id: (p?.id ?? item.product_id ?? item.id).toString(),
     name: item.product_name ?? p?.product_name ?? '',
@@ -90,7 +98,7 @@ const mapProduct = (item: any): Product => {
         ? item.skus[0].variant_name
         : undefined) ??
       item.skus?.[0]?.weight,
-    pack_kg: item.pack_kg ?? item.skus?.[0]?.pack_kg ?? undefined,
+    pack_kg: packKg,
     rating: 0,
     reviews_count: 0,
     created_at: '',
